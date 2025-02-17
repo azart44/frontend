@@ -1,27 +1,35 @@
 import React from 'react';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { Authenticator } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
-import { signInWithRedirect } from "aws-amplify/auth";
-import { Button } from '@aws-amplify/ui-react';
+import { Amplify } from 'aws-amplify';
+
+import Home from './components/Home';
+import Profile from './components/Profile';
+
+Amplify.configure({
+  Auth: {
+    Cognito: {
+      userPoolId: process.env.REACT_APP_USER_POOL_ID!,
+      userPoolClientId: process.env.REACT_APP_USER_POOL_CLIENT_ID!,
+      signUpVerificationMethod: 'code',
+    }
+  }
+});
 
 function App() {
-  const handleSignIn = () => {
-    signInWithRedirect();
-  };
-
   return (
     <Authenticator>
       {({ signOut, user }) => (
-        <div>
-          {user ? (
-            <>
-              <h1>Hello {user.username}</h1>
-              <Button onClick={signOut}>Sign out</Button>
-            </>
-          ) : (
-            <Button onClick={handleSignIn}>Sign in with Cognito</Button>
-          )}
-        </div>
+        <Router>
+          <Routes>
+            <Route path="/" element={<Home signOut={signOut} user={user} />} />
+            <Route 
+              path="/profile" 
+              element={user ? <Profile user={user} /> : <Navigate to="/" replace />} 
+            />
+          </Routes>
+        </Router>
       )}
     </Authenticator>
   );
