@@ -2,6 +2,9 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=18.19.0"
+  },
   "dependencies": {
     "@aws-amplify/ui-react": "^6.9.1",
     "@testing-library/dom": "^10.4.0",
