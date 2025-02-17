@@ -16,6 +16,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "aws-amplify": "^6.13.0",
+    "constructs": "^10.0.0",
     "aws-cdk-lib": "^2.178.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
