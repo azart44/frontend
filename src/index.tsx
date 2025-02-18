@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import { Amplify } from 'aws-amplify';
+import axios from 'axios';
 
 Amplify.configure({
   Auth: {
@@ -13,6 +14,9 @@ Amplify.configure({
     }
   }
 });
+
+// Configuration d'Axios pour l'API
+axios.defaults.baseURL = "https://r80w1ax6u0.execute-api.us-east-1.amazonaws.com/prod";
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement

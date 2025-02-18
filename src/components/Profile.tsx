@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthenticator, View, Heading, Text, Button, Loader } from '@aws-amplify/ui-react';
 import { Navigate } from 'react-router-dom';
-import { fetchUserAttributes, getCurrentUser, fetchAuthSession } from 'aws-amplify/auth';
-import { useAuth } from '../contexts/AuthContext';
+import { fetchUserAttributes, fetchAuthSession } from 'aws-amplify/auth';
 import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
 
 function Profile() {
   const { user } = useAuthenticator((context) => [context.user]);
   const { isAuthenticated } = useAuth();
   const [email, setEmail] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [apiResponse, setApiResponse] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const getUserAttributes = async () => {
@@ -32,24 +33,39 @@ function Profile() {
   }, [user]);
 
   const handleApiCall = async () => {
+    setIsLoading(true);
+    setApiResponse(null);
+    setError(null);
     try {
       const session = await fetchAuthSession();
-      const token = session.tokens?.accessToken?.toString();
-  
+      const token = session.tokens?.idToken?.toString(); // Changé pour utiliser idToken
+
       if (!token) {
-        throw new Error('No access token available');
+        throw new Error('No ID token available');
       }
-  
+
+      console.log('Token:', token); // Pour le débogage
+
       const response = await axios.get('https://r80w1ax6u0.execute-api.us-east-1.amazonaws.com/prod/hello', {
         headers: {
-          Authorization: `Bearer \${token}`
-        }
+          'Authorization': `${token}`, // Ajout de 'Bearer'
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true
       });
-  
-      setApiResponse(response.data);
+
+      console.log('API response:', response.data);
+      setApiResponse(JSON.stringify(response.data, null, 2));
     } catch (error) {
       console.error('Error calling API:', error);
-      setApiResponse('Error calling API');
+      if (axios.isAxiosError(error) && error.response) {
+        // Log plus détaillé de l'erreur Axios
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+      }
+      setError('Error calling API: ' + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -61,20 +77,22 @@ function Profile() {
     <View padding="1rem">
       <Heading level={1}>Profile Page</Heading>
       <Text>Username: {user?.username}</Text>
-      {isLoading ? (
-        <Loader variation="linear" />
-      ) : (
-        <Text>Email: {email}</Text>
-      )}
-      <Button onClick={handleApiCall} marginTop="1rem">
+      <Text>Email: {isLoading ? 'Loading...' : email}</Text>
+      <Button onClick={handleApiCall} marginTop="1rem" isLoading={isLoading}>
         Call API
       </Button>
       {apiResponse && (
         <View marginTop="1rem">
           <Text>API Response:</Text>
-          <pre>{JSON.stringify(apiResponse, null, 2)}</pre>
+          <pre>{apiResponse}</pre>
         </View>
       )}
+      {error && (
+        <View marginTop="1rem">
+          <Text color="red">{error}</Text>
+        </View>
+      )}
+      {isLoading && <Loader variation="linear" />}
     </View>
   );
 }
