@@ -10,15 +10,6 @@ Amplify.configure({
       userPoolId: process.env.REACT_APP_USER_POOL_ID!,
       userPoolClientId: process.env.REACT_APP_USER_POOL_CLIENT_ID!,
       signUpVerificationMethod: 'code',
-      loginWith: {
-        oauth: {
-          domain: process.env.REACT_APP_COGNITO_DOMAIN!,
-          scopes: ['openid', 'email', 'profile'],
-          redirectSignIn: ['http://localhost:3000/'],
-          redirectSignOut: ['http://localhost:3000/'],
-          responseType: 'code'
-        }
-      }
     }
   }
 });
