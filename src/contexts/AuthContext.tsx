@@ -14,15 +14,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (authStatus === 'authenticated') {
-      setIsAuthenticated(true);
-      setIsLoading(false);
-    } else if (authStatus === 'unauthenticated') {
-      setIsAuthenticated(false);
-      setIsLoading(false);
-    } else {
-      setIsLoading(true);
-    }
+    setIsAuthenticated(authStatus === 'authenticated');
+    setIsLoading(authStatus === 'configuring');
   }, [authStatus]);
 
   return (
