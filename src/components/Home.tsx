@@ -1,23 +1,21 @@
 import React from 'react';
-import { useAuthenticator, Button } from '@aws-amplify/ui-react';
+import { useAuthenticator, Button, Heading, Flex } from '@aws-amplify/ui-react';
 import { Link } from 'react-router-dom';
 
-interface HomeProps {
-  signOut?: () => void;
-}
-
-function Home({ signOut }: HomeProps) {
-  const { user } = useAuthenticator((context) => [context.user]);
+const Home: React.FC = () => {
+  const { user, signOut } = useAuthenticator((context) => [context.user, context.signOut]);
 
   return (
-    <div>
-      <h1>Welcome {user?.username}</h1>
-      <Link to="/profile">
-        <Button>Go to Profile</Button>
-      </Link>
-      <Button onClick={signOut}>Sign out</Button>
-    </div>
+    <Flex direction="column" alignItems="center" padding="2rem">
+      <Heading level={1}>Welcome {user?.username}</Heading>
+      <Flex direction="row" gap="1rem" marginTop="1rem">
+        <Link to="/profile">
+          <Button>Go to Profile</Button>
+        </Link>
+        <Button onClick={signOut}>Sign out</Button>
+      </Flex>
+    </Flex>
   );
-}
+};
 
 export default Home;

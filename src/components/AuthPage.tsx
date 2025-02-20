@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Authenticator, useAuthenticator, TextField, View } from '@aws-amplify/ui-react';
 import { useNavigate } from 'react-router-dom';
 
-function AuthPage() {
+const AuthPage: React.FC = () => {
   const navigate = useNavigate();
   const { route } = useAuthenticator((context) => [context.route]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (route === 'authenticated') {
       navigate('/profile');
     }
@@ -26,14 +26,14 @@ function AuthPage() {
                     name="email"
                     placeholder="Enter your email"
                     type="email"
-                    isRequired={true}
+                    isRequired
                   />
                   <TextField
                     label="Full Name"
                     name="name"
                     placeholder="Enter your full name"
                     type="text"
-                    isRequired={true}
+                    isRequired
                   />
                 </>
               );
@@ -43,6 +43,6 @@ function AuthPage() {
       />
     </View>
   );
-}
+};
 
 export default AuthPage;

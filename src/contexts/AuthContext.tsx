@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuthenticator } from '@aws-amplify/ui-react';
 
 interface AuthContextType {
@@ -8,18 +8,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({ isAuthenticated: false, isLoading: true });
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { authStatus } = useAuthenticator((context) => [context.authStatus]);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [state, setState] = useState<AuthContextType>({ isAuthenticated: false, isLoading: true });
 
   useEffect(() => {
-    setIsAuthenticated(authStatus === 'authenticated');
-    setIsLoading(authStatus === 'configuring');
+    setState({
+      isAuthenticated: authStatus === 'authenticated',
+      isLoading: authStatus === 'configuring'
+    });
   }, [authStatus]);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading }}>
+    <AuthContext.Provider value={state}>
       {children}
     </AuthContext.Provider>
   );

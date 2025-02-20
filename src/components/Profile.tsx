@@ -3,15 +3,16 @@ import { useAuthenticator, View, Heading, Text, Button, Loader } from '@aws-ampl
 import { Navigate } from 'react-router-dom';
 import { fetchUserAttributes } from 'aws-amplify/auth';
 import { useAuth } from '../contexts/AuthContext';
-import { useApi } from '../hooks/useApi';
+import api from '../utils/api';
 
-function Profile() {
+const Profile: React.FC = () => {
   const { user } = useAuthenticator((context) => [context.user]);
   const { isAuthenticated } = useAuth();
   const [email, setEmail] = useState<string | null>(null);
   const [userLoading, setUserLoading] = useState(false);
   const [apiResponse, setApiResponse] = useState<string | null>(null);
-  const { callApi, isLoading, error } = useApi();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const getUserAttributes = async () => {
@@ -33,9 +34,17 @@ function Profile() {
   }, [user]);
 
   const handleApiCall = async () => {
-    const data = await callApi('helloworld');
-    if (data) {
-      setApiResponse(JSON.stringify(data, null, 2));
+    setIsLoading(true);
+    setApiResponse(null);
+    setError(null);
+    try {
+      const response = await api.get('/helloworld');  // Assurez-vous que ce chemin est correct
+      setApiResponse(JSON.stringify(response.data, null, 2));
+    } catch (error) {
+      console.error('Error calling API:', error);
+      setError('Error calling API: ' + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -65,6 +74,6 @@ function Profile() {
       {(isLoading || userLoading) && <Loader variation="linear" />}
     </View>
   );
-}
+};
 
 export default Profile;

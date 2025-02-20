@@ -1,30 +1,16 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Button, 
-  useAuthenticator, 
-  Image, 
-  Flex, 
-  View 
-} from '@aws-amplify/ui-react';
+import { Button, useAuthenticator, Image, Flex, View } from '@aws-amplify/ui-react';
 import { useAuth } from '../contexts/AuthContext';
-import logo from '../assets/images/logo.png'; // Ajustez ce chemin selon l'emplacement de votre logo
+import logo from '../assets/images/logo.png';
 
-function Header() {
+const Header: React.FC = () => {
   const { signOut } = useAuthenticator((context) => [context.signOut]);
   const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
 
   const handleAuthAction = () => {
-    if (isAuthenticated) {
-      signOut();
-    } else {
-      navigate('/auth');
-    }
-  };
-
-  const handleLogoClick = () => {
-    navigate('/');
+    isAuthenticated ? signOut() : navigate('/auth');
   };
 
   return (
@@ -35,7 +21,7 @@ function Header() {
           alt="Chardora Logo"
           objectFit="contain"
           maxHeight="50px"
-          onClick={handleLogoClick}
+          onClick={() => navigate('/')}
           style={{ cursor: 'pointer' }}
         />
         <Flex as="nav" alignItems="center">
@@ -46,10 +32,7 @@ function Header() {
                   Profile
                 </Button>
               )}
-              <Button 
-                variation="primary"
-                onClick={handleAuthAction}
-              >
+              <Button variation="primary" onClick={handleAuthAction}>
                 {isAuthenticated ? 'Logout' : 'Login / Register'}
               </Button>
             </>
@@ -58,6 +41,6 @@ function Header() {
       </Flex>
     </View>
   );
-}
+};
 
 export default Header;
