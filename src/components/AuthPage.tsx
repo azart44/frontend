@@ -1,16 +1,31 @@
 import React, { useEffect } from 'react';
 import { Authenticator, useAuthenticator, TextField, View } from '@aws-amplify/ui-react';
 import { useNavigate } from 'react-router-dom';
+import { fetchUserAttributes } from 'aws-amplify/auth';
 
 const AuthPage: React.FC = () => {
   const navigate = useNavigate();
-  const { route } = useAuthenticator((context) => [context.route]);
+  const { authStatus } = useAuthenticator((context) => [context.authStatus]);
 
   useEffect(() => {
-    if (route === 'authenticated') {
-      navigate('/profile');
-    }
-  }, [route, navigate]);
+    const checkProfileCompletion = async () => {
+      if (authStatus === 'authenticated') {
+        try {
+          const attributes = await fetchUserAttributes();
+          if (attributes['custom:profileCompleted'] === 'true') {
+            navigate('/');
+          } else {
+            navigate('/complete-profile');
+          }
+        } catch (error) {
+          console.error('Error fetching user attributes:', error);
+          navigate('/complete-profile');
+        }
+      }
+    };
+
+    checkProfileCompletion();
+  }, [authStatus, navigate]);
 
   return (
     <View>

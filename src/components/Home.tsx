@@ -1,18 +1,84 @@
 import React from 'react';
-import { useAuthenticator, Button, Heading, Flex } from '@aws-amplify/ui-react';
+import { Flex, Text, Image, Card, Badge, View, Button } from '@aws-amplify/ui-react';
+import { FaPlay, FaHeart, FaDownload } from 'react-icons/fa';
+import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 
 const Home: React.FC = () => {
-  const { user, signOut } = useAuthenticator((context) => [context.user, context.signOut]);
+  const { isAuthenticated } = useAuth();
 
   return (
-    <Flex direction="column" alignItems="center" padding="2rem">
-      <Heading level={1}>Welcome {user?.username}</Heading>
-      <Flex direction="row" gap="1rem" marginTop="1rem">
-        <Link to="/profile">
-          <Button>Go to Profile</Button>
-        </Link>
-        <Button onClick={signOut}>Sign out</Button>
+    <Flex direction="column" minHeight="100vh">
+      <Flex padding="2rem">
+        {/* Feed */}
+        <Flex direction="column" flex={3} marginRight="2rem">
+          <Text fontSize="2xl" fontWeight="bold" marginBottom="1rem">Featured Samples</Text>
+          
+          <Card padding="1rem" marginBottom="2rem">
+            <Flex alignItems="center" marginBottom="1rem">
+              <Image src="https://via.placeholder.com/40" alt="User" borderRadius="50%" marginRight="0.5rem" />
+              <Text>trustmelucien uploaded a sample pack · 19h ago</Text>
+            </Flex>
+            <Flex alignItems="center" marginBottom="1rem">
+              <Button><FaPlay /></Button>
+              <View flex={1} height="40px" backgroundColor="#f0f0f0" marginLeft="1rem"></View>
+            </Flex>
+            {[1, 2, 3, 4, 5].map((num) => (
+              <Flex key={num} justifyContent="space-between" alignItems="center" marginBottom="0.5rem">
+                <Text>{num}. Sample {num}.wav</Text>
+                <Flex alignItems="center">
+                  <Badge>TRAP</Badge>
+                  <Badge variation="warning" marginLeft="0.5rem">NEW</Badge>
+                  <Text marginLeft="0.5rem">1:23</Text>
+                  {isAuthenticated ? (
+                    <>
+                      <Button padding="0" backgroundColor="transparent"><FaHeart /></Button>
+                      <Button padding="0" backgroundColor="transparent"><FaDownload /></Button>
+                    </>
+                  ) : (
+                    <Link to="/auth">
+                      <Button size="small">Sign in to interact</Button>
+                    </Link>
+                  )}
+                </Flex>
+              </Flex>
+            ))}
+            <Button variation="link">View 5 more</Button>
+          </Card>
+        </Flex>
+
+        {/* Sidebar */}
+        <Flex direction="column" flex={1}>
+          <Card padding="1rem" marginBottom="1rem">
+            <Flex justifyContent="space-between" alignItems="center" marginBottom="1rem">
+              <Text fontWeight="bold">Top Creators</Text>
+              <Button variation="link">Refresh</Button>
+            </Flex>
+            {['Keiji', 'Project Blvck', 'SeaSky', 'B', 'D. Sharp'].map((name) => (
+              <Flex key={name} justifyContent="space-between" alignItems="center" marginBottom="0.5rem">
+                <Flex alignItems="center">
+                  <Image src={`https://via.placeholder.com/30`} alt={name} borderRadius="50%" marginRight="0.5rem" />
+                  <Text>{name}</Text>
+                </Flex>
+                {isAuthenticated ? (
+                  <Button size="small">Follow</Button>
+                ) : (
+                  <Link to="/auth">
+                    <Button size="small">Sign in to follow</Button>
+                  </Link>
+                )}
+              </Flex>
+            ))}
+          </Card>
+          {isAuthenticated && (
+            <Card padding="1rem">
+              <Flex justifyContent="space-between" alignItems="center">
+                <Text fontWeight="bold">Recent likes</Text>
+                <Button variation="link">View all</Button>
+              </Flex>
+            </Card>
+          )}
+        </Flex>
       </Flex>
     </Flex>
   );
