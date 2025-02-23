@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { Button, Flex, Heading, Text, ButtonVariations, View, Loader, TextField, TextAreaField, SelectField } from '@aws-amplify/ui-react';
 import { useAuthenticator } from '@aws-amplify/ui-react';
@@ -8,7 +8,7 @@ import api from '../utils/api';
 import axios, { AxiosError } from 'axios';
 import { MUSIC_GENRES, SKILL_LEVELS, USER_TYPES } from '../constants/profileData';
 
-const CompleteProfile: React.FC = () => {
+const CompleteProfile: React.FC = React.memo(() => {
   const navigate = useNavigate();
   const { user } = useAuthenticator((context) => [context.user]);
   const { isAuthenticated } = useAuth();
@@ -46,15 +46,22 @@ const CompleteProfile: React.FC = () => {
     checkProfileCompletion();
   }, [user, navigate]);
 
-  const handleGenreChange = (genre: string) => {
+  const handleGenreChange = useCallback((genre: string) => {
     setSelectedGenres(prev => 
       prev.includes(genre) 
         ? prev.filter(g => g !== genre)
         : [...prev, genre]
     );
-  };
+  }, []);
 
-  const handleSubmit = async () => {
+  const socialLinksObject = useMemo(() => {
+    return Object.fromEntries(socialLinks.split(',').map(link => {
+      const [platform, url] = link.split(':').map(s => s.trim());
+      return [platform, url];
+    }));
+  }, [socialLinks]);
+
+  const handleSubmit = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -66,10 +73,7 @@ const CompleteProfile: React.FC = () => {
           musicGenres: selectedGenres,
           skillLevel: skillLevel,
           influencingArtists: influencingArtists.split(',').map(artist => artist.trim()),
-          socialLinks: Object.fromEntries(socialLinks.split(',').map(link => {
-            const [platform, url] = link.split(':').map(s => s.trim());
-            return [platform, url];
-          })),
+          socialLinks: socialLinksObject,
           profileCompleted: true
         }
       });
@@ -97,7 +101,7 @@ const CompleteProfile: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user, email, userType, selectedGenres, skillLevel, influencingArtists, socialLinksObject, navigate]);
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
@@ -125,8 +129,10 @@ const CompleteProfile: React.FC = () => {
       <TextField
         label="Email"
         value={email}
-        onChange={(e) => setEmail(e.target.value)}
+        isDisabled={true}
         isRequired
+        variation="quiet"
+        descriptiveText="This email is associated with your account and cannot be changed here."
       />
       <SelectField
         label="User Type"
@@ -183,6 +189,6 @@ const CompleteProfile: React.FC = () => {
       </Button>
     </View>
   );
-};
+});
 
 export default CompleteProfile;

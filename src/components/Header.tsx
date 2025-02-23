@@ -1,16 +1,32 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, useAuthenticator, Image, Flex, View, SearchField } from '@aws-amplify/ui-react';
+import { 
+  Button, 
+  useAuthenticator, 
+  Image, 
+  Flex, 
+  View
+} from '@aws-amplify/ui-react';
 import { useAuth } from '../contexts/AuthContext';
 import logo from '../assets/images/logo.png';
+import SearchWithSuggestions from './SearchWithSuggestions';
 
 const Header: React.FC = () => {
   const { signOut } = useAuthenticator((context) => [context.signOut]);
   const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
 
-  const handleAuthAction = () => {
-    isAuthenticated ? signOut() : navigate('/auth');
+  const handleAuthAction = async () => {
+    if (isAuthenticated) {
+      try {
+        await signOut();
+        navigate('/');  // Redirection vers la page d'accueil après la déconnexion
+      } catch (error) {
+        console.error('Error during sign out:', error);
+      }
+    } else {
+      navigate('/auth');
+    }
   };
 
   return (
@@ -29,11 +45,7 @@ const Header: React.FC = () => {
           <Button variation="link" marginRight="1rem" onClick={() => navigate('/feed')}>Feed</Button>
           <Button variation="link" marginRight="1rem" onClick={() => navigate('/sounds')}>Sounds</Button>
           <Button variation="link" marginRight="1rem" onClick={() => navigate('/pricing')}>Pricing</Button>
-          <SearchField
-            label="Search"
-            placeholder="Try 'guitar' or 'trap'"
-            width="300px"
-          />
+          <SearchWithSuggestions />
           {!isLoading && (
             <>
               {isAuthenticated && (

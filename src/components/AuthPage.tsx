@@ -3,10 +3,7 @@ import { Authenticator, useAuthenticator, TextField, View } from '@aws-amplify/u
 import { useNavigate } from 'react-router-dom';
 import { fetchUserAttributes } from 'aws-amplify/auth';
 
-const AuthPage: React.FC = () => {
-  const navigate = useNavigate();
-  const { authStatus } = useAuthenticator((context) => [context.authStatus]);
-
+const useProfileCompletion = (authStatus: string, navigate: (path: string) => void) => {
   useEffect(() => {
     const checkProfileCompletion = async () => {
       if (authStatus === 'authenticated') {
@@ -26,6 +23,13 @@ const AuthPage: React.FC = () => {
 
     checkProfileCompletion();
   }, [authStatus, navigate]);
+};
+
+const AuthPage: React.FC = React.memo(() => {
+  const navigate = useNavigate();
+  const { authStatus } = useAuthenticator((context) => [context.authStatus]);
+  
+  useProfileCompletion(authStatus, navigate);
 
   return (
     <View>
@@ -42,7 +46,7 @@ const AuthPage: React.FC = () => {
                     placeholder="Enter your email"
                     type="email"
                     isRequired
-                  />
+                  />  <a href=""></a>
                   <TextField
                     label="Full Name"
                     name="name"
@@ -58,6 +62,6 @@ const AuthPage: React.FC = () => {
       />
     </View>
   );
-};
+});
 
 export default AuthPage;

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { useAuthenticator } from '@aws-amplify/ui-react';
 
 interface AuthContextType {
@@ -19,8 +19,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
   }, [authStatus]);
 
+  const value = useMemo(() => state, [state]);
+
   return (
-    <AuthContext.Provider value={state}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
