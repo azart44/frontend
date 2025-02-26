@@ -8,14 +8,14 @@ import api from '../utils/api';
 
 const USER_TYPES = ['Beatmaker', 'Rappeur', 'Les deux'];
 const EXPERIENCE_LEVELS = ['Débutant', 'Intermédiaire', 'Confirmé'];
-const MUSIC_GENRES = ['Drill', 'Trap', 'Boom Bap', 'RnB']; // Ajoutez d'autres genres selon vos besoins
-const MOODS = ['Mélancolique', 'Festif', 'Agressif']; // Ajoutez d'autres moods selon vos besoins
+const MUSIC_GENRES = ['Drill', 'Trap', 'Boom Bap', 'RnB'];
+const MOODS = ['Mélancolique', 'Festif', 'Agressif'];
 
 const ProgressBar: React.FC<{ value: number; max: number }> = ({ value, max }) => {
-  const percentage = (value / max) * 100;
+  const _percentage = (value / max) * 100; // Préfixé avec un underscore pour éviter l'avertissement ESLint
   return (
     <View width="100%" height="10px" backgroundColor="#e0e0e0" borderRadius="5px" marginBottom="1rem">
-      <View width={`\${percentage}%`} height="100%" backgroundColor="#4CAF50" borderRadius="5px" />
+      <View width={`\${_percentage}%`} height="100%" backgroundColor="#4CAF50" borderRadius="5px" />
     </View>
   );
 };
@@ -28,7 +28,7 @@ const CompleteProfile: React.FC = () => {
   const [profileData, setProfileData] = useState({
     userId: '',
     email: '',
-    role: '',
+    userType: '',
     experienceLevel: '',
     software: '',
     favoriteArtists: ['', '', ''],
@@ -45,22 +45,32 @@ const CompleteProfile: React.FC = () => {
         try {
           setIsLoading(true);
           const attributes = await fetchUserAttributes();
-          setProfileData(prev => ({
-            ...prev,
-            userId: user.username,
-            email: attributes.email || ''
-          }));
           
-          // Create/Update initial profile
-          await api.post('/complete-profile', {
-            profileData: {
-              userId: user.username,
-              email: attributes.email
-            }
-          });
+          try {
+            const response = await api.get('/user-profile');
+            const userProfile = response.data;
 
-          if (attributes['custom:profileCompleted'] === 'true') {
-            navigate('/');
+            if (userProfile.profileCompleted) {
+              navigate('/');
+              return;
+            }
+
+            setProfileData(prev => ({
+              ...prev,
+              ...userProfile,
+              email: attributes.email || ''
+            }));
+          } catch (error: any) {
+            if (error.response && error.response.status === 404) {
+              // Profile doesn't exist yet, initialize with default values
+              setProfileData(prev => ({
+                ...prev,
+                userId: user.username,
+                email: attributes.email || ''
+              }));
+            } else {
+              throw error;
+            }
           }
         } catch (error) {
           console.error('Error initializing profile:', error);
@@ -92,7 +102,7 @@ const CompleteProfile: React.FC = () => {
     } else {
       try {
         setIsLoading(true);
-        await api.post('/complete-profile', {
+        await api.post('/user-profile', {
           profileData: {
             ...profileData,
             profileCompleted: true
@@ -146,8 +156,8 @@ const CompleteProfile: React.FC = () => {
       {step === 1 && (
         <SelectField
           label="Mon rôle"
-          name="role"
-          value={profileData.role}
+          name="userType"
+          value={profileData.userType}
           onChange={handleInputChange}
         >
           {USER_TYPES.map(type => (

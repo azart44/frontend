@@ -11,7 +11,8 @@ const Home = lazy(() => import('./components/Home'));
 const Profile = lazy(() => import('./components/Profile'));
 const AuthPage = lazy(() => import('./components/AuthPage'));
 const CompleteProfile = lazy(() => import('./components/CompleteProfile'));
-const UserList = lazy(() => import('./components/UserList')); // Nouveau composant
+const UserList = lazy(() => import('./components/UserList'));
+const AddTrack = lazy(() => import('./components/AddTrack')); // Nouveau composant
 
 // Loading component
 const Loading = () => <div>Loading...</div>;
@@ -49,7 +50,7 @@ function App() {
                     <Profile />
                   </PrivateRoute>
                 } />
-                <Route path="/profile/:userId" element={<Profile />} /> {/* Nouvelle route pour les profils publics */}
+                <Route path="/profile/:userId" element={<Profile />} />
                 <Route path="/complete-profile" element={
                   <PrivateRoute>
                     <CompleteProfile />
@@ -59,7 +60,12 @@ function App() {
                   <PrivateRoute>
                     <UserList />
                   </PrivateRoute>
-                } /> {/* Nouvelle route pour la liste des utilisateurs */}
+                } />
+                <Route path="/add-track" element={ // Nouvelle route
+                  <PrivateRoute>
+                    <AddTrack />
+                  </PrivateRoute>
+                } />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>

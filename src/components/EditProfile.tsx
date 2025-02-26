@@ -14,7 +14,7 @@ import {
 } from '@aws-amplify/ui-react';
 import { MUSIC_GENRES, SKILL_LEVELS, USER_TYPES } from '../constants/profileData';
 import { UserProfile } from '../types/ProfileTypes';
-import api from '../utils/api';
+import { updateUserProfile } from '../utils/api';
 
 interface EditProfileProps {
   userProfile: UserProfile;
@@ -76,7 +76,7 @@ const EditProfile: React.FC<EditProfileProps> = ({
         ...editedProfile,
         profileImageBase64: newProfileImage || editedProfile.profileImageBase64
       };
-      const response = await api.post('/complete-profile', { profileData: profileToUpdate });
+      const response = await updateUserProfile(profileToUpdate);
       setUserProfile(response.data.updatedProfile);
       setIsEditing(false);
       onProfileUpdate();
@@ -95,7 +95,7 @@ const EditProfile: React.FC<EditProfileProps> = ({
     if (editedProfile.profileImageBase64) {
       return editedProfile.profileImageBase64.startsWith('data:image') 
         ? editedProfile.profileImageBase64 
-        : `data:image/jpeg;base64,\${editedProfile.profileImageBase64}`;
+        : `data:image/jpeg;base64,${editedProfile.profileImageBase64}`;
     }
     return '/path/to/default/image.jpg';
   };
@@ -125,6 +125,14 @@ const EditProfile: React.FC<EditProfileProps> = ({
                 style={{ marginTop: '1rem' }}
               />
             </Flex>
+
+            <TextField
+              label="Username"
+              name="username"
+              value={editedProfile.username}
+              onChange={handleInputChange}
+              isReadOnly
+            />
 
             <SelectField
               label="User Type"

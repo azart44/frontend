@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { 
   View, 
   Heading, 
@@ -13,28 +13,25 @@ import {
 } from '@aws-amplify/ui-react';
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { useAuth } from '../contexts/AuthContext';
-import api from '../utils/api';
+import { getUserProfile } from '../utils/api';
 import { FaInstagram, FaSoundcloud } from 'react-icons/fa';
 import { UserProfile } from '../types/ProfileTypes';
 import EditProfile from './EditProfile';
+import TrackList from './TrackList';
 
 const Profile: React.FC = () => {
-  const { userId } = useParams<{ userId?: string }>();
   const { user } = useAuthenticator((context) => [context.user]);
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
-  const isOwnProfile = !userId || (user && userId === user.username);
-
   const fetchProfile = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await api.get<UserProfile>('/get-user-profile', {
-        params: { userId: userId || user?.username }
-      });
+      const response = await getUserProfile();
       setProfile(response.data);
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -42,7 +39,7 @@ const Profile: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [userId, user]);
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -54,7 +51,7 @@ const Profile: React.FC = () => {
   if (error) return <View padding="2rem"><Text>{error}</Text></View>;
   if (!profile) return <View padding="2rem"><Text>Profile not found</Text></View>;
 
-  if (isEditing && isOwnProfile) {
+  if (isEditing) {
     return (
       <EditProfile
         userProfile={profile}
@@ -128,12 +125,20 @@ const Profile: React.FC = () => {
             </Card>
           )}
 
-          {isOwnProfile && (
-            <Button onClick={() => setIsEditing(true)} marginTop="2rem" variation="primary" isFullWidth>
+          <Flex direction="column" gap="1rem" marginTop="2rem" width="100%">
+            <Button onClick={() => setIsEditing(true)} variation="primary" isFullWidth>
               Edit Profile
             </Button>
-          )}
+            <Button onClick={() => navigate('/add-track')} variation="primary" isFullWidth>
+              Add Track
+            </Button>
+          </Flex>
         </Flex>
+      </Card>
+
+      <Card variation="elevated" marginTop="2rem">
+        <Heading level={2}>Tracks</Heading>
+        <TrackList userId={profile.userId} />
       </Card>
     </View>
   );
