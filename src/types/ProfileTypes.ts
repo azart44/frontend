@@ -1,18 +1,22 @@
 export interface UserProfile {
-    userId: string;
-    email: string;
-    userType: string;
-    skillLevel: string;
-    musicGenres: string[];
-    influencingArtists: string[];
-    socialLinks?: {
-      [key: string]: string;
-    };
-    audioFiles: string[]; // Initialiser comme un tableau vide par défaut
-    profileCompleted: boolean;
-  }
-  
-  export interface SocialIconProps {
-    platform: string;
-    url: string;
-  }
+  userId: string;
+  username: string;
+  email: string;
+  userType: string;
+  experienceLevel: string;
+  bio: string;
+  tags?: string[];
+  inspirations: string[];
+  musicGenres: string[];
+  socialLinks?: {
+    instagram?: string;
+    soundcloud?: string;
+  };
+  profileImageBase64?: string;
+  profileImageUrl?: string;
+}
+
+export interface SocialIconProps {
+  platform: string;
+  url: string;
+}

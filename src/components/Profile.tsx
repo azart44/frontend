@@ -4,22 +4,19 @@ import {
   View, 
   Heading, 
   Text, 
-  Loader, 
   Badge, 
   Flex, 
   Button, 
   Card,
   Image,
+  Loader
 } from '@aws-amplify/ui-react';
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
-import { FaTwitter, FaInstagram, FaSoundcloud, FaYoutube } from 'react-icons/fa';
-import { UserProfile, SocialIconProps } from '../types/ProfileTypes';
-import { fetchProfileImage } from '../utils/ProfileUtils';
+import { FaInstagram, FaSoundcloud } from 'react-icons/fa';
+import { UserProfile } from '../types/ProfileTypes';
 import EditProfile from './EditProfile';
-import AudioPlayer from './AudioPlayer';
-import AudioUploader from './AudioUploader';
 
 const Profile: React.FC = () => {
   const { userId } = useParams<{ userId?: string }>();
@@ -29,7 +26,6 @@ const Profile: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
 
   const isOwnProfile = !userId || (user && userId === user.username);
 
@@ -39,21 +35,9 @@ const Profile: React.FC = () => {
       const response = await api.get<UserProfile>('/get-user-profile', {
         params: { userId: userId || user?.username }
       });
-      const fetchedProfile = {
-        ...response.data,
-        audioFiles: response.data.audioFiles || []
-      };
-      setProfile(fetchedProfile);
-
-      // Merge with localStorage data
-      const storedAudioFiles = JSON.parse(localStorage.getItem(`audioFiles_${fetchedProfile.userId}`) || '[]');
-      const mergedAudioFiles = Array.from(new Set([...fetchedProfile.audioFiles, ...storedAudioFiles]));
-      setProfile(prev => prev ? { ...prev, audioFiles: mergedAudioFiles } : null);
-
-      const imageUrl = await fetchProfileImage(fetchedProfile.userId);
-      setProfileImageUrl(imageUrl);
+      setProfile(response.data);
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      console.error('Error fetching profile:', error);
       setError('Error fetching user profile. Please try refreshing the page.');
     } finally {
       setIsLoading(false);
@@ -66,49 +50,9 @@ const Profile: React.FC = () => {
     }
   }, [isAuthenticated, fetchProfile]);
 
-  const handleAudioUploadSuccess = (fileUrl: string) => {
-    if (profile) {
-      const updatedAudioFiles = [...profile.audioFiles, fileUrl];
-      setProfile({ ...profile, audioFiles: updatedAudioFiles });
-      
-      // Update localStorage
-      localStorage.setItem(`audioFiles_${profile.userId}`, JSON.stringify(updatedAudioFiles));
-    }
-  };
-
-  const SocialIcon: React.FC<SocialIconProps> = ({ platform, url }) => {
-    const iconMap: { [key: string]: React.ElementType } = {
-      twitter: FaTwitter,
-      instagram: FaInstagram,
-      soundcloud: FaSoundcloud,
-      youtube: FaYoutube,
-    };
-    const IconComponent = iconMap[platform.toLowerCase()];
-    return IconComponent ? <IconComponent size={24} onClick={() => window.open(url, '_blank')} style={{ cursor: 'pointer', marginRight: '10px' }} /> : null;
-  };
-
-  if (isLoading) {
-    return <Loader />;
-  }
-
-  if (error) {
-    return (
-      <View padding="2rem" textAlign="center">
-        <Heading level={1}>Oops! Something went wrong</Heading>
-        <Text>{error}</Text>
-        <Button onClick={fetchProfile} marginTop="1rem">Try Again</Button>
-      </View>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <View padding="2rem" textAlign="center">
-        <Heading level={1}>Profile Not Found</Heading>
-        <Text>We couldn't find the requested profile.</Text>
-      </View>
-    );
-  }
+  if (isLoading) return <Loader />;
+  if (error) return <View padding="2rem"><Text>{error}</Text></View>;
+  if (!profile) return <View padding="2rem"><Text>Profile not found</Text></View>;
 
   if (isEditing && isOwnProfile) {
     return (
@@ -126,64 +70,69 @@ const Profile: React.FC = () => {
       <Card>
         <Flex direction="column" alignItems="center">
           <Image
-            src={profileImageUrl || undefined}
+            src={profile.profileImageBase64}
             alt="Profile Picture"
             width="150px"
             height="150px"
             objectFit="cover"
             borderRadius="50%"
           />
-          <Heading level={1} marginTop="1rem">{profile.userId}</Heading>
+          <Heading level={1} marginTop="1rem">{profile.username}</Heading>
           <Text>{profile.email}</Text>
           <Badge variation="info" marginTop="0.5rem">{profile.userType}</Badge>
-          <Badge variation="success">{profile.skillLevel}</Badge>
+          <Badge variation="success">{profile.experienceLevel}</Badge>
           
           <Flex marginTop="1rem">
-            {profile.socialLinks && Object.entries(profile.socialLinks).map(([platform, url]) => (
-              <SocialIcon key={platform} platform={platform} url={url} />
-            ))}
+            {profile.socialLinks?.instagram && (
+              <FaInstagram 
+                size={24} 
+                onClick={() => window.open(profile.socialLinks?.instagram, '_blank')} 
+                style={{ cursor: 'pointer', marginRight: '10px' }} 
+              />
+            )}
+            {profile.socialLinks?.soundcloud && (
+              <FaSoundcloud 
+                size={24} 
+                onClick={() => window.open(profile.socialLinks?.soundcloud, '_blank')} 
+                style={{ cursor: 'pointer', marginRight: '10px' }} 
+              />
+            )}
           </Flex>
 
-          <Card variation="elevated" marginTop="2rem" width="100%">
-            <Heading level={3}>Music Genres</Heading>
-            <Flex wrap="wrap" gap="0.5rem" marginTop="1rem">
-              {profile.musicGenres.map((genre) => (
-                <Badge key={genre} variation="info">{genre}</Badge>
-              ))}
-            </Flex>
-          </Card>
-
-          <Card variation="elevated" marginTop="2rem" width="100%">
-            <Heading level={3}>Influencing Artists</Heading>
-            <Text marginTop="1rem">{profile.influencingArtists.join(', ')}</Text>
-          </Card>
-
-          {isOwnProfile && (
-            <>
-              <Button onClick={() => setIsEditing(true)} marginTop="2rem" variation="primary" isFullWidth>
-                Edit Profile
-              </Button>
-              <AudioUploader 
-                userId={profile.userId} 
-                onUploadSuccess={handleAudioUploadSuccess} 
-              />
-            </>
+          {profile.bio && (
+            <Card variation="elevated" marginTop="2rem" width="100%">
+              <Heading level={3}>Bio</Heading>
+              <Text marginTop="1rem">{profile.bio}</Text>
+            </Card>
           )}
 
-          <Card variation="elevated" marginTop="2rem" width="100%">
-            <Heading level={3}>Audio Files</Heading>
-            {profile.audioFiles && profile.audioFiles.length > 0 ? (
-              profile.audioFiles.map((fileUrl, index) => (
-                <AudioPlayer 
-                  key={index} 
-                  src={fileUrl} 
-                  name={`Track ${index + 1}`} 
-                />
-              ))
-            ) : (
-              <Text>No audio files uploaded yet.</Text>
-            )}
-          </Card>
+          {profile.musicGenres && profile.musicGenres.length > 0 && (
+            <Card variation="elevated" marginTop="2rem" width="100%">
+              <Heading level={3}>Music Genres</Heading>
+              <Flex wrap="wrap" gap="0.5rem" marginTop="1rem">
+                {profile.musicGenres.map((genre) => (
+                  <Badge key={genre} variation="info">{genre}</Badge>
+                ))}
+              </Flex>
+            </Card>
+          )}
+
+          {profile.tags && profile.tags.length > 0 && (
+            <Card variation="elevated" marginTop="2rem" width="100%">
+              <Heading level={3}>Tags</Heading>
+              <Flex wrap="wrap" gap="0.5rem" marginTop="1rem">
+                {profile.tags.map((tag) => (
+                  <Badge key={tag} variation="info">{tag}</Badge>
+                ))}
+              </Flex>
+            </Card>
+          )}
+
+          {isOwnProfile && (
+            <Button onClick={() => setIsEditing(true)} marginTop="2rem" variation="primary" isFullWidth>
+              Edit Profile
+            </Button>
+          )}
         </Flex>
       </Card>
     </View>

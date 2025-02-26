@@ -1,107 +1,123 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
-import { Button, Flex, Heading, Text, ButtonVariations, View, Loader, TextField, TextAreaField, SelectField } from '@aws-amplify/ui-react';
+import { Button, Flex, Heading, Text, View, Loader, TextField, SelectField } from '@aws-amplify/ui-react';
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { fetchUserAttributes, updateUserAttributes } from 'aws-amplify/auth';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
-import axios, { AxiosError } from 'axios';
-import { MUSIC_GENRES, SKILL_LEVELS, USER_TYPES } from '../constants/profileData';
 
-const CompleteProfile: React.FC = React.memo(() => {
+const USER_TYPES = ['Beatmaker', 'Rappeur', 'Les deux'];
+const EXPERIENCE_LEVELS = ['Débutant', 'Intermédiaire', 'Confirmé'];
+const MUSIC_GENRES = ['Drill', 'Trap', 'Boom Bap', 'RnB']; // Ajoutez d'autres genres selon vos besoins
+const MOODS = ['Mélancolique', 'Festif', 'Agressif']; // Ajoutez d'autres moods selon vos besoins
+
+const ProgressBar: React.FC<{ value: number; max: number }> = ({ value, max }) => {
+  const percentage = (value / max) * 100;
+  return (
+    <View width="100%" height="10px" backgroundColor="#e0e0e0" borderRadius="5px" marginBottom="1rem">
+      <View width={`\${percentage}%`} height="100%" backgroundColor="#4CAF50" borderRadius="5px" />
+    </View>
+  );
+};
+
+const CompleteProfile: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthenticator((context) => [context.user]);
   const { isAuthenticated } = useAuth();
-  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
-  const [email, setEmail] = useState<string>('');
-  const [userType, setUserType] = useState<string>(USER_TYPES[0].value);
-  const [skillLevel, setSkillLevel] = useState<string>(SKILL_LEVELS[0]);
-  const [influencingArtists, setInfluencingArtists] = useState<string>('');
-  const [socialLinks, setSocialLinks] = useState<string>('');
+  const [step, setStep] = useState(1);
+  const [profileData, setProfileData] = useState({
+    userId: '',
+    email: '',
+    role: '',
+    experienceLevel: '',
+    software: '',
+    favoriteArtists: ['', '', ''],
+    musicGenre: '',
+    musicalMood: '',
+    location: ''
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const checkProfileCompletion = async () => {
+    const initializeProfile = async () => {
       if (user) {
         try {
           setIsLoading(true);
           const attributes = await fetchUserAttributes();
+          setProfileData(prev => ({
+            ...prev,
+            userId: user.username,
+            email: attributes.email || ''
+          }));
+          
+          // Create/Update initial profile
+          await api.post('/complete-profile', {
+            profileData: {
+              userId: user.username,
+              email: attributes.email
+            }
+          });
+
           if (attributes['custom:profileCompleted'] === 'true') {
             navigate('/');
-          } else {
-            setEmail(attributes.email || '');
           }
         } catch (error) {
-          console.error('Error checking user attributes:', error);
-          setError('Error checking profile completion');
+          console.error('Error initializing profile:', error);
+          setError('Error initializing profile');
         } finally {
           setIsLoading(false);
         }
-      } else {
-        setError('User not authenticated');
-        setIsLoading(false);
       }
     };
-    checkProfileCompletion();
+    initializeProfile();
   }, [user, navigate]);
 
-  const handleGenreChange = useCallback((genre: string) => {
-    setSelectedGenres(prev => 
-      prev.includes(genre) 
-        ? prev.filter(g => g !== genre)
-        : [...prev, genre]
-    );
-  }, []);
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setProfileData(prev => ({ ...prev, [name]: value }));
+  };
 
-  const socialLinksObject = useMemo(() => {
-    return Object.fromEntries(socialLinks.split(',').map(link => {
-      const [platform, url] = link.split(':').map(s => s.trim());
-      return [platform, url];
-    }));
-  }, [socialLinks]);
+  const handleArtistChange = (index: number, value: string) => {
+    setProfileData(prev => {
+      const newArtists = [...prev.favoriteArtists];
+      newArtists[index] = value;
+      return { ...prev, favoriteArtists: newArtists };
+    });
+  };
 
-  const handleSubmit = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await api.post('/complete-profile', {
-        item: {
-          userId: user.username,
-          email: email,
-          userType: userType,
-          musicGenres: selectedGenres,
-          skillLevel: skillLevel,
-          influencingArtists: influencingArtists.split(',').map(artist => artist.trim()),
-          socialLinks: socialLinksObject,
-          profileCompleted: true
-        }
-      });
-
-      console.log('Profile update response:', response.data);
-
-      if (response.status === 200) {
+  const handleNext = async () => {
+    if (step < 7) {
+      setStep(prev => prev + 1);
+    } else {
+      try {
+        setIsLoading(true);
+        await api.post('/complete-profile', {
+          profileData: {
+            ...profileData,
+            profileCompleted: true
+          }
+        });
         await updateUserAttributes({
           userAttributes: {
             'custom:profileCompleted': 'true',
           }
         });
         navigate('/');
-      } else {
-        throw new Error('Unexpected response from server');
+      } catch (error) {
+        console.error('Error completing profile:', error);
+        setError('Error completing profile');
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Error completing profile:', error);
-      if (axios.isAxiosError(error)) {
-        const axiosError = error as AxiosError;
-        setError('Error completing profile: ' + (axiosError.response?.data || axiosError.message));
-      } else {
-        setError('Error completing profile: ' + (error instanceof Error ? error.message : String(error)));
-      }
-    } finally {
-      setIsLoading(false);
     }
-  }, [user, email, userType, selectedGenres, skillLevel, influencingArtists, socialLinksObject, navigate]);
+  };
+
+  const handleBack = () => {
+    if (step > 1) {
+      setStep(prev => prev - 1);
+    }
+  };
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
@@ -126,69 +142,90 @@ const CompleteProfile: React.FC = React.memo(() => {
   return (
     <View padding="1rem">
       <Heading level={1}>Complete Your Profile</Heading>
-      <TextField
-        label="Email"
-        value={email}
-        isDisabled={true}
-        isRequired
-        variation="quiet"
-        descriptiveText="This email is associated with your account and cannot be changed here."
-      />
-      <SelectField
-        label="User Type"
-        value={userType}
-        onChange={(e) => setUserType(e.target.value)}
-        isRequired
-      >
-        {USER_TYPES.map(type => (
-          <option key={type.value} value={type.value}>{type.label}</option>
-        ))}
-      </SelectField>
-      <Heading level={3}>Select your favorite genres</Heading>
-      <Flex wrap="wrap" justifyContent="center" marginTop="1rem">
-        {MUSIC_GENRES.map(genre => (
-          <Button
-            key={genre}
-            onClick={() => handleGenreChange(genre)}
-            variation={selectedGenres.includes(genre) ? "primary" : "link" as ButtonVariations}
-            margin="0.5rem"
-          >
-            {genre}
-          </Button>
-        ))}
+      <ProgressBar value={step} max={7} />
+      {step === 1 && (
+        <SelectField
+          label="Mon rôle"
+          name="role"
+          value={profileData.role}
+          onChange={handleInputChange}
+        >
+          {USER_TYPES.map(type => (
+            <option key={type} value={type}>{type}</option>
+          ))}
+        </SelectField>
+      )}
+      {step === 2 && (
+        <SelectField
+          label="Mon niveau d'expérience"
+          name="experienceLevel"
+          value={profileData.experienceLevel}
+          onChange={handleInputChange}
+        >
+          {EXPERIENCE_LEVELS.map(level => (
+            <option key={level} value={level}>{level}</option>
+          ))}
+        </SelectField>
+      )}
+      {step === 3 && (
+        <TextField
+          label="Le logiciel ou matériel que j'utilise"
+          name="software"
+          value={profileData.software}
+          onChange={handleInputChange}
+        />
+      )}
+      {step === 4 && (
+        <Flex direction="column">
+          <Heading level={3}>Mes 3 artistes favoris</Heading>
+          {[0, 1, 2].map(index => (
+            <TextField
+              key={index}
+              label={`Artiste \${index + 1}`}
+              value={profileData.favoriteArtists[index]}
+              onChange={(e) => handleArtistChange(index, e.target.value)}
+            />
+          ))}
+        </Flex>
+      )}
+      {step === 5 && (
+        <SelectField
+          label="Mon genre musical préféré"
+          name="musicGenre"
+          value={profileData.musicGenre}
+          onChange={handleInputChange}
+        >
+          {MUSIC_GENRES.map(genre => (
+            <option key={genre} value={genre}>{genre}</option>
+          ))}
+        </SelectField>
+      )}
+      {step === 6 && (
+        <SelectField
+          label="Mon mood musical préféré"
+          name="musicalMood"
+          value={profileData.musicalMood}
+          onChange={handleInputChange}
+        >
+          {MOODS.map(mood => (
+            <option key={mood} value={mood}>{mood}</option>
+          ))}
+        </SelectField>
+      )}
+      {step === 7 && (
+        <TextField
+          label="Ma ville ou région (optionnel)"
+          name="location"
+          value={profileData.location}
+          onChange={handleInputChange}
+        />
+      )}
+      <Flex justifyContent="space-between" marginTop="1rem">
+        {step > 1 && <Button onClick={handleBack}>Précédent</Button>}
+        <Button onClick={handleNext}>{step === 7 ? 'Terminer' : 'Suivant'}</Button>
       </Flex>
-      <SelectField
-        label="Skill Level"
-        value={skillLevel}
-        onChange={(e) => setSkillLevel(e.target.value)}
-        isRequired
-      >
-        {SKILL_LEVELS.map(level => (
-          <option key={level} value={level}>{level}</option>
-        ))}
-      </SelectField>
-      <TextAreaField
-        label="Influencing Artists"
-        value={influencingArtists}
-        onChange={(e) => setInfluencingArtists(e.target.value)}
-        placeholder="Enter artists separated by commas"
-      />
-      <TextAreaField
-        label="Social Links"
-        value={socialLinks}
-        onChange={(e) => setSocialLinks(e.target.value)}
-        placeholder="Enter as platform:link, separated by commas (e.g., twitter:https://twitter.com/username)"
-      />
-      <Button
-        onClick={handleSubmit}
-        isLoading={isLoading}
-        loadingText="Submitting..."
-        marginTop="1rem"
-      >
-        Complete Profile
-      </Button>
     </View>
   );
-});
+};
 
 export default CompleteProfile;

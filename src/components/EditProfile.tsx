@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
+  Heading, 
   Text, 
   Badge, 
   Flex, 
@@ -9,14 +10,11 @@ import {
   SelectField, 
   Card,
   Image,
-  Heading
+  Loader
 } from '@aws-amplify/ui-react';
-import api from '../utils/api';
 import { MUSIC_GENRES, SKILL_LEVELS, USER_TYPES } from '../constants/profileData';
 import { UserProfile } from '../types/ProfileTypes';
-import { uploadData } from '@aws-amplify/storage';
-import { getProfileImageUrl, fetchProfileImage } from '../utils/ProfileUtils';
-import localforage from 'localforage';
+import api from '../utils/api';
 
 interface EditProfileProps {
   userProfile: UserProfile;
@@ -34,17 +32,7 @@ const EditProfile: React.FC<EditProfileProps> = ({
   const [editedProfile, setEditedProfile] = useState<UserProfile>(userProfile);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
-
-  useEffect(() => {
-    const loadProfileImage = async () => {
-      if (userProfile.userId) {
-        const imageUrl = await fetchProfileImage(userProfile.userId);
-        setPreviewImage(imageUrl);
-      }
-    };
-    loadProfileImage();
-  }, [userProfile.userId]);
+  const [newProfileImage, setNewProfileImage] = useState<string | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -56,45 +44,26 @@ const EditProfile: React.FC<EditProfileProps> = ({
     if (value === "") return;
     setEditedProfile(prev => ({
       ...prev,
-      musicGenres: prev.musicGenres.includes(value) ? prev.musicGenres : [...prev.musicGenres, value]
+      musicGenres: prev.musicGenres ? [...prev.musicGenres, value].slice(0, 3) : [value]
     }));
   };
 
   const removeGenre = (genreToRemove: string) => {
     setEditedProfile(prev => ({
       ...prev,
-      musicGenres: prev.musicGenres.filter(genre => genre !== genreToRemove)
+      musicGenres: prev.musicGenres ? prev.musicGenres.filter(genre => genre !== genreToRemove) : []
     }));
   };
 
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      try {
-        setIsLoading(true);
-        const fileName = `users/${userProfile.userId}/profile-image`;
-        
-        await uploadData({
-          key: fileName,
-          data: file,
-          options: {
-            contentType: file.type,
-          },
-        }).result;
-
-        const signedUrl = await getProfileImageUrl(fileName);
-        if (signedUrl) {
-          setEditedProfile(prev => ({ ...prev, profileImage: signedUrl }));
-          setPreviewImage(signedUrl);
-          // Mettre à jour le cache avec la nouvelle URL
-          await localforage.setItem(`profileImage_${userProfile.userId}`, signedUrl);
-        }
-      } catch (error) {
-        console.error('Error uploading file:', error);
-        setError('Failed to upload image. Please try again.');
-      } finally {
-        setIsLoading(false);
-      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setNewProfileImage(base64String);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -102,8 +71,13 @@ const EditProfile: React.FC<EditProfileProps> = ({
     e.preventDefault();
     try {
       setIsLoading(true);
-      await api.post('/complete-profile', { item: editedProfile });
-      setUserProfile(editedProfile);
+      setError(null);
+      const profileToUpdate = {
+        ...editedProfile,
+        profileImageBase64: newProfileImage || editedProfile.profileImageBase64
+      };
+      const response = await api.post('/complete-profile', { profileData: profileToUpdate });
+      setUserProfile(response.data.updatedProfile);
       setIsEditing(false);
       onProfileUpdate();
     } catch (error) {
@@ -114,6 +88,20 @@ const EditProfile: React.FC<EditProfileProps> = ({
     }
   };
 
+  const getProfileImageSrc = () => {
+    if (newProfileImage) {
+      return newProfileImage;
+    }
+    if (editedProfile.profileImageBase64) {
+      return editedProfile.profileImageBase64.startsWith('data:image') 
+        ? editedProfile.profileImageBase64 
+        : `data:image/jpeg;base64,\${editedProfile.profileImageBase64}`;
+    }
+    return '/path/to/default/image.jpg';
+  };
+
+  if (isLoading) return <Loader />;
+
   return (
     <View padding="2rem" backgroundColor="#f0f0f0">
       <Card>
@@ -121,26 +109,21 @@ const EditProfile: React.FC<EditProfileProps> = ({
           <Flex direction="column" gap="1rem">
             <Heading level={3}>Edit Profile</Heading>
             
-            <Flex direction="column" alignItems="center" gap="1rem">
+            <Flex direction="column" alignItems="center">
               <Image
-                src={previewImage || undefined}
+                src={getProfileImageSrc()}
                 alt="Profile Picture"
                 width="150px"
                 height="150px"
                 objectFit="cover"
                 borderRadius="50%"
               />
-              <Flex direction="column" alignItems="center">
-                <Text>Current Profile Logo</Text>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  style={{ marginTop: '0.5rem' }}
-                  aria-label="Choose new profile logo"
-                />
-                <Text fontSize="0.8rem" color="gray">Choose a new logo to update your profile picture</Text>
-              </Flex>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                style={{ marginTop: '1rem' }}
+              />
             </Flex>
 
             <SelectField
@@ -153,18 +136,38 @@ const EditProfile: React.FC<EditProfileProps> = ({
                 <option key={type.value} value={type.value}>{type.label}</option>
               ))}
             </SelectField>
+
             <SelectField
-              label="Skill Level"
-              name="skillLevel"
-              value={editedProfile.skillLevel}
+              label="Experience Level"
+              name="experienceLevel"
+              value={editedProfile.experienceLevel}
               onChange={handleInputChange}
             >
               {SKILL_LEVELS.map(level => (
                 <option key={level} value={level}>{level}</option>
               ))}
             </SelectField>
+
+            <TextField
+              label="Bio"
+              name="bio"
+              value={editedProfile.bio || ''}
+              onChange={handleInputChange}
+              maxLength={150}
+            />
+
+            <TextField
+              label="Tags (comma-separated, max 3)"
+              name="tags"
+              value={editedProfile.tags?.join(', ') || ''}
+              onChange={(e) => {
+                const tags = e.target.value.split(',').map(tag => tag.trim()).slice(0, 3);
+                setEditedProfile(prev => ({ ...prev, tags }));
+              }}
+            />
+
             <SelectField
-              label="Add Music Genre"
+              label="Add Music Genre (max 3)"
               name="musicGenres"
               value=""
               onChange={handleMusicGenresChange}
@@ -175,24 +178,34 @@ const EditProfile: React.FC<EditProfileProps> = ({
               ))}
             </SelectField>
             <Flex wrap="wrap" gap="0.5rem">
-              {editedProfile.musicGenres.map((genre) => (
+              {editedProfile.musicGenres?.map((genre) => (
                 <Badge key={genre} variation="info">
                   {genre}
-                  <Button
-                    size="small"
-                    onClick={() => removeGenre(genre)}
-                  >
-                    X
-                  </Button>
+                  <Button size="small" onClick={() => removeGenre(genre)}>X</Button>
                 </Badge>
               ))}
             </Flex>
+
             <TextField
-              label="Influencing Artists (comma-separated)"
-              name="influencingArtists"
-              value={editedProfile.influencingArtists.join(', ')}
-              onChange={(e) => setEditedProfile(prev => ({ ...prev, influencingArtists: e.target.value.split(',').map(artist => artist.trim()) }))}
+              label="Instagram"
+              name="instagram"
+              value={editedProfile.socialLinks?.instagram || ''}
+              onChange={(e) => setEditedProfile(prev => ({ 
+                ...prev, 
+                socialLinks: { ...prev.socialLinks, instagram: e.target.value } 
+              }))}
             />
+
+            <TextField
+              label="SoundCloud"
+              name="soundcloud"
+              value={editedProfile.socialLinks?.soundcloud || ''}
+              onChange={(e) => setEditedProfile(prev => ({ 
+                ...prev, 
+                socialLinks: { ...prev.socialLinks, soundcloud: e.target.value } 
+              }))}
+            />
+
             {error && <Text color="red">{error}</Text>}
             <Flex gap="1rem">
               <Button type="submit" variation="primary" flex={1} isLoading={isLoading}>Save Changes</Button>
