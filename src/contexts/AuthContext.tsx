@@ -1,28 +1,83 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuthenticator } from '@aws-amplify/ui-react';
+import { fetchUserAttributes } from 'aws-amplify/auth';
 
-interface AuthContextType {
+interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
+  isProfileComplete: boolean;
+  userId: string | null;
+  userEmail: string | null;
 }
 
-const AuthContext = createContext<AuthContextType>({ isAuthenticated: false, isLoading: true });
+interface AuthContextType extends AuthState {
+  refreshAuth: () => Promise<void>;
+}
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { authStatus } = useAuthenticator((context) => [context.authStatus]);
-  const [state, setState] = useState<AuthContextType>({ isAuthenticated: false, isLoading: true });
+const initialState: AuthState = {
+  isAuthenticated: false,
+  isLoading: true,
+  isProfileComplete: false,
+  userId: null,
+  userEmail: null,
+};
 
+const AuthContext = createContext<AuthContextType>({
+  ...initialState,
+  refreshAuth: async () => {},
+});
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { authStatus, user } = useAuthenticator((context) => [
+    context.authStatus,
+    context.user,
+  ]);
+  
+  const [state, setState] = useState<AuthState>(initialState);
+  
+  const refreshAuth = useCallback(async () => {
+    if (authStatus === 'authenticated' && user) {
+      try {
+        const attributes = await fetchUserAttributes();
+        setState({
+          isAuthenticated: true,
+          isLoading: false,
+          isProfileComplete: attributes['custom:profileCompleted'] === 'true',
+          userId: user.username,
+          userEmail: attributes.email || null,
+        });
+      } catch (error) {
+        console.error('Erreur lors de la récupération des attributs:', error);
+        setState({
+          isAuthenticated: true,
+          isLoading: false,
+          isProfileComplete: false,
+          userId: user.username,
+          userEmail: null,
+        });
+      }
+    } else {
+      setState({
+        isAuthenticated: false,
+        isLoading: authStatus === 'configuring',
+        isProfileComplete: false,
+        userId: null,
+        userEmail: null,
+      });
+    }
+  }, [authStatus, user]);
+  
   useEffect(() => {
-    setState({
-      isAuthenticated: authStatus === 'authenticated',
-      isLoading: authStatus === 'configuring'
-    });
-  }, [authStatus]);
-
-  const value = useMemo(() => state, [state]);
-
+    refreshAuth();
+  }, [refreshAuth]);
+  
+  const contextValue = useMemo(() => ({
+    ...state,
+    refreshAuth,
+  }), [state, refreshAuth]);
+  
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

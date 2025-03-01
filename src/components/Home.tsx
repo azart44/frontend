@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import { Flex, Text, Image, Card, Badge, View, Button } from '@aws-amplify/ui-react';
 import { FaPlay, FaHeart, FaDownload } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
@@ -62,13 +62,13 @@ const TopCreator: React.FC<{ name: string }> = React.memo(({ name }) => {
   );
 });
 
-const Home: React.FC = React.memo(() => {
+const Home: React.FC = () => {
   const { isAuthenticated } = useAuth();
 
-  const handleRefresh = useCallback(() => {
+  const handleRefresh = () => {
     // Implement refresh logic here
     console.log('Refreshing top creators...');
-  }, []);
+  };
 
   return (
     <Flex direction="column" minHeight="100vh">
@@ -102,6 +102,6 @@ const Home: React.FC = React.memo(() => {
       </Flex>
     </Flex>
   );
-});
+};
 
 export default Home;

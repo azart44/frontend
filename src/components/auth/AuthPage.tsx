@@ -46,7 +46,7 @@ const AuthPage: React.FC = React.memo(() => {
                     placeholder="Enter your email"
                     type="email"
                     isRequired
-                  />  <a href=""></a>
+                  />
                   <TextField
                     label="Full Name"
                     name="name"

@@ -3,8 +3,8 @@ import { useNavigate, Navigate } from 'react-router-dom';
 import { Button, Flex, Heading, Text, View, Loader, TextField, SelectField } from '@aws-amplify/ui-react';
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { fetchUserAttributes, updateUserAttributes } from 'aws-amplify/auth';
-import { useAuth } from '../contexts/AuthContext';
-import api from '../utils/api';
+import { useAuth } from '../../contexts/AuthContext';
+import api from '../../api';
 
 const USER_TYPES = ['Beatmaker', 'Rappeur', 'Les deux'];
 const EXPERIENCE_LEVELS = ['Débutant', 'Intermédiaire', 'Confirmé'];
@@ -12,10 +12,10 @@ const MUSIC_GENRES = ['Drill', 'Trap', 'Boom Bap', 'RnB'];
 const MOODS = ['Mélancolique', 'Festif', 'Agressif'];
 
 const ProgressBar: React.FC<{ value: number; max: number }> = ({ value, max }) => {
-  const _percentage = (value / max) * 100; // Préfixé avec un underscore pour éviter l'avertissement ESLint
+  const percentage = (value / max) * 100; 
   return (
     <View width="100%" height="10px" backgroundColor="#e0e0e0" borderRadius="5px" marginBottom="1rem">
-      <View width={`\${_percentage}%`} height="100%" backgroundColor="#4CAF50" borderRadius="5px" />
+      <View width={`${percentage}%`} height="100%" backgroundColor="#4CAF50" borderRadius="5px" />
     </View>
   );
 };
@@ -191,7 +191,7 @@ const CompleteProfile: React.FC = () => {
           {[0, 1, 2].map(index => (
             <TextField
               key={index}
-              label={`Artiste \${index + 1}`}
+              label={`Artiste ${index + 1}`}
               value={profileData.favoriteArtists[index]}
               onChange={(e) => handleArtistChange(index, e.target.value)}
             />
