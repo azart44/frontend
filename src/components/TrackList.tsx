@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, Text, Heading, Flex, Badge, Button, TextField, SelectField } from '@aws-amplify/ui-react';
-import api from '../utils/api';
+import { getTracks, getTrackById, updateTrack, deleteTrack } from '../utils/api';
 
 interface Track {
   track_id: string;
@@ -30,7 +30,7 @@ const TrackList: React.FC<TrackListProps> = ({ userId }) => {
   const fetchTracks = async () => {
     try {
       setIsLoading(true);
-      const response = await api.get('/tracks', { params: { userId } });
+      const response = await getTracks(userId);
       setTracks(response.data);
     } catch (error) {
       console.error('Error fetching tracks:', error);
@@ -42,7 +42,7 @@ const TrackList: React.FC<TrackListProps> = ({ userId }) => {
 
   const playAudio = async (trackId: string) => {
     try {
-      const response = await api.get(`/tracks/${trackId}`);
+      const response = await getTrackById(trackId);
       const { presigned_url } = response.data;
       
       if (audioRef.current) {
@@ -65,7 +65,7 @@ const TrackList: React.FC<TrackListProps> = ({ userId }) => {
 
   const handleUpdateTrack = async (trackId: string, updateData: Partial<Track>) => {
     try {
-      await api.put(`/tracks/${trackId}`, updateData);
+      await updateTrack(trackId, updateData);
       setEditingTrack(null);
       fetchTracks(); // Refresh the track list
     } catch (error) {
@@ -76,7 +76,7 @@ const TrackList: React.FC<TrackListProps> = ({ userId }) => {
 
   const handleDeleteTrack = async (trackId: string) => {
     try {
-      await api.delete(`/tracks/${trackId}`);
+      await deleteTrack(trackId);
       fetchTracks(); // Refresh the track list
     } catch (error) {
       console.error('Failed to delete track:', error);

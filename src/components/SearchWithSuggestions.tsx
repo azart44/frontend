@@ -6,7 +6,7 @@ import {
   SearchField, 
   Text 
 } from '@aws-amplify/ui-react';
-import { useApi } from '../hooks/useApi';
+import { searchProfiles } from '../utils/api';
 import { UserSuggestion } from '../types/types';
 
 const SEARCH_DELAY = 1000; // 1 seconde
@@ -15,9 +15,10 @@ const SearchWithSuggestions: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [suggestions, setSuggestions] = useState<UserSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { callApi, isLoading, error } = useApi();
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSearchTermRef = useRef<string>('');
 
@@ -25,10 +26,12 @@ const SearchWithSuggestions: React.FC = () => {
     if (term.trim() !== '') {
       console.log('Searching for:', term);
       try {
-        const response = await callApi(`/search-profiles?term=${encodeURIComponent(term)}`);
+        setIsLoading(true);
+        setError(null);
+        const response = await searchProfiles(term);
         console.log('API response:', response);
-        if (response && Array.isArray(response)) {
-          const uniqueSuggestions = response.filter((suggestion, index, self) =>
+        if (response && response.data) {
+          const uniqueSuggestions = response.data.filter((suggestion: any, index: number, self: any[]) =>
             index === self.findIndex((t) => t.userId === suggestion.userId)
           );
           setSuggestions(uniqueSuggestions);
@@ -36,13 +39,16 @@ const SearchWithSuggestions: React.FC = () => {
         }
       } catch (error) {
         console.error('Error fetching suggestions:', error);
+        setError('Failed to fetch suggestions. Please try again.');
+      } finally {
+        setIsLoading(false);
       }
     } else {
       setSuggestions([]);
       setShowSuggestions(false);
     }
     lastSearchTermRef.current = term;
-  }, [callApi]);
+  }, []);
 
   useEffect(() => {
     if (searchTerm !== lastSearchTermRef.current) {

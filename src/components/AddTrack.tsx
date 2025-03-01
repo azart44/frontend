@@ -9,7 +9,7 @@ import {
   Flex, 
   Text
 } from '@aws-amplify/ui-react';
-import api from '../utils/api';
+import { createTrack, updateTrack } from '../utils/api';
 import axios from 'axios';
 
 interface TrackMetadata {
@@ -38,8 +38,8 @@ const AddTrack: React.FC = () => {
     }
 
     try {
-      // Get pre-signed URL and track ID from Lambda
-      const response = await api.post('/tracks', {
+      // Obtenir l'URL préssignée et l'ID de la piste depuis la fonction d'API
+      const response = await createTrack({
         fileName: file.name,
         fileType: file.type,
         title,
@@ -49,7 +49,7 @@ const AddTrack: React.FC = () => {
 
       const { uploadUrl, trackId } = response.data;
 
-      // Upload file directly to S3
+      // Uploader le fichier directement vers S3
       await axios.put(uploadUrl, file, {
         headers: { 'Content-Type': file.type },
         onUploadProgress: (progressEvent) => {
@@ -133,11 +133,11 @@ export default AddTrack;
 
 // Utility function to update track metadata
 export const updateTrackMetadata = async (trackId: string, metadata: Partial<TrackMetadata>) => {
-    try {
-      await api.put(`/tracks/${trackId}`, metadata);
-      alert('Track metadata updated successfully');
-    } catch (error) {
-      console.error('Error updating track metadata:', error);
-      alert('Error updating track metadata. Please try again.');
-    }
-  };
+  try {
+    await updateTrack(trackId, metadata);
+    alert('Track metadata updated successfully');
+  } catch (error) {
+    console.error('Error updating track metadata:', error);
+    alert('Error updating track metadata. Please try again.');
+  }
+};

@@ -45,6 +45,7 @@ const Header: React.FC = () => {
           <Button variation="link" marginRight="1rem" onClick={() => navigate('/feed')}>Feed</Button>
           <Button variation="link" marginRight="1rem" onClick={() => navigate('/sounds')}>Sounds</Button>
           <Button variation="link" marginRight="1rem" onClick={() => navigate('/pricing')}>Pricing</Button>
+          <Button variation="link" marginRight="1rem" onClick={() => navigate('/users')}>Find Artists</Button>
           <SearchWithSuggestions />
           {!isLoading && (
             <>
