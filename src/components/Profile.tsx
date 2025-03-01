@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   View, 
@@ -11,133 +11,186 @@ import {
   Image,
   Loader
 } from '@aws-amplify/ui-react';
-import { useAuthenticator } from '@aws-amplify/ui-react';
-import { useAuth } from '../contexts/AuthContext';
-import { getUserProfile, getUserProfileById, getTracks } from '../utils/api';
 import { FaInstagram, FaSoundcloud } from 'react-icons/fa';
+import { useQueryClient } from '@tanstack/react-query';
+
+import { useUserProfile } from '../hooks/useProfile';
+import { useAuth } from '../contexts/AuthContext';
 import { UserProfile } from '../types/ProfileTypes';
 import EditProfile from './EditProfile';
 import TrackList from './TrackList';
+import logo from '../assets/images/logo.png';
 
-const Profile: React.FC = () => {
-  const { user } = useAuthenticator((context) => [context.user]);
-  const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
-  const { userId } = useParams<{ userId: string }>();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isOwnProfile, setIsOwnProfile] = useState(false);
+// Optimized Image Component
+interface OptimizedImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
+  fallback?: string;
+}
 
-  const fetchProfile = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      let response;
-      
-      if (userId) {
-        // Si userId est présent dans l'URL, c'est le profil d'un autre utilisateur
-        response = await getUserProfileById(userId);
-        setIsOwnProfile(false);
-      } else {
-        // Sinon, c'est le profil de l'utilisateur connecté
-        response = await getUserProfile();
-        setIsOwnProfile(true);
-      }
-      
-      setProfile(response.data);
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-      setError('Error fetching user profile. Please try refreshing the page.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [userId]);
+const OptimizedImage: React.FC<OptimizedImageProps> = ({ 
+  src, 
+  alt, 
+  fallback = logo, 
+  ...props 
+}) => {
+  const [imageSrc, setImageSrc] = useState<string | undefined>(src as string || fallback);
 
   useEffect(() => {
-    if (userId || isAuthenticated) {
-      fetchProfile();
-    }
-  }, [userId, isAuthenticated, fetchProfile]);
+    const img: HTMLImageElement = document.createElement('img');
+    
+    img.src = typeof src === 'string' ? src : fallback;
+    
+    img.onload = () => {
+      setImageSrc(typeof src === 'string' ? src : fallback);
+    };
+    
+    img.onerror = () => {
+      setImageSrc(fallback);
+    };
 
+    return () => {
+      img.onload = null;
+      img.onerror = null;
+    };
+  }, [src, fallback]);
+
+  return (
+    <Image 
+      src={imageSrc}
+      alt={alt}
+      loading="lazy"
+      {...props}
+    />
+  );
+};
+
+const Profile: React.FC = () => {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { userId } = useParams<{ userId: string }>();
+  const { isAuthenticated } = useAuth();
+  
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Use custom hook for profile fetching
+  const { 
+    data: profile, 
+    isLoading, 
+    error,
+    refetch 
+  } = useUserProfile(userId);
+
+  // Determine if this is the user's own profile
+  const isOwnProfile = useMemo(() => {
+    return !userId; // If no userId in URL, it's own profile
+  }, [userId]);
+
+  // Memoize profile image selection
+  const profileImage = useMemo(() => {
+    if (!profile) return logo;
+    
+    // Type assert profile to UserProfile
+    const userProfile = profile as UserProfile;
+    
+    return userProfile.profileImageBase64 
+      ? (userProfile.profileImageBase64.startsWith('data:') 
+          ? userProfile.profileImageBase64 
+          : `data:image/jpeg;base64,${userProfile.profileImageBase64}`)
+      : logo;
+  }, [profile]);
+
+  // Function to handle profile update
+  const handleProfileUpdate = async () => {
+    // Invalidate and refetch profile query
+    await queryClient.invalidateQueries({ 
+      queryKey: userId ? ['userProfile', userId] : ['userProfile'] 
+    });
+    
+    // Trigger manual refetch
+    await refetch();
+  };
+
+  // Loading and error states
   if (isLoading) return <Loader />;
-  if (error) return <View padding="2rem"><Text>{error}</Text></View>;
+  if (error) return <View padding="2rem"><Text color="red">Error loading profile</Text></View>;
   if (!profile) return <View padding="2rem"><Text>Profile not found</Text></View>;
 
+  // Type assert profile
+  const userProfile = profile as UserProfile;
+
+  // Edit mode for own profile
   if (isEditing && isOwnProfile) {
     return (
       <EditProfile
-        userProfile={profile}
-        setUserProfile={setProfile}
+        userProfile={userProfile}
+        setUserProfile={() => {}} // No-op for now
         setIsEditing={setIsEditing}
-        onProfileUpdate={fetchProfile}
+        onProfileUpdate={handleProfileUpdate} // Add refresh function
       />
     );
   }
-
-  const profileImage = profile.profileImageBase64 
-    ? (profile.profileImageBase64.startsWith('data:') 
-        ? profile.profileImageBase64 
-        : `data:image/jpeg;base64,${profile.profileImageBase64}`)
-    : "https://via.placeholder.com/150";
 
   return (
     <View padding="2rem" backgroundColor="#f0f0f0">
       <Card>
         <Flex direction="column" alignItems="center">
-          <Image
+          <OptimizedImage
             src={profileImage}
             alt="Profile Picture"
             width="150px"
             height="150px"
-            objectFit="cover"
-            borderRadius="50%"
+            style={{ objectFit: 'cover', borderRadius: '50%' }}
           />
-          <Heading level={1} marginTop="1rem">{profile.username}</Heading>
-          <Text>{profile.email}</Text>
-          <Badge variation="info" marginTop="0.5rem">{profile.userType}</Badge>
-          <Badge variation="success">{profile.experienceLevel}</Badge>
           
+          <Heading level={1} marginTop="1rem">{userProfile.username}</Heading>
+          <Text>{userProfile.email}</Text>
+          
+          <Flex marginTop="0.5rem" gap="0.5rem">
+            <Badge variation="info">{userProfile.userType}</Badge>
+            <Badge variation="success">{userProfile.experienceLevel}</Badge>
+          </Flex>
+          
+          {/* Social Links */}
           <Flex marginTop="1rem">
-            {profile.socialLinks?.instagram && (
+            {userProfile.socialLinks?.instagram && (
               <FaInstagram 
                 size={24} 
-                onClick={() => window.open(profile.socialLinks?.instagram, '_blank')} 
+                onClick={() => window.open(userProfile.socialLinks?.instagram, '_blank')} 
                 style={{ cursor: 'pointer', marginRight: '10px' }} 
               />
             )}
-            {profile.socialLinks?.soundcloud && (
+            {userProfile.socialLinks?.soundcloud && (
               <FaSoundcloud 
                 size={24} 
-                onClick={() => window.open(profile.socialLinks?.soundcloud, '_blank')} 
+                onClick={() => window.open(userProfile.socialLinks?.soundcloud, '_blank')} 
                 style={{ cursor: 'pointer', marginRight: '10px' }} 
               />
             )}
           </Flex>
 
-          {profile.bio && (
+          {/* Conditional Rendering with Memoization */}
+          {userProfile.bio && (
             <Card variation="elevated" marginTop="2rem" width="100%">
               <Heading level={3}>Bio</Heading>
-              <Text marginTop="1rem">{profile.bio}</Text>
+              <Text marginTop="1rem">{userProfile.bio}</Text>
             </Card>
           )}
 
-          {profile.musicGenres && profile.musicGenres.length > 0 && (
+          {userProfile.musicGenres && userProfile.musicGenres.length > 0 && (
             <Card variation="elevated" marginTop="2rem" width="100%">
               <Heading level={3}>Music Genres</Heading>
               <Flex wrap="wrap" gap="0.5rem" marginTop="1rem">
-                {profile.musicGenres.map((genre) => (
+                {userProfile.musicGenres.map((genre: string) => (
                   <Badge key={genre} variation="info">{genre}</Badge>
                 ))}
               </Flex>
             </Card>
           )}
 
-          {profile.tags && profile.tags.length > 0 && (
+          {userProfile.tags && userProfile.tags.length > 0 && (
             <Card variation="elevated" marginTop="2rem" width="100%">
               <Heading level={3}>Tags</Heading>
               <Flex wrap="wrap" gap="0.5rem" marginTop="1rem">
-                {profile.tags.map((tag) => (
+                {userProfile.tags.map((tag: string) => (
                   <Badge key={tag} variation="info">{tag}</Badge>
                 ))}
               </Flex>
@@ -146,10 +199,18 @@ const Profile: React.FC = () => {
 
           {isOwnProfile && (
             <Flex direction="column" gap="1rem" marginTop="2rem" width="100%">
-              <Button onClick={() => setIsEditing(true)} variation="primary" isFullWidth>
+              <Button 
+                onClick={() => setIsEditing(true)} 
+                variation="primary" 
+                isFullWidth
+              >
                 Edit Profile
               </Button>
-              <Button onClick={() => navigate('/add-track')} variation="primary" isFullWidth>
+              <Button 
+                onClick={() => navigate('/add-track')} 
+                variation="primary" 
+                isFullWidth
+              >
                 Add Track
               </Button>
             </Flex>
@@ -159,10 +220,10 @@ const Profile: React.FC = () => {
 
       <Card variation="elevated" marginTop="2rem">
         <Heading level={2}>Tracks</Heading>
-        <TrackList userId={profile.userId} />
+        <TrackList userId={userProfile.userId} />
       </Card>
     </View>
   );
 };
 
-export default Profile;
+export default React.memo(Profile);

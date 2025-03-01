@@ -72,14 +72,22 @@ const EditProfile: React.FC<EditProfileProps> = ({
     try {
       setIsLoading(true);
       setError(null);
+      
       const profileToUpdate = {
         ...editedProfile,
         profileImageBase64: newProfileImage || editedProfile.profileImageBase64
       };
+      
       const response = await updateUserProfile(profileToUpdate);
+      
+      // Mettre à jour le profil local
       setUserProfile(response.data.updatedProfile);
-      setIsEditing(false);
+      
+      // Déclencher le refresh du parent
       onProfileUpdate();
+      
+      // Fermer le mode édition
+      setIsEditing(false);
     } catch (error) {
       console.error('Error updating profile:', error);
       setError('Failed to update profile. Please try again.');
