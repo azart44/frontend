@@ -1,34 +1,78 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
-import { Button, Flex, Heading, Text, View, Loader, TextField, SelectField, Alert } from '@aws-amplify/ui-react';
-import { useAuthenticator } from '@aws-amplify/ui-react';
+import { 
+  Button, 
+  Flex, 
+  Heading, 
+  Text, 
+  View, 
+  Loader, 
+  TextField, 
+  SelectField, 
+  Alert 
+} from '@aws-amplify/ui-react';
 import { fetchUserAttributes, updateUserAttributes } from 'aws-amplify/auth';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../api';
 
-const USER_TYPES = ['Beatmaker', 'Rappeur', 'Les deux'];
-const EXPERIENCE_LEVELS = ['Débutant', 'Intermédiaire', 'Confirmé'];
-const MUSIC_GENRES = ['Drill', 'Trap', 'Boom Bap', 'RnB'];
-const MOODS = ['Mélancolique', 'Festif', 'Agressif'];
+// Configuration des données statiques
+const USER_TYPES = [
+  { value: 'Beatmaker', label: 'Beatmaker' },
+  { value: 'Rappeur', label: 'Rappeur' },
+  { value: 'Loopmaker', label: 'Loopmaker' }
+];
 
+const EXPERIENCE_LEVELS = [
+  { value: 'Débutant', label: 'Débutant' },
+  { value: 'Intermédiaire', label: 'Intermédiaire' },
+  { value: 'Confirmé', label: 'Confirmé' }
+];
+
+const MUSIC_GENRES = [
+  'Drill', 'Trap', 'Boom Bap', 'RnB', 'Hip Hop', 
+  'Afrobeat', 'Soul', 'Pop', 'Électronique'
+];
+
+const MUSIC_MOODS = [
+  'Mélancolique', 'Festif', 'Agressif', 
+  'Motivant', 'Romantique', 'Relaxant'
+];
+
+const SOFTWARE_OPTIONS = [
+  'FL Studio', 'Ableton Live', 'Logic Pro', 
+  'Maschine', 'Reason', 'Pro Tools', 
+  'Autre', 'Hardware MPC', 'Autre Hardware'
+];
+
+// Barre de progression
 const ProgressBar: React.FC<{ value: number; max: number }> = ({ value, max }) => {
   const percentage = (value / max) * 100; 
   return (
     <View width="100%" height="10px" backgroundColor="#e0e0e0" borderRadius="5px" marginBottom="1rem">
-      <View width={`${percentage}%`} height="100%" backgroundColor="#4CAF50" borderRadius="5px" />
+      <View 
+        width={`\${percentage}%`} 
+        height="100%" 
+        style={{ 
+          backgroundColor: "#4CAF50", 
+          borderRadius: "5px", 
+          transition: "width 0.3s ease" 
+        }}
+      />
     </View>
   );
 };
 
 const CompleteProfile: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuthenticator((context) => [context.user]);
-  const { isAuthenticated, userId: authUserId } = useAuth();
-  const [step, setStep] = useState(0); // Commencer à 0 pour inclure l'étape username
+  const { isAuthenticated, isProfileComplete, userId, refreshAuth } = useAuth();
+  
+  const [step, setStep] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [profileData, setProfileData] = useState({
     userId: '',
     email: '',
-    username: '', // Ajout du champ username
+    username: '',
     userType: '',
     experienceLevel: '',
     software: '',
@@ -37,67 +81,61 @@ const CompleteProfile: React.FC = () => {
     musicalMood: '',
     location: ''
   });
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [errorDetails, setErrorDetails] = useState<any>(null);
-  const [showDebug, setShowDebug] = useState(false);
+
+  const initializeProfile = useCallback(async () => {
+    if (!isAuthenticated || !userId) {
+      setError("Vous devez être connecté pour accéder à cette page.");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      const attributes = await fetchUserAttributes();
+      const response = await api.get(`/user-profile/\${userId}`);
+      const existingProfile = response.data;
+      
+      if (existingProfile?.profileCompleted) {
+        navigate('/profile');
+        return;
+      }
+      
+      setProfileData(prev => ({
+        ...prev,
+        userId: userId,
+        email: attributes.email || '',
+        username: existingProfile?.username || attributes.username || `User_\${userId.slice(-6)}`
+      }));
+    } catch (error: any) {
+      console.error('Erreur d\'initialisation:', error);
+      if (error.response?.status === 404) {
+        const attributes = await fetchUserAttributes();
+        setProfileData(prev => ({
+          ...prev,
+          userId: userId,
+          email: attributes.email || '',
+          username: attributes.username || `User_\${userId.slice(-6)}`
+        }));
+      } else {
+        setError('Impossible de charger votre profil. Veuillez réessayer.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId, navigate, isAuthenticated]);
 
   useEffect(() => {
-    const initializeProfile = async () => {
-      if (user) {
-        try {
-          setIsLoading(true);
-          console.log("CompleteProfile - Initialisation avec l'utilisateur:", user);
-          const attributes = await fetchUserAttributes();
-          console.log("CompleteProfile - Attributs récupérés:", attributes);
-          
-          try {
-            console.log("CompleteProfile - Tentative de récupération du profil existant");
-            const response = await api.get('/user-profile');
-            const userProfile = response.data;
-            console.log("CompleteProfile - Profil récupéré:", userProfile);
+    if (isAuthenticated) {
+      initializeProfile();
+    }
+  }, [isAuthenticated, initializeProfile]);
 
-            if (userProfile.profileCompleted) {
-              console.log("CompleteProfile - Profil déjà complété, redirection vers l'accueil");
-              navigate('/');
-              return;
-            }
-
-            setProfileData(prev => ({
-              ...prev,
-              ...userProfile,
-              email: attributes.email || '',
-              userId: attributes.sub || user.username,
-            }));
-          } catch (error: any) {
-            console.log("CompleteProfile - Erreur lors de la récupération du profil:", error);
-            if (error.response && error.response.status === 404) {
-              // Profile doesn't exist yet, initialize with default values
-              console.log("CompleteProfile - Création d'un nouveau profil");
-              setProfileData(prev => ({
-                ...prev,
-                userId: attributes.sub || user.username,
-                email: attributes.email || ''
-              }));
-            } else {
-              throw error;
-            }
-          }
-        } catch (error: any) {
-          console.error('Error initializing profile:', error);
-          setError('Error initializing profile');
-          setErrorDetails(error.response?.data || error.message || 'Unknown error');
-        } finally {
-          setIsLoading(false);
-        }
-      } else {
-        console.error('CompleteProfile - Aucun utilisateur trouvé dans le contexte Amplify');
-        setError('No user found');
-        setIsLoading(false);
-      }
-    };
-    initializeProfile();
-  }, [user, navigate]);
+  useEffect(() => {
+    if (isAuthenticated && isProfileComplete) {
+      navigate('/profile');
+    }
+  }, [isAuthenticated, isProfileComplete, navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -113,92 +151,53 @@ const CompleteProfile: React.FC = () => {
   };
 
   const handleNext = async () => {
-    if (step === 0) {
-      // Validation du pseudonyme
-      if (!profileData.username) {
-        alert("Veuillez entrer un pseudo");
-        return;
-      }
-      setStep(prev => prev + 1);
-    } else if (step < 8) { // +1 car on a ajouté une étape
-      setStep(prev => prev + 1);
-    } else {
-      try {
-        setIsLoading(true);
-        console.log("CompleteProfile - Données de profil à envoyer:", profileData);
-        
-        await api.post('/user-profile', {
-          profileData: {
-            ...profileData,
-            profileCompleted: true
-          }
-        });
-        
-        await updateUserAttributes({
-          userAttributes: {
-            'custom:profileCompleted': 'true',
-          }
-        });
-        
-        navigate('/');
-      } catch (error: any) {
-        console.error('Error completing profile:', error);
-        setError('Error completing profile');
-        setErrorDetails(error.response?.data || error.message || 'Unknown error');
-      } finally {
-        setIsLoading(false);
-      }
+    switch (step) {
+      case 0:
+        if (!profileData.username.trim()) {
+          alert('Veuillez saisir un pseudo');
+          return;
+        }
+        break;
+      case 1:
+        if (!profileData.userType) {
+          alert('Veuillez sélectionner un rôle');
+          return;
+        }
+        break;
+      case 8:
+        try {
+          setIsLoading(true);
+          
+          await api.post('/user-profile', {
+            profileData: {
+              ...profileData,
+              profileCompleted: true
+            }
+          });
+          
+          await updateUserAttributes({
+            userAttributes: {
+              'custom:profileCompleted': 'true'
+            }
+          });
+          
+          await refreshAuth();
+          navigate('/profile');
+          return;
+        } catch (error) {
+          console.error('Erreur de soumission:', error);
+          alert('Impossible de terminer la configuration du profil');
+          return;
+        } finally {
+          setIsLoading(false);
+        }
     }
+    
+    setStep(prev => Math.min(prev + 1, 8));
   };
 
   const handleBack = () => {
-    if (step > 0) {
-      setStep(prev => prev - 1);
-    }
-  };
-
-  // Créer manuellement un profil de base en cas d'erreur
-  const handleCreateProfileManually = async () => {
-    try {
-      setIsLoading(true);
-      console.log("CompleteProfile - Création manuelle du profil");
-      
-      const attributes = await fetchUserAttributes();
-      const userId = attributes.sub || user?.username;
-      
-      if (!userId) {
-        setError("Impossible de déterminer l'ID utilisateur");
-        return;
-      }
-      
-      const basicProfile = {
-        userId: userId,
-        email: attributes.email || '',
-        username: `User_${userId.slice(-6)}`,
-        profileCompleted: false
-      };
-      
-      console.log("CompleteProfile - Envoi du profil de base:", basicProfile);
-      
-      await api.post('/user-profile', {
-        profileData: basicProfile
-      });
-      
-      setError(null);
-      setErrorDetails(null);
-      setProfileData(prev => ({
-        ...prev,
-        ...basicProfile
-      }));
-      
-      // Rester sur la page pour continuer le processus
-    } catch (error: any) {
-      console.error('Error creating basic profile:', error);
-      setError('Error creating basic profile');
-      setErrorDetails(error.response?.data || error.message || 'Unknown error');
-    } finally {
-      setIsLoading(false);
-    }
+    setStep(prev => Math.max(prev - 1, 0));
   };
 
   if (!isAuthenticated) {
@@ -217,42 +216,22 @@ const CompleteProfile: React.FC = () => {
   if (error) {
     return (
       <View padding="2rem">
-        <Alert variation="error" heading="Erreur d'initialisation">
+        <Alert variation="error" heading="Erreur">
           {error}
         </Alert>
-        
-        <Flex justifyContent="center" marginTop="1rem">
-          <Button onClick={() => setShowDebug(!showDebug)} marginRight="1rem">
-            {showDebug ? 'Masquer les détails' : 'Afficher les détails'}
-          </Button>
-          
-          <Button onClick={handleCreateProfileManually} variation="primary">
-            Réessayer
-          </Button>
-          
-          <Button onClick={() => navigate('/')} marginLeft="1rem" variation="link">
-            Retour à l'accueil
-          </Button>
-        </Flex>
-        
-        {showDebug && (
-          <View padding="1rem" backgroundColor="#f5f5f5" marginTop="1rem" borderRadius="medium">
-            <Heading level={4}>Informations de débogage</Heading>
-            <Text marginBottom="0.5rem">User: {JSON.stringify(user?.username)}</Text>
-            <Text marginBottom="0.5rem">AuthContext userId: {authUserId}</Text>
-            <Text marginBottom="0.5rem">Error Details:</Text>
-            <pre style={{ whiteSpace: 'pre-wrap', overflow: 'auto' }}>
-              {JSON.stringify(errorDetails, null, 2)}
-            </pre>
-          </View>
-        )}
+        <Button onClick={() => navigate('/')} marginTop="1rem">
+          Retour à l'accueil
+        </Button>
       </View>
     );
   }
 
   return (
-    <View padding="1rem">
-      <Heading level={1}>Complétez votre profil</Heading>
+    <View padding="1rem" maxWidth="600px" margin="0 auto">
+      <Heading level={2} textAlign="center" marginBottom="2rem">
+        Compléter votre profil
+      </Heading>
+      
       <ProgressBar value={step} max={8} />
       
       {step === 0 && (
@@ -263,57 +242,79 @@ const CompleteProfile: React.FC = () => {
           onChange={handleInputChange}
           placeholder="Entrez votre pseudo"
           isRequired
+          variation="quiet"
+          size="large"
         />
       )}
       
       {step === 1 && (
         <SelectField
-          label="Mon rôle"
+          label="Votre rôle"
           name="userType"
           value={profileData.userType}
           onChange={handleInputChange}
+          isRequired
+          variation="quiet"
+          size="large"
         >
-          <option value="">Sélectionnez un rôle</option>
+          <option value="">Sélectionnez votre rôle</option>
           {USER_TYPES.map(type => (
-            <option key={type} value={type}>{type}</option>
+            <option key={type.value} value={type.value}>
+              {type.label}
+            </option>
           ))}
         </SelectField>
       )}
       
       {step === 2 && (
         <SelectField
-          label="Mon niveau d'expérience"
+          label="Votre niveau d'expérience"
           name="experienceLevel"
           value={profileData.experienceLevel}
           onChange={handleInputChange}
+          isRequired
+          variation="quiet"
+          size="large"
         >
-          <option value="">Sélectionnez un niveau</option>
+          <option value="">Sélectionnez votre niveau</option>
           {EXPERIENCE_LEVELS.map(level => (
-            <option key={level} value={level}>{level}</option>
+            <option key={level.value} value={level.value}>
+              {level.label}
+            </option>
           ))}
         </SelectField>
       )}
       
       {step === 3 && (
-        <TextField
-          label="Le logiciel ou matériel que j'utilise"
+        <SelectField
+          label="Votre logiciel ou matériel principal"
           name="software"
           value={profileData.software}
           onChange={handleInputChange}
-          placeholder="Ex: FL Studio, Ableton, MPC..."
-        />
+          isRequired
+          variation="quiet"
+          size="large"
+        >
+          <option value="">Sélectionnez votre outil principal</option>
+          {SOFTWARE_OPTIONS.map(software => (
+            <option key={software} value={software}>
+              {software}
+            </option>
+          ))}
+        </SelectField>
       )}
       
       {step === 4 && (
-        <Flex direction="column">
-          <Heading level={3}>Mes 3 artistes favoris</Heading>
+        <Flex direction="column" gap="1rem">
+          <Heading level={4}>Vos 3 artistes favoris</Heading>
           {[0, 1, 2].map(index => (
             <TextField
               key={index}
-              label={`Artiste ${index + 1}`}
+              label={`Artiste \${index + 1}`}
               value={profileData.favoriteArtists[index]}
               onChange={(e) => handleArtistChange(index, e.target.value)}
-              placeholder={`Nom de l'artiste ${index + 1}`}
+              placeholder={`Nom de l'artiste \${index + 1}`}
+              variation="quiet"
             />
           ))}
         </Flex>
@@ -321,62 +322,86 @@ const CompleteProfile: React.FC = () => {
       
       {step === 5 && (
         <SelectField
-          label="Mon genre musical préféré"
+          label="Votre genre musical préféré"
           name="musicGenre"
           value={profileData.musicGenre}
           onChange={handleInputChange}
+          isRequired
+          variation="quiet"
+          size="large"
         >
           <option value="">Sélectionnez un genre</option>
           {MUSIC_GENRES.map(genre => (
-            <option key={genre} value={genre}>{genre}</option>
+            <option key={genre} value={genre}>
+              {genre}
+            </option>
           ))}
         </SelectField>
       )}
       
       {step === 6 && (
         <SelectField
-          label="Mon mood musical préféré"
+          label="Votre mood musical"
           name="musicalMood"
           value={profileData.musicalMood}
           onChange={handleInputChange}
+          isRequired
+          variation="quiet"
+          size="large"
         >
           <option value="">Sélectionnez un mood</option>
-          {MOODS.map(mood => (
-            <option key={mood} value={mood}>{mood}</option>
+          {MUSIC_MOODS.map(mood => (
+            <option key={mood} value={mood}>
+              {mood}
+            </option>
           ))}
         </SelectField>
       )}
       
       {step === 7 && (
         <TextField
-          label="Ma ville ou région (optionnel)"
+          label="Votre ville ou région (optionnel)"
           name="location"
           value={profileData.location}
           onChange={handleInputChange}
           placeholder="Ex: Paris, Lyon, Marseille..."
+          variation="quiet"
         />
       )}
       
       {step === 8 && (
-        <View padding="1rem" backgroundColor="#f5f5f5" borderRadius="medium">
-          <Heading level={3}>Résumé de votre profil</Heading>
-          <Text>Pseudo: {profileData.username}</Text>
-          <Text>Rôle: {profileData.userType}</Text>
-          <Text>Niveau d'expérience: {profileData.experienceLevel}</Text>
-          <Text>Logiciel/Matériel: {profileData.software}</Text>
-          <Text>Genre musical: {profileData.musicGenre}</Text>
-          <Text>Mood musical: {profileData.musicalMood}</Text>
-          <Text>Localisation: {profileData.location || 'Non spécifiée'}</Text>
-          <Text marginTop="1rem">Cliquez sur "Terminer" pour valider votre profil.</Text>
+        <View backgroundColor="#f0f0f0" padding="1rem" borderRadius="8px">
+          <Heading level={4} marginBottom="1rem">Résumé de votre profil</Heading>
+          <Text>Pseudo : {profileData.username}</Text>
+          <Text>Rôle : {profileData.userType}</Text>
+          <Text>Niveau : {profileData.experienceLevel}</Text>
+          <Text>Logiciel : {profileData.software}</Text>
+          <Text>Genre musical : {profileData.musicGenre}</Text>
+          <Text>Mood musical : {profileData.musicalMood}</Text>
+          <Text>Localisation : {profileData.location || 'Non spécifiée'}</Text>
         </View>
       )}
       
-      <Flex justifyContent="space-between" marginTop="1rem">
-        {step > 0 && <Button onClick={handleBack}>Précédent</Button>}
-        <Button onClick={handleNext} variation="primary">{step === 8 ? 'Terminer' : 'Suivant'}</Button>
+      <Flex justifyContent="space-between" marginTop="2rem">
+        {step > 0 && (
+          <Button 
+            onClick={handleBack} 
+            variation="link"
+            size="large"
+          >
+            Précédent
+          </Button>
+        )}
+        <Button 
+          onClick={handleNext} 
+          variation="primary"
+          size="large"
+        >
+          {step === 8 ? 'Terminer' : 'Suivant'}
+        </Button>
       </Flex>
     </View>
   );
 };
 
-export default CompleteProfile;
+export default CompleteProfile
