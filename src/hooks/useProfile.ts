@@ -1,57 +1,80 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMyProfile, getProfileById, updateProfile } from '../api/profile';
+import { useAuthenticator } from '@aws-amplify/ui-react';
+import { fetchUserAttributes } from 'aws-amplify/auth';
+import apiClient from '../api';
 import { UserProfile } from '../types/ProfileTypes';
+import { useState, useEffect } from 'react';
 
-// Clés de cache pour React Query
-export const profileKeys = {
-  all: ['profiles'] as const,
-  profile: (id: string) => [...profileKeys.all, id] as const,
-  myProfile: () => [...profileKeys.all, 'me'] as const,
-};
+export const useUserProfile = (userId?: string | null) => {
+  const { user } = useAuthenticator((context) => [context.user]);
+  const [cognitoUserId, setCognitoUserId] = useState<string | null>(null);
 
-/**
- * Hook pour récupérer le profil de l'utilisateur connecté
- */
-export const useMyProfile = () => {
+  // Récupérer l'ID utilisateur de Cognito
+  useEffect(() => {
+    const getUserId = async () => {
+      try {
+        const attributes = await fetchUserAttributes();
+        // Vérification explicite pour éviter les undefined
+        if (attributes.sub) {
+          setCognitoUserId(attributes.sub);
+        }
+      } catch (error) {
+        console.error('Erreur de récupération des attributs utilisateur:', error);
+      }
+    };
+
+    getUserId();
+  }, [user]);
+
   return useQuery({
-    queryKey: profileKeys.myProfile(),
-    queryFn: () => getMyProfile().then(response => response.data),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    queryKey: [
+      'profile', 
+      userId || 
+      (user?.attributes?.sub ?? null) || 
+      cognitoUserId
+    ],
+    queryFn: async () => {
+      // Utiliser l'userId fourni ou l'ID Cognito (sub)
+      const targetUserId = userId || 
+        (user?.attributes?.sub ?? null) || 
+        cognitoUserId;
+
+      if (!targetUserId) {
+        throw new Error('Aucun identifiant utilisateur disponible');
+      }
+
+      try {
+        console.log('Récupération du profil avec userId:', targetUserId);
+        const response = await apiClient.get<UserProfile>(`/user-profile/${targetUserId}`);
+        return response.data;
+      } catch (error: any) {
+        console.error('Erreur de récupération du profil:', error);
+        if (error.response?.status === 404) {
+          return null; // Profil non trouvé
+        }
+        throw error;
+      }
+    },
     retry: 1,
+    enabled: !!userId || 
+             !!(user?.attributes?.sub ?? null) || 
+             !!cognitoUserId,
   });
 };
 
-/**
- * Hook pour récupérer le profil d'un utilisateur par ID
- */
-export const useUserProfile = (userId?: string) => {
-  return useQuery({
-    queryKey: profileKeys.profile(userId || 'unknown'),
-    queryFn: () => getProfileById(userId!).then(response => response.data),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: !!userId, // Désactive la requête si userId est undefined
-  });
-};
-
-/**
- * Hook pour mettre à jour un profil utilisateur
- */
 export const useUpdateProfile = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (profileData: Partial<UserProfile>) => updateProfile(profileData),
-    onSuccess: (response, variables) => {
-      // Mise à jour du cache
-      queryClient.setQueryData(
-        profileKeys.myProfile(), 
-        response.data.updatedProfile
-      );
-      
-      // Invalider les requêtes potentiellement affectées
-      queryClient.invalidateQueries({
-        queryKey: profileKeys.profile(response.data.updatedProfile.userId),
+    mutationFn: (profileData: Partial<UserProfile>) => 
+      apiClient.post('/user-profile', { profileData }),
+    onSuccess: (response) => {
+      // Mettre à jour le cache de requête
+      queryClient.invalidateQueries({ 
+        queryKey: ['profile'],
+        refetchType: 'active'
       });
+      return response.data;
     },
   });
 };

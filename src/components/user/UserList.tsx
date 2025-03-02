@@ -52,11 +52,11 @@ const UserList: React.FC<UserListProps> = ({ initialFilter = '' }) => {
     
     // Filter by search term
     if (searchTerm) {
-      results = results.filter(user => 
-        user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (user.tags && user.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))) ||
-        (user.musicGenres && user.musicGenres.some(genre => genre.toLowerCase().includes(searchTerm.toLowerCase())))
-      );
+        results = results.filter(user => 
+            (user.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (user.tags && user.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))) ||
+            (user.musicGenres && user.musicGenres.some(genre => genre.toLowerCase().includes(searchTerm.toLowerCase())))
+          );
     }
     
     // Filter by user type

@@ -1,13 +1,17 @@
 export interface UserProfile {
+  // Identifiant
   userId: string;
-  username: string;
   email: string;
-  userType: string;
-  experienceLevel: string;
-  bio: string;
+
+  // Informations de base
+  username?: string;
+  bio?: string;
+  userType?: string;
+  experienceLevel?: string;
+
+  // Préférences musicales
+  musicGenres?: string[];
   tags?: string[];
-  inspirations?: string[];
-  musicGenres: string[];
   socialLinks?: {
     instagram?: string;
     soundcloud?: string;
@@ -15,16 +19,21 @@ export interface UserProfile {
     spotify?: string;
     twitter?: string;
   };
-  profileImageBase64?: string;
+
+  // Médias et images
   profileImageUrl?: string;
-  isVerified?: boolean;
-  availability?: 'available' | 'busy' | 'offline';
+  profileImageBase64?: string;
+  profileCompleted?: boolean;
+
+  // Détails additionnels
   location?: string;
-  badges?: UserBadge[];
-  followers?: number;
-  following?: number;
-  createdAt?: string;
-  updatedAt?: string;
+  software?: string;
+  musicalMood?: string;
+  musicGenre?: string;
+  favoriteArtists?: string[];
+
+  // Métadonnées
+  updatedAt?: number;
 }
 
 export interface UserBadge {
@@ -34,11 +43,6 @@ export interface UserBadge {
   icon: string;
   category: 'engagement' | 'performance' | 'artist' | 'producer' | 'reputation';
   dateAwarded: string;
-}
-
-export interface SocialIconProps {
-  platform: string;
-  url: string;
 }
 
 export interface ProfileEditFormData {

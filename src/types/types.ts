@@ -1,23 +1,29 @@
-export interface UserSuggestion {
+export interface UserProfile {
     userId: string;
-    name: string;
+    username?: string;
+    email: string;
+    bio?: string;
+    userType?: string;
+    experienceLevel?: string;
+    musicGenres?: string[];
+    tags?: string[];
+    socialLinks?: {
+      instagram?: string;
+      // autres réseaux sociaux
+    };
+    profileImageUrl?: string;
+    profileCompleted?: boolean;
+    location?: string;
+    software?: string;
+    musicalMood?: string;
+    musicGenre?: string;
+    favoriteArtists?: string[];
+    updatedAt?: number;
+  }
+  export interface UserSuggestion {
+    userId: string;
+    name?: string;
+    username?: string; // Ajout optionnel
     profileImage?: string;
     userType?: string;
-  }
-  
-  export interface SearchParams {
-    term: string;
-    type?: string;
-    limit?: number;
-  }
-  
-  export interface PaginationParams {
-    page: number;
-    limit: number;
-  }
-  
-  export interface ApiResponse<T> {
-    data: T;
-    message?: string;
-    success: boolean;
   }
