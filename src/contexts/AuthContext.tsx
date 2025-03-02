@@ -43,7 +43,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isAuthenticated: true,
           isLoading: false,
           isProfileComplete: attributes['custom:profileCompleted'] === 'true',
-          userId: user.username,
+          // Important: utilisez attributes.sub comme userId car c'est l'UUID utilisé dans DynamoDB
+          userId: attributes.sub || null,
           userEmail: attributes.email || null,
         });
       } catch (error) {
@@ -52,7 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isAuthenticated: true,
           isLoading: false,
           isProfileComplete: false,
-          userId: user.username,
+          userId: null,
           userEmail: null,
         });
       }

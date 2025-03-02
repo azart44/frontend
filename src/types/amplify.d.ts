@@ -1,13 +1,11 @@
-// src/types/auth-user.d.ts
-import { AuthUser as OriginalAuthUser } from '@aws-amplify/ui-react';
+// src/types/amplify.d.ts
+import '@aws-amplify/ui-react';
 
 declare module '@aws-amplify/ui-react' {
-  interface AuthUser extends OriginalAuthUser {
-    attributes?: {
-      sub?: string;
-      email?: string;
-      name?: string;
-      'custom:profileCompleted'?: string;
-    };
+  // Étend l'interface AuthUser existante
+  interface AuthUser {
+    username: string;
+    // Nous n'utilisons plus attributes qui causait des problèmes de typage
+    // Si vous avez besoin d'accéder aux attributs, utilisez fetchUserAttributes() à la place
   }
 }

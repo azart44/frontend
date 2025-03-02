@@ -6,6 +6,7 @@ import {
   Text, 
   Button, 
   Card,
+  Flex,
   Loader,
   useAuthenticator
 } from '@aws-amplify/ui-react';
@@ -15,37 +16,17 @@ import { useUserProfile } from '../../hooks/useProfile';
 import ProfileCard from './ProfileCard';
 import EditProfileForm from './EditProfileForm';
 import TrackList from '../track/TrackList';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
-  const { userId } = useParams<{ userId?: string }>();
-  const { user } = useAuthenticator((context) => [context.user]);
+  const { userId: urlUserId } = useParams<{ userId?: string }>();
+  const { isAuthenticated, userId: authUserId } = useAuth();
   
-  const [cognitoUserId, setCognitoUserId] = useState<string | null>(null);
-
-  // Récupérer l'ID utilisateur de Cognito
-  useEffect(() => {
-    const getUserId = async () => {
-      try {
-        const attributes = await fetchUserAttributes();
-        // Vérification explicite pour éviter les undefined
-        if (attributes.sub) {
-          setCognitoUserId(attributes.sub);
-        }
-      } catch (error) {
-        console.error('Erreur de récupération des attributs utilisateur:', error);
-      }
-    };
-
-    getUserId();
-  }, [user]);
-
   const [isEditing, setIsEditing] = useState(false);
 
-  // Utiliser l'userId du paramètre ou l'ID Cognito (sub)
-  const targetUserId = userId || 
-    (user?.attributes?.sub ?? null) || 
-    cognitoUserId;
+  // Utiliser l'userId du paramètre d'URL ou celui de l'utilisateur authentifié
+  const targetUserId = urlUserId || authUserId;
 
   // Récupérer le profil
   const { 
@@ -57,9 +38,8 @@ const Profile: React.FC = () => {
 
   // Déterminer si c'est le profil de l'utilisateur courant
   const isOwnProfile = useMemo(() => {
-    const currentUserId = (user?.attributes?.sub ?? null) || cognitoUserId;
-    return !userId || userId === currentUserId;
-  }, [userId, user?.attributes, cognitoUserId]);
+    return !urlUserId || urlUserId === authUserId;
+  }, [urlUserId, authUserId]);
 
   // Gérer la mise à jour du profil
   const handleProfileUpdate = async () => {
@@ -67,8 +47,76 @@ const Profile: React.FC = () => {
     setIsEditing(false);
   };
 
-  // Le reste du code reste identique
-  // ... (code précédent)
+  // Afficher les logs pour le débogage
+  useEffect(() => {
+    console.log('Profile component - Auth state:', { isAuthenticated, authUserId });
+    console.log('Profile component - Target userId:', targetUserId);
+    console.log('Profile component - URL userId:', urlUserId);
+  }, [isAuthenticated, authUserId, targetUserId, urlUserId]);
+
+  // Si en cours de chargement
+  if (isLoading) {
+    return (
+      <View padding="2rem">
+        <Loader />
+        <Text textAlign="center" marginTop="1rem">Chargement du profil...</Text>
+      </View>
+    );
+  }
+
+  // Si erreur
+  if (error) {
+    return (
+      <View padding="2rem">
+        <Heading level={3}>Erreur</Heading>
+        <Text>Une erreur est survenue lors du chargement du profil.</Text>
+        <pre>{JSON.stringify(error, null, 2)}</pre>
+        <Button onClick={() => navigate(-1)} marginTop="1rem">Retour</Button>
+      </View>
+    );
+  }
+
+  // Si profil non trouvé
+  if (!profile) {
+    return (
+      <View padding="2rem">
+        <Heading level={3}>Profil non trouvé</Heading>
+        <Text>Ce profil n'existe pas ou a été supprimé.</Text>
+        <Text>ID utilisateur: {targetUserId || 'Non disponible'}</Text>
+        <Button onClick={() => navigate('/')} marginTop="1rem">Retour à l'accueil</Button>
+      </View>
+    );
+  }
+
+  return (
+    <View padding="2rem">
+      {isEditing ? (
+        <EditProfileForm 
+          userProfile={profile} 
+          onCancel={() => setIsEditing(false)}
+          onSuccess={handleProfileUpdate}
+        />
+      ) : (
+        <>
+          <Flex direction="column" gap="2rem">
+            {/* Carte de profil */}
+            <ProfileCard profile={profile} />
+            
+            {/* Bouton d'édition (si c'est le profil de l'utilisateur) */}
+            {isOwnProfile && (
+              <Button onClick={() => setIsEditing(true)}>
+                Modifier mon profil
+              </Button>
+            )}
+            
+            {/* Liste des pistes */}
+            <Heading level={3}>Pistes</Heading>
+            {targetUserId && <TrackList userId={targetUserId} />}
+          </Flex>
+        </>
+      )}
+    </View>
+  );
 };
 
 export default Profile;
