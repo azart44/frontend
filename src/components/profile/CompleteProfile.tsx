@@ -119,6 +119,31 @@ const CompleteProfile: React.FC = () => {
     profileCompleted: false
   });
 
+  // Définir les handlers avant de les utiliser
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setProfileData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      
+      // Vérifier la taille (max 5 Mo)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('L\'image ne doit pas dépasser 5 Mo');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setProfileImage(base64String);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const initializeProfile = useCallback(async () => {
     if (!isAuthenticated || !userId) {
       setError("Vous devez être connecté pour accéder à cette page.");
@@ -196,31 +221,6 @@ const CompleteProfile: React.FC = () => {
       navigate('/profile');
     }
   }, [isAuthenticated, isProfileComplete, navigate]);
-
-  // Gérer le changement d'image
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      
-      // Vérifier la taille (max 5 Mo)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('L\'image ne doit pas dépasser 5 Mo');
-        return;
-      }
-      
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        setProfileImage(base64String);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setProfileData(prev => ({ ...prev, [name]: value }));
-  };
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, checked } = e.target;
@@ -372,6 +372,7 @@ const CompleteProfile: React.FC = () => {
                 accept="image/jpeg,image/png,image/webp"
                 onChange={handleImageChange}
                 style={{ marginTop: '1rem' }}
+                required
               />
               <Text fontSize="small" color="gray">
                 Formats acceptés: JPG, PNG, WEBP. Max: 5Mo

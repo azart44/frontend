@@ -217,13 +217,13 @@ const HomePage: React.FC = () => {
             track_id: '1',
             title: 'Summer Vibes',
             artist: 'Keiji',
-            user_id: 'user1',
+            user_id: '14a874d8-a001-7079-ae6e-45fab155068c',
             genre: 'Trap',
             bpm: 140,
             duration: 183,
             likes: 124,
             downloads: 45,
-            cover_image: 'https://via.placeholder.com/64'
+            cover_image: 'https://chordora-users.s3.us-east-1.amazonaws.com/public/default-profile'
           },
           {
             track_id: '2',
@@ -256,10 +256,10 @@ const HomePage: React.FC = () => {
         // Simuler des données d'artistes
         const artists = [
           {
-            userId: 'user1',
+            userId: '14a874d8-a001-7079-ae6e-45fab155068c',
             username: 'Keiji',
             userType: 'producer',
-            profileImageUrl: 'https://via.placeholder.com/50'
+            profileImageUrl: 'https://chordora-users.s3.us-east-1.amazonaws.com/public/default-profile'
           },
           {
             userId: 'user2',

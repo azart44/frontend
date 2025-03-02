@@ -1,7 +1,7 @@
 import { getUrl, list } from '@aws-amplify/storage';
 import localforage from 'localforage';
 
-export const DEFAULT_PROFILE_IMAGE = 'default-profile';
+export const DEFAULT_PROFILE_IMAGE = 'default-profile.jpg';
 
 export const getProfileImageUrl = async (imageKey: string): Promise<string | null> => {
   try {
@@ -25,8 +25,10 @@ export const fetchProfileImage = async (username: string): Promise<string | null
     return cachedUrl;
   }
 
-  const imageKey = `users/${username}/profile-image`;
+  // Utiliser une extension de fichier explicite
+  const imageKey = `users/${username}/profile-image.jpg`;
   console.log('Fetching image for key:', imageKey);
+  
   try {
     const imageExists = await list({ prefix: imageKey });
     console.log('Image exists:', imageExists.items.length > 0);
