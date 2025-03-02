@@ -9,10 +9,11 @@ import {
   Text,
   Image,
 } from '@aws-amplify/ui-react';
-import { MUSIC_GENRES, SKILL_LEVELS, USER_TYPES } from '../../constants/profileData';
+import { MUSIC_GENRES, EXPERIENCE_LEVELS, SOFTWARE_OPTIONS, POPULAR_ARTISTS } from '../../constants/profileData';
 import { UserProfile } from '../../types/ProfileTypes';
 import { useForm } from '../../hooks/useForm';
 import { useUpdateProfile } from '../../hooks/useProfile';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface EditProfileFormProps {
   userProfile: UserProfile;
@@ -27,54 +28,45 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
 }) => {
   const [newProfileImage, setNewProfileImage] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const { userId: authUserId } = useAuth();
   
-  // Utilisation du hook de formulaire
   const { 
     values, 
     errors, 
     handleChange, 
     setValues,
-    validate 
+    validate,
+    resetForm
   } = useForm<Partial<UserProfile>>({
-    userId: userProfile.userId,
-    username: userProfile.username || '',  // Assurez-vous que username n'est pas undefined
-    userType: userProfile.userType,
-    experienceLevel: userProfile.experienceLevel,
+    username: userProfile.username || '',
     bio: userProfile.bio || '',
-    tags: userProfile.tags || [],
+    experienceLevel: userProfile.experienceLevel || '',
     musicGenres: userProfile.musicGenres || [],
-    socialLinks: userProfile.socialLinks || { instagram: '', soundcloud: '' }
+    tags: userProfile.tags || [],
+    socialLinks: userProfile.socialLinks || {},
+    location: userProfile.location || '',
+    software: userProfile.software || '',
+    musicalMood: userProfile.musicalMood || '',
+    favoriteArtists: userProfile.favoriteArtists || [],
   });
-  
-  // Hook de mutation pour la mise à jour du profil
+
   const updateProfileMutation = useUpdateProfile();
-  
-  // Mettre à jour l'aperçu de l'image
+
   useEffect(() => {
     if (newProfileImage) {
       setPreviewImage(newProfileImage);
     } else if (userProfile.profileImageUrl) {
       setPreviewImage(userProfile.profileImageUrl);
-    } else if (userProfile.profileImageBase64) {
-      setPreviewImage(
-        userProfile.profileImageBase64.startsWith('data:image') 
-          ? userProfile.profileImageBase64 
-          : `data:image/jpeg;base64,${userProfile.profileImageBase64}`
-      );
     }
-  }, [newProfileImage, userProfile.profileImageBase64, userProfile.profileImageUrl]);
-  
-  // Gérer le changement d'image
+  }, [newProfileImage, userProfile.profileImageUrl]);
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      
-      // Vérifier la taille (max 5 Mo)
       if (file.size > 5 * 1024 * 1024) {
         alert('L\'image ne doit pas dépasser 5 Mo');
         return;
       }
-      
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64String = reader.result as string;
@@ -83,87 +75,80 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
       reader.readAsDataURL(file);
     }
   };
-  
-  // Gérer l'ajout/suppression de tags
-  const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const tagsArray = e.target.value
-      .split(',')
-      .map(tag => tag.trim())
-      .filter(tag => tag.length > 0)
-      .slice(0, 3); // Limite de 3 tags
-    
-    setValues(prev => ({ ...prev, tags: tagsArray }));
+
+  const handleArtistAdd = (artist: string) => {
+    if (!artist) return;
+    setValues(prev => {
+      const currentArtists = prev.favoriteArtists || [];
+      if (currentArtists.length < 3 && !currentArtists.includes(artist)) {
+        return { ...prev, favoriteArtists: [...currentArtists, artist] };
+      }
+      return prev;
+    });
   };
-  
-  // Gérer l'ajout de genres musicaux
-  const handleMusicGenreAdd = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const { value } = e.target;
-    if (!value) return;
-    
-    const currentGenres = values.musicGenres || [];
-    
-    // Limiter à 3 genres et éviter les doublons
-    if (currentGenres.length < 3 && !currentGenres.includes(value)) {
-      setValues(prev => ({
-        ...prev,
-        musicGenres: [...currentGenres, value]
-      }));
-    }
-    
-    // Réinitialiser la valeur du select
-    e.target.value = '';
+
+  const handleRemoveArtist = (artistToRemove: string) => {
+    setValues(prev => ({
+      ...prev,
+      favoriteArtists: (prev.favoriteArtists || []).filter(artist => artist !== artistToRemove)
+    }));
   };
-  
-  // Supprimer un genre musical
+
+  const handleGenreAdd = (genre: string) => {
+    if (!genre) return;
+    setValues(prev => {
+      const currentGenres = prev.musicGenres || [];
+      if (currentGenres.length < 3 && !currentGenres.includes(genre)) {
+        return { ...prev, musicGenres: [...currentGenres, genre] };
+      }
+      return prev;
+    });
+  };
+
   const handleRemoveGenre = (genreToRemove: string) => {
     setValues(prev => ({
       ...prev,
       musicGenres: (prev.musicGenres || []).filter(genre => genre !== genreToRemove)
     }));
   };
-  
-  // Gérer la soumission du formulaire
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Valider le formulaire
     const validationRules = {
+      username: (value: string) => !value ? 'Le pseudo est requis' : null,
       bio: (value: string) => 
         value.length > 150 ? 'La bio ne doit pas dépasser 150 caractères' : null,
-      username: (value: string) =>
-        !value ? 'Le pseudo est requis' : null,
     };
     
     if (!validate(validationRules)) {
       return;
     }
 
-    console.log("Données à envoyer :", {
-      ...values,
-      profileImageBase64: newProfileImage || userProfile.profileImageBase64,
-      userId: userProfile.userId
-    });
-    
+    const effectiveUserId = userProfile.userId || authUserId;
+    if (!effectiveUserId) {
+      console.error('Aucun ID utilisateur valide disponible');
+      return;
+    }
+
     try {
       await updateProfileMutation.mutateAsync({
         ...values,
-        profileImageBase64: newProfileImage || userProfile.profileImageBase64,
-        userId: userProfile.userId
+        userId: effectiveUserId,
+        profileImageUrl: newProfileImage || userProfile.profileImageUrl,
       });
-      
       onSuccess();
     } catch (error) {
       console.error('Erreur lors de la mise à jour du profil:', error);
     }
   };
-  
+
   return (
     <View padding="2rem" backgroundColor="#f5f5f5">
       <Heading level={3} marginBottom="1rem">Modifier mon profil</Heading>
       
       <form onSubmit={handleSubmit}>
         <Flex direction="column" gap="1rem">
-          {/* Image de profil */}
           <Flex direction="column" alignItems="center" marginBottom="1rem">
             {previewImage && (
               <Image
@@ -186,7 +171,6 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
             </Text>
           </Flex>
           
-          {/* Champs de formulaire */}
           <TextField
             label="Pseudo"
             name="username"
@@ -195,30 +179,8 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
             required
             hasError={!!errors.username}
             errorMessage={errors.username}
-            placeholder="Entrez votre pseudo"
+            placeholder="Entre ton pseudo"
           />
-          
-          <SelectField
-            label="Type de compte"
-            name="userType"
-            value={values.userType}
-            onChange={handleChange}
-          >
-            {USER_TYPES.map(type => (
-              <option key={type.value} value={type.value}>{type.label}</option>
-            ))}
-          </SelectField>
-          
-          <SelectField
-            label="Niveau d'expérience"
-            name="experienceLevel"
-            value={values.experienceLevel}
-            onChange={handleChange}
-          >
-            {SKILL_LEVELS.map(level => (
-              <option key={level} value={level}>{level}</option>
-            ))}
-          </SelectField>
           
           <TextField
             label="Bio"
@@ -228,23 +190,76 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
             maxLength={150}
             hasError={!!errors.bio}
             errorMessage={errors.bio}
-            placeholder="Présentez-vous en quelques mots"
+            placeholder="Présente-toi en quelques mots"
           />
-          <Text fontSize="small">{`${values.bio?.length || 0}/150`}</Text>
+          <Text fontSize="small">{`\${values.bio?.length || 0}/150`}</Text>
           
-          <TextField
-            label="Tags (séparés par des virgules, max 3)"
-            value={(values.tags || []).join(', ')}
-            onChange={handleTagsChange}
-            placeholder="Ex: Trap, Melodique, 808"
-          />
+          <SelectField
+            label="Niveau d'expérience"
+            name="experienceLevel"
+            value={values.experienceLevel}
+            onChange={handleChange}
+          >
+            {EXPERIENCE_LEVELS.map(level => (
+              <option key={level.value} value={level.value}>{level.label}</option>
+            ))}
+          </SelectField>
+          
+          <SelectField
+            label="Logiciel principal"
+            name="software"
+            value={values.software}
+            onChange={handleChange}
+          >
+            {SOFTWARE_OPTIONS.map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </SelectField>
+          
+          <Heading level={5}>Tes artistes préférés</Heading>
+          <SelectField
+            label="Ajouter un artiste préféré (max 3)"
+            onChange={(e) => handleArtistAdd(e.target.value)}
+            value=""
+          >
+            <option value="">Sélectionne un artiste</option>
+            {POPULAR_ARTISTS.map((artist: string) => (
+              <option 
+                key={artist} 
+                value={artist}
+                disabled={(values.favoriteArtists || []).includes(artist) || 
+                         (values.favoriteArtists || []).length >= 3}
+              >
+                {artist}
+              </option>
+            ))}
+          </SelectField>
+          
+          <Flex wrap="wrap" gap="0.5rem">
+            {(values.favoriteArtists || []).map(artist => (
+              <Text 
+                key={artist}
+                backgroundColor="rgba(0,0,0,0.1)"
+                padding="0.3rem 0.5rem"
+                borderRadius="1rem"
+              >
+                {artist}{' '}
+                <span 
+                  onClick={() => handleRemoveArtist(artist)}
+                  style={{ cursor: 'pointer', fontWeight: 'bold' }}
+                >
+                  ×
+                </span>
+              </Text>
+            ))}
+          </Flex>
           
           <SelectField
             label="Ajouter un genre musical (max 3)"
-            onChange={handleMusicGenreAdd}
+            onChange={(e) => handleGenreAdd(e.target.value)}
             value=""
           >
-            <option value="">Sélectionner un genre</option>
+            <option value="">Sélectionne un genre</option>
             {MUSIC_GENRES.map(genre => (
               <option 
                 key={genre} 
@@ -257,7 +272,6 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
             ))}
           </SelectField>
           
-          {/* Affichage des genres sélectionnés */}
           <Flex wrap="wrap" gap="0.5rem">
             {(values.musicGenres || []).map(genre => (
               <Text 
@@ -285,7 +299,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
               ...prev, 
               socialLinks: { ...prev.socialLinks, instagram: e.target.value } 
             }))}
-            placeholder="https://instagram.com/votre-compte"
+            placeholder="https://instagram.com/ton-compte"
           />
           
           <TextField
@@ -296,10 +310,17 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
               ...prev, 
               socialLinks: { ...prev.socialLinks, soundcloud: e.target.value } 
             }))}
-            placeholder="https://soundcloud.com/votre-compte"
+            placeholder="https://soundcloud.com/ton-compte"
           />
           
-          {/* Boutons de soumission */}
+          <TextField
+            label="Localisation"
+            name="location"
+            value={values.location}
+            onChange={handleChange}
+            placeholder="Ta ville ou région"
+          />
+          
           <Flex gap="1rem" marginTop="1rem">
             <Button 
               type="submit" 

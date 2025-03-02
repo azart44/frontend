@@ -59,3 +59,4 @@ export interface ProfileEditFormData {
     twitter?: string;
   };
 }
+

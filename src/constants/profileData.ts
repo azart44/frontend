@@ -1,13 +1,27 @@
 export const MUSIC_GENRES = [
-  'Hip Hop', 'Trap', 'Pop', 'R&B', 'Rock',
-  'Drill', 'Electronic', 'Afrobeat', 'Latin', 'Funk',
-  'Cinematic', 'Lofi', 'Country', 'World', 'Indie',
-  'Folk', 'Reggae', 'House', 'Synthwave', 'Amapiano'
+  'Drill', 'Trap', 'Boom Bap', 'RnB', 'Hip Hop', 
+  'Afrobeat', 'Soul', 'Pop', 'Électronique'
 ];
 
-export const SKILL_LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'Professional'];
+export const EXPERIENCE_LEVELS = [
+  { value: 'Débutant', label: 'Débutant 🌱' },
+  { value: 'Intermédiaire', label: 'Intermédiaire 🚀' },
+  { value: 'Confirmé', label: 'Confirmé 🏆' }
+];
 
-export const USER_TYPES = [
-  { value: 'artist', label: 'Artist' },
-  { value: 'producer', label: 'Producer' }
+export const SOFTWARE_OPTIONS = [
+  { value: 'FL Studio', label: 'FL Studio 🎚️' },
+  { value: 'Ableton Live', label: 'Ableton Live 🎛️' },
+  { value: 'Logic Pro', label: 'Logic Pro 🍏' },
+  { value: 'Maschine', label: 'Maschine 🥁' },
+  { value: 'Reason', label: 'Reason 🤖' },
+  { value: 'Pro Tools', label: 'Pro Tools 🎧' },
+  { value: 'Hardware MPC', label: 'MPC Hardware 🎚️' },
+  { value: 'Autre', label: 'Autre / En développement 🛠️' }
+];
+
+export const POPULAR_ARTISTS: string[] = [
+  'Ninho', 'Drake', 'Travis Scott', 'Freeze Corleone', 
+  'Jul', 'SCH', 'Damso', 'Nekfeu', 'Jay-Z', 'Kanye West',
+  'Booba', 'Gradur', 'PNL', 'Hamza', 'Future', '21 Savage'
 ];

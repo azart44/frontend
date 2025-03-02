@@ -1,31 +1,24 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useEffect } from "react";
 import { 
   Button, 
   Flex, 
   Heading, 
-  Text, 
   View, 
-  Loader, 
-  TextField, 
-  SelectField, 
-  Alert 
+  Card,
+  SelectField,
+  TextField,
+  Alert
 } from '@aws-amplify/ui-react';
-import { fetchUserAttributes, updateUserAttributes } from 'aws-amplify/auth';
+import { fetchUserAttributes } from 'aws-amplify/auth';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../api';
 
-// Configuration des données statiques
-const USER_TYPES = [
-  { value: 'Beatmaker', label: 'Beatmaker' },
-  { value: 'Rappeur', label: 'Rappeur' },
-  { value: 'Loopmaker', label: 'Loopmaker' }
-];
-
-const EXPERIENCE_LEVELS = [
-  { value: 'Débutant', label: 'Débutant' },
-  { value: 'Intermédiaire', label: 'Intermédiaire' },
-  { value: 'Confirmé', label: 'Confirmé' }
+const POPULAR_ARTISTS = [
+  'Ninho', 'Drake', 'Travis Scott', 'Freeze Corleone', 
+  'Jul', 'SCH', 'Damso', 'Nekfeu', 'Jay-Z', 'Kanye West',
+  'Booba', 'Gradur', 'PNL', 'Hamza', 'Future', '21 Savage'
 ];
 
 const MUSIC_GENRES = [
@@ -34,42 +27,58 @@ const MUSIC_GENRES = [
 ];
 
 const MUSIC_MOODS = [
-  'Mélancolique', 'Festif', 'Agressif', 
-  'Motivant', 'Romantique', 'Relaxant'
+  { value: 'Mélancolique', emoji: '😔' },
+  { value: 'Festif', emoji: '🎉' },
+  { value: 'Agressif', emoji: '💥' },
+  { value: 'Motivant', emoji: '💪' },
+  { value: 'Romantique', emoji: '❤️' },
+  { value: 'Relaxant', emoji: '🧘' }
+];
+
+const USER_TYPES = [
+  { value: 'Beatmaker', label: 'Beatmaker 🎹', emoji: '🎹' },
+  { value: 'Rappeur', label: 'Rappeur 🎤', emoji: '🎤' },
+  { value: 'Loopmaker', label: 'Loopmaker 🔄', emoji: '🔄' }
+];
+
+const EXPERIENCE_LEVELS = [
+  { value: 'Débutant', label: 'Débutant 🌱', description: 'Je commence mon aventure musicale' },
+  { value: 'Intermédiaire', label: 'Intermédiaire 🚀', description: 'Je développe mes compétences' },
+  { value: 'Confirmé', label: 'Confirmé 🏆', description: 'Je maîtrise mon art' }
 ];
 
 const SOFTWARE_OPTIONS = [
-  'FL Studio', 'Ableton Live', 'Logic Pro', 
-  'Maschine', 'Reason', 'Pro Tools', 
-  'Autre', 'Hardware MPC', 'Autre Hardware'
+  { value: 'FL Studio', label: 'FL Studio 🎚️' },
+  { value: 'Ableton Live', label: 'Ableton Live 🎛️' },
+  { value: 'Logic Pro', label: 'Logic Pro 🍏' },
+  { value: 'Maschine', label: 'Maschine 🥁' },
+  { value: 'Reason', label: 'Reason 🤖' },
+  { value: 'Pro Tools', label: 'Pro Tools 🎧' },
+  { value: 'Hardware MPC', label: 'MPC Hardware 🎚️' },
+  { value: 'Autre', label: 'Autre / En développement 🛠️' }
 ];
 
-// Barre de progression
-const ProgressBar: React.FC<{ value: number; max: number }> = ({ value, max }) => {
-  const percentage = (value / max) * 100; 
-  return (
-    <View width="100%" height="10px" backgroundColor="#e0e0e0" borderRadius="5px" marginBottom="1rem">
-      <View 
-        width={`\${percentage}%`} 
-        height="100%" 
-        style={{ 
-          backgroundColor: "#4CAF50", 
-          borderRadius: "5px", 
-          transition: "width 0.3s ease" 
-        }}
-      />
-    </View>
-  );
-};
+interface ProfileData {
+  userId: string;
+  email: string;
+  username: string;
+  userType: string;
+  experienceLevel: string;
+  software: string;
+  favoriteArtists: string[];
+  musicGenres: string[];
+  musicalMood: string;
+  location: string;
+}
 
 const CompleteProfile: React.FC = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, isProfileComplete, userId, refreshAuth } = useAuth();
+  const { isAuthenticated, userId, refreshAuth } = useAuth();
   
-  const [step, setStep] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [profileData, setProfileData] = useState({
+  const [step, setStep] = useState(0);
+  const [profileData, setProfileData] = useState<ProfileData>({
     userId: '',
     email: '',
     username: '',
@@ -77,331 +86,359 @@ const CompleteProfile: React.FC = () => {
     experienceLevel: '',
     software: '',
     favoriteArtists: ['', '', ''],
-    musicGenre: '',
+    musicGenres: [],
     musicalMood: '',
     location: ''
   });
 
-  const initializeProfile = useCallback(async () => {
-    if (!isAuthenticated || !userId) {
-      setError("Vous devez être connecté pour accéder à cette page.");
-      setIsLoading(false);
-      return;
-    }
+  const generateDefaultUsername = (userId: string, email: string): string => {
+    return email.split('@')[0] || `user${userId.slice(-5)}`;
+  };
 
-    try {
-      setIsLoading(true);
-      
-      const attributes = await fetchUserAttributes();
-      const response = await api.get(`/user-profile/\${userId}`);
-      const existingProfile = response.data;
-      
-      if (existingProfile?.profileCompleted) {
-        navigate('/profile');
+  useEffect(() => {
+    const initializeProfile = async () => {
+      if (!isAuthenticated || !userId) {
         return;
       }
-      
-      setProfileData(prev => ({
-        ...prev,
-        userId: userId,
-        email: attributes.email || '',
-        username: existingProfile?.username || attributes.username || `User_\${userId.slice(-6)}`
-      }));
-    } catch (error: any) {
-      console.error('Erreur d\'initialisation:', error);
-      if (error.response?.status === 404) {
+
+      try {
         const attributes = await fetchUserAttributes();
+        const email = attributes.email || '';
+        
+        const defaultUsername = 
+          attributes.username || 
+          generateDefaultUsername(userId, email);
+        
         setProfileData(prev => ({
           ...prev,
           userId: userId,
-          email: attributes.email || '',
-          username: attributes.username || `User_\${userId.slice(-6)}`
+          email: email,
+          username: defaultUsername
         }));
-      } else {
-        setError('Impossible de charger votre profil. Veuillez réessayer.');
+      } catch (error) {
+        console.error('Erreur d\'initialisation:', error);
       }
-    } finally {
-      setIsLoading(false);
-    }
-  }, [userId, navigate, isAuthenticated]);
+    };
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      initializeProfile();
-    }
-  }, [isAuthenticated, initializeProfile]);
-
-  useEffect(() => {
-    if (isAuthenticated && isProfileComplete) {
-      navigate('/profile');
-    }
-  }, [isAuthenticated, isProfileComplete, navigate]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setProfileData(prev => ({ ...prev, [name]: value }));
-  };
+    initializeProfile();
+  }, [isAuthenticated, userId]);
 
   const handleArtistChange = (index: number, value: string) => {
+    const newArtists = [...profileData.favoriteArtists];
+    newArtists[index] = value;
+    setProfileData(prev => ({ ...prev, favoriteArtists: newArtists }));
+  };
+
+  const handleGenreAdd = (genre: string) => {
     setProfileData(prev => {
-      const newArtists = [...prev.favoriteArtists];
-      newArtists[index] = value;
-      return { ...prev, favoriteArtists: newArtists };
+      const currentGenres = prev.musicGenres || [];
+      if (currentGenres.length < 3 && !currentGenres.includes(genre)) {
+        return { ...prev, musicGenres: [...currentGenres, genre] };
+      }
+      return prev;
     });
   };
 
-  const handleNext = async () => {
-    switch (step) {
+  const handleRemoveGenre = (genreToRemove: string) => {
+    setProfileData(prev => ({
+      ...prev,
+      musicGenres: (prev.musicGenres || []).filter(genre => genre !== genreToRemove)
+    }));
+  };
+
+  const handleNext = () => {
+    switch(step) {
       case 0:
         if (!profileData.username.trim()) {
-          alert('Veuillez saisir un pseudo');
+          alert('Merci de choisir un pseudo');
           return;
         }
         break;
       case 1:
         if (!profileData.userType) {
-          alert('Veuillez sélectionner un rôle');
+          alert('Merci de sélectionner un rôle');
           return;
         }
         break;
-      case 8:
-        try {
-          setIsLoading(true);
-          
-          await api.post('/user-profile', {
-            profileData: {
-              ...profileData,
-              profileCompleted: true
-            }
-          });
-          
-          await updateUserAttributes({
-            userAttributes: {
-              'custom:profileCompleted': 'true'
-            }
-          });
-          
-          await refreshAuth();
-          navigate('/profile');
+      case 2:
+        if (!profileData.experienceLevel) {
+          alert('Merci de sélectionner votre niveau');
           return;
-        } catch (error) {
-          console.error('Erreur de soumission:', error);
-          alert('Impossible de terminer la configuration du profil');
-          return;
-        } finally {
-          setIsLoading(false);
         }
+        break;
+      case 3:
+        if (!profileData.software) {
+          alert('Merci de sélectionner votre logiciel');
+          return;
+        }
+        break;
+      case 4:
+        const filledArtists = profileData.favoriteArtists.filter(a => a.trim());
+        if (filledArtists.length === 0) {
+          alert('Merci de sélectionner au moins un artiste');
+          return;
+        }
+        break;
+      case 5:
+        if (profileData.musicGenres.length === 0) {
+          alert('Merci de sélectionner au moins un genre musical');
+          return;
+        }
+        break;
+      case 6:
+        if (!profileData.musicalMood) {
+          alert('Merci de sélectionner votre mood musical');
+          return;
+        }
+        break;
     }
-    
-    setStep(prev => Math.min(prev + 1, 8));
+
+    setStep(prev => Math.min(prev + 1, 7));
+  };
+  const handleSubmit = async () => {
+    if (!isAuthenticated || !userId) {
+      setError('Vous devez être connecté pour compléter votre profil');
+      return;
+    }
+
+    const requiredFields: (keyof ProfileData)[] = ['username', 'userType', 'experienceLevel', 'software', 'musicalMood'];
+    const missingFields = requiredFields.filter(field => {
+      const value = profileData[field];
+      return !value || (typeof value === 'string' && value.trim() === '');
+    });
+
+    if (missingFields.length > 0) {
+      setError(`Merci de remplir tous les champs requis: ${missingFields.join(', ')}`);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const completeProfileData = {
+        ...profileData,
+        profileCompleted: true,
+        userId: userId
+      };
+
+      await api.post('/user-profile', { profileData: completeProfileData });
+
+      await refreshAuth();
+
+      navigate('/profile');
+    } catch (error) {
+      console.error('Erreur lors de la création du profil:', error);
+      setError('Impossible de terminer la configuration du profil');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleBack = () => {
-    setStep(prev => Math.max(prev - 1, 0));
+  const renderStepContent = () => {
+    switch(step) {
+      case 0:
+        return (
+          <Card variation="elevated" padding="2rem">
+            <Heading level={3} marginBottom="1rem">Choisis ton pseudo</Heading>
+            <TextField
+              label="Pseudo"
+              value={profileData.username}
+              onChange={(e) => setProfileData(prev => ({ ...prev, username: e.target.value }))}
+              placeholder="Entre ton pseudo"
+            />
+          </Card>
+        );
+      case 1:
+        return (
+          <Card variation="elevated" padding="2rem">
+            <Heading level={3} marginBottom="1rem">Ton rôle principal</Heading>
+            <SelectField
+              label="Rôle"
+              value={profileData.userType}
+              onChange={(e) => setProfileData(prev => ({ ...prev, userType: e.target.value }))}
+            >
+              <option value="">Sélectionne un rôle</option>
+              {USER_TYPES.map(type => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </SelectField>
+          </Card>
+        );
+      case 2:
+        return (
+          <Card variation="elevated" padding="2rem">
+            <Heading level={3} marginBottom="1rem">Ton niveau d'expérience</Heading>
+            <SelectField
+              label="Niveau"
+              value={profileData.experienceLevel}
+              onChange={(e) => setProfileData(prev => ({ ...prev, experienceLevel: e.target.value }))}
+            >
+              <option value="">Sélectionne ton niveau</option>
+              {EXPERIENCE_LEVELS.map(level => (
+                <option key={level.value} value={level.value}>
+                  {level.label}
+                </option>
+              ))}
+            </SelectField>
+          </Card>
+        );
+      case 3:
+        return (
+          <Card variation="elevated" padding="2rem">
+            <Heading level={3} marginBottom="1rem">Ton logiciel principal</Heading>
+            <SelectField
+              label="Logiciel"
+              value={profileData.software}
+              onChange={(e) => setProfileData(prev => ({ ...prev, software: e.target.value }))}
+            >
+              <option value="">Sélectionne ton logiciel</option>
+              {SOFTWARE_OPTIONS.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </SelectField>
+          </Card>
+        );
+      case 4:
+        return (
+          <Card variation="elevated" padding="2rem">
+            <Heading level={3} marginBottom="1rem">Tes artistes préférés</Heading>
+            <Flex direction="column" gap="1rem">
+              {[0, 1, 2].map(index => (
+                <SelectField
+                  key={index}
+                  label={`Artiste ${index + 1}`}
+                  value={profileData.favoriteArtists[index]}
+                  onChange={(e) => handleArtistChange(index, e.target.value)}
+                  placeholder="Choisis un artiste"
+                >
+                  <option value="">Sélectionne un artiste</option>
+                  {POPULAR_ARTISTS.map(artist => (
+                    <option key={artist} value={artist}>
+                      {artist}
+                    </option>
+                  ))}
+                </SelectField>
+              ))}
+            </Flex>
+          </Card>
+        );
+      case 5:
+        return (
+          <Card variation="elevated" padding="2rem">
+            <Heading level={3} marginBottom="1rem">Tes genres musicaux</Heading>
+            <Flex direction="column" gap="1rem">
+              <SelectField
+                label="Ajouter un genre musical"
+                onChange={(e) => handleGenreAdd(e.target.value)}
+                value=""
+              >
+                <option value="">Sélectionne un genre</option>
+                {MUSIC_GENRES.map(genre => (
+                  <option 
+                    key={genre} 
+                    value={genre}
+                    disabled={(profileData.musicGenres || []).includes(genre) || 
+                             (profileData.musicGenres || []).length >= 3}
+                  >
+                    {genre}
+                  </option>
+                ))}
+              </SelectField>
+              
+              <Flex wrap="wrap" gap="0.5rem" marginTop="1rem">
+                {(profileData.musicGenres || []).map(genre => (
+                  <Button
+                    key={genre}
+                    variation="link"
+                    size="small"
+                    onClick={() => handleRemoveGenre(genre)}
+                  >
+                    {genre} ✕
+                  </Button>
+                ))}
+              </Flex>
+            </Flex>
+          </Card>
+        );
+      case 6:
+        return (
+          <Card variation="elevated" padding="2rem">
+            <Heading level={3} marginBottom="1rem">Ton mood musical</Heading>
+            <SelectField
+              label="Mood"
+              value={profileData.musicalMood}
+              onChange={(e) => setProfileData(prev => ({ ...prev, musicalMood: e.target.value }))}
+            >
+              <option value="">Sélectionne ton mood</option>
+              {MUSIC_MOODS.map(mood => (
+                <option key={mood.value} value={mood.value}>
+                  {mood.emoji} {mood.value}
+                </option>
+              ))}
+            </SelectField>
+          </Card>
+        );
+      case 7:
+        return (
+          <Card variation="elevated" padding="2rem">
+            <Heading level={3} marginBottom="1rem">Confirmation</Heading>
+            <Flex direction="column" gap="1rem">
+              <p>Merci d'avoir complété ton profil !</p>
+              <p>Clique sur "Créer mon profil" pour finaliser.</p>
+            </Flex>
+          </Card>
+        );
+      default:
+        return null;
+    }
   };
-
-  if (!isAuthenticated) {
-    return <Navigate to="/auth" replace />;
-  }
-
-  if (isLoading) {
-    return (
-      <View padding="2rem" textAlign="center">
-        <Loader />
-        <Text marginTop="1rem">Chargement de votre profil...</Text>
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View padding="2rem">
-        <Alert variation="error" heading="Erreur">
-          {error}
-        </Alert>
-        <Button onClick={() => navigate('/')} marginTop="1rem">
-          Retour à l'accueil
-        </Button>
-      </View>
-    );
-  }
 
   return (
-    <View padding="1rem" maxWidth="600px" margin="0 auto">
-      <Heading level={2} textAlign="center" marginBottom="2rem">
-        Compléter votre profil
-      </Heading>
-      
-      <ProgressBar value={step} max={8} />
-      
-      {step === 0 && (
-        <TextField
-          label="Choisissez un pseudo"
-          name="username"
-          value={profileData.username}
-          onChange={handleInputChange}
-          placeholder="Entrez votre pseudo"
-          isRequired
-          variation="quiet"
-          size="large"
-        />
-      )}
-      
-      {step === 1 && (
-        <SelectField
-          label="Votre rôle"
-          name="userType"
-          value={profileData.userType}
-          onChange={handleInputChange}
-          isRequired
-          variation="quiet"
-          size="large"
+    <View padding="2rem" maxWidth="600px" margin="0 auto" backgroundColor="#f4f4f4">
+      {error && (
+        <Alert 
+          variation="error" 
+          marginBottom="1rem"
+          isDismissible
+          onDismiss={() => setError(null)}
         >
-          <option value="">Sélectionnez votre rôle</option>
-          {USER_TYPES.map(type => (
-            <option key={type.value} value={type.value}>
-              {type.label}
-            </option>
-          ))}
-        </SelectField>
+          {error}
+        </Alert>
       )}
-      
-      {step === 2 && (
-        <SelectField
-          label="Votre niveau d'expérience"
-          name="experienceLevel"
-          value={profileData.experienceLevel}
-          onChange={handleInputChange}
-          isRequired
-          variation="quiet"
-          size="large"
-        >
-          <option value="">Sélectionnez votre niveau</option>
-          {EXPERIENCE_LEVELS.map(level => (
-            <option key={level.value} value={level.value}>
-              {level.label}
-            </option>
-          ))}
-        </SelectField>
-      )}
-      
-      {step === 3 && (
-        <SelectField
-          label="Votre logiciel ou matériel principal"
-          name="software"
-          value={profileData.software}
-          onChange={handleInputChange}
-          isRequired
-          variation="quiet"
-          size="large"
-        >
-          <option value="">Sélectionnez votre outil principal</option>
-          {SOFTWARE_OPTIONS.map(software => (
-            <option key={software} value={software}>
-              {software}
-            </option>
-          ))}
-        </SelectField>
-      )}
-      
-      {step === 4 && (
-        <Flex direction="column" gap="1rem">
-          <Heading level={4}>Vos 3 artistes favoris</Heading>
-          {[0, 1, 2].map(index => (
-            <TextField
-              key={index}
-              label={`Artiste \${index + 1}`}
-              value={profileData.favoriteArtists[index]}
-              onChange={(e) => handleArtistChange(index, e.target.value)}
-              placeholder={`Nom de l'artiste \${index + 1}`}
-              variation="quiet"
-            />
-          ))}
-        </Flex>
-      )}
-      
-      {step === 5 && (
-        <SelectField
-          label="Votre genre musical préféré"
-          name="musicGenre"
-          value={profileData.musicGenre}
-          onChange={handleInputChange}
-          isRequired
-          variation="quiet"
-          size="large"
-        >
-          <option value="">Sélectionnez un genre</option>
-          {MUSIC_GENRES.map(genre => (
-            <option key={genre} value={genre}>
-              {genre}
-            </option>
-          ))}
-        </SelectField>
-      )}
-      
-      {step === 6 && (
-        <SelectField
-          label="Votre mood musical"
-          name="musicalMood"
-          value={profileData.musicalMood}
-          onChange={handleInputChange}
-          isRequired
-          variation="quiet"
-          size="large"
-        >
-          <option value="">Sélectionnez un mood</option>
-          {MUSIC_MOODS.map(mood => (
-            <option key={mood} value={mood}>
-              {mood}
-            </option>
-          ))}
-        </SelectField>
-      )}
-      
-      {step === 7 && (
-        <TextField
-          label="Votre ville ou région (optionnel)"
-          name="location"
-          value={profileData.location}
-          onChange={handleInputChange}
-          placeholder="Ex: Paris, Lyon, Marseille..."
-          variation="quiet"
-        />
-      )}
-      
-      {step === 8 && (
-        <View backgroundColor="#f0f0f0" padding="1rem" borderRadius="8px">
-          <Heading level={4} marginBottom="1rem">Résumé de votre profil</Heading>
-          <Text>Pseudo : {profileData.username}</Text>
-          <Text>Rôle : {profileData.userType}</Text>
-          <Text>Niveau : {profileData.experienceLevel}</Text>
-          <Text>Logiciel : {profileData.software}</Text>
-          <Text>Genre musical : {profileData.musicGenre}</Text>
-          <Text>Mood musical : {profileData.musicalMood}</Text>
-          <Text>Localisation : {profileData.location || 'Non spécifiée'}</Text>
-        </View>
-      )}
-      
-      <Flex justifyContent="space-between" marginTop="2rem">
-        {step > 0 && (
+
+      <Card variation="elevated" padding="2rem">
+        <Heading level={2} textAlign="center" marginBottom="2rem">
+          🎵 Bienvenue sur Chordora
+        </Heading>
+        
+        {renderStepContent()}
+        
+        <Flex justifyContent="space-between" marginTop="2rem">
+          {step > 0 && (
+            <Button 
+              onClick={() => setStep(prev => prev - 1)} 
+              variation="link"
+              isDisabled={isLoading}
+            >
+              Précédent
+            </Button>
+          )}
           <Button 
-            onClick={handleBack} 
-            variation="link"
-            size="large"
+            onClick={step === 7 ? handleSubmit : handleNext}
+            variation="primary"
+            isLoading={isLoading}
           >
-            Précédent
+            {step === 7 ? 'Créer mon profil' : 'Suivant'}
           </Button>
-        )}
-        <Button 
-          onClick={handleNext} 
-          variation="primary"
-          size="large"
-        >
-          {step === 8 ? 'Terminer' : 'Suivant'}
-        </Button>
-      </Flex>
+        </Flex>
+      </Card>
     </View>
   );
 };
 
-export default CompleteProfile
+export default CompleteProfile;
