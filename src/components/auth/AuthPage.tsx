@@ -1,7 +1,17 @@
 import React, { useEffect } from 'react';
-import { Authenticator, useAuthenticator, TextField, View } from '@aws-amplify/ui-react';
+import { 
+  Authenticator, 
+  useAuthenticator, 
+  TextField, 
+  View, 
+  Heading, 
+  Text,
+  Image,
+  Flex 
+} from '@aws-amplify/ui-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchUserAttributes } from 'aws-amplify/auth';
+import '../../ChordoraTheme.css';
 
 const useProfileCompletion = (authStatus: string, navigate: (path: string) => void) => {
   useEffect(() => {
@@ -32,8 +42,27 @@ const AuthPage: React.FC = React.memo(() => {
   useProfileCompletion(authStatus, navigate);
 
   return (
-    <View>
+    <View className="auth-container">
+      <Flex justifyContent="center" marginBottom="2rem">
+        <Image
+          src="/logo.svg"
+          alt="Chordora Logo"
+          height="80px"
+          onClick={() => navigate('/')}
+          style={{ cursor: 'pointer' }}
+        />
+      </Flex>
+      
+      <Heading level={3} textAlign="center" color="#87e54c" marginBottom="1rem">
+        Bienvenue sur Chordora
+      </Heading>
+      
+      <Text textAlign="center" color="#a0a0a0" marginBottom="2rem">
+        Connectez-vous pour rejoindre la communauté musicale
+      </Text>
+      
       <Authenticator
+        loginMechanisms={['email']}
         components={{
           SignUp: {
             FormFields() {
@@ -43,14 +72,14 @@ const AuthPage: React.FC = React.memo(() => {
                   <TextField
                     label="Email"
                     name="email"
-                    placeholder="Enter your email"
+                    placeholder="Entrez votre email"
                     type="email"
                     isRequired
                   />
                   <TextField
-                    label="Full Name"
+                    label="Nom complet"
                     name="name"
-                    placeholder="Enter your full name"
+                    placeholder="Entrez votre nom complet"
                     type="text"
                     isRequired
                   />
@@ -58,6 +87,15 @@ const AuthPage: React.FC = React.memo(() => {
               );
             },
           },
+          Footer() {
+            return (
+              <View textAlign="center" padding="1rem 0">
+                <Text color="#a0a0a0" fontSize="0.8rem">
+                  En vous inscrivant, vous acceptez nos conditions d'utilisation et notre politique de confidentialité.
+                </Text>
+              </View>
+            )
+          }
         }}
       />
     </View>

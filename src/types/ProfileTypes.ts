@@ -44,7 +44,7 @@ export interface UserProfile {
   createdAt?: number;
   updatedAt?: number;
   
-  // Badges et reconnaissance (pourra être développé ultérieurement)
+  // Badges et reconnaissance
   badges?: UserBadge[];
 }
 

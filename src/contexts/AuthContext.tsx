@@ -11,7 +11,6 @@ import {
   fetchUserAttributes, 
   fetchAuthSession 
 } from 'aws-amplify/auth';
-import api from '../api';
 import { UserProfile } from '../types/ProfileTypes';
 
 // Interface définissant la structure de l'état d'authentification
@@ -94,44 +93,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Récupérer les attributs de l'utilisateur
         const attributes = await fetchUserAttributes();
         
-        // Récupérer l'ID de session pour s'assurer que le token est valide
-        const session = await fetchAuthSession();
+        // S'assurer que le token est valide
+        await fetchAuthSession();
         const userId = attributes.sub || user.username;
 
         if (!userId) {
           throw new Error('ID utilisateur non disponible');
         }
 
-        // Récupérer le profil complet depuis l'API
-        try {
-          const response = await api.get(`/user-profile/${userId}`);
-          const profileData = response.data;
+        // Pour notre exemple, nous définissons simplement le profil sans appel API
+        // Dans une application réelle, vous feriez un appel API ici
+        const mockProfile: UserProfile = {
+          userId,
+          email: attributes.email || '',
+          username: attributes.preferred_username || `User_${userId.slice(-6)}`,
+          profileCompleted: attributes['custom:profileCompleted'] === 'true'
+        };
 
-          // Mettre à jour l'état avec le profil complet
-          setState({
-            isAuthenticated: true,
-            isLoading: false,
-            isProfileComplete: profileData?.profileCompleted === true || attributes['custom:profileCompleted'] === 'true',
-            userId,
-            userEmail: attributes.email || null,
-            userProfile: profileData || null,
-            error: null
-          });
-        } catch (apiError: any) {
-          console.warn('Erreur lors de la récupération du profil:', apiError);
-          
-          // Même en cas d'erreur API, considérer l'utilisateur authentifié
-          // mais avec un profil incomplet ou inexistant
-          setState({
-            isAuthenticated: true,
-            isLoading: false,
-            isProfileComplete: attributes['custom:profileCompleted'] === 'true',
-            userId,
-            userEmail: attributes.email || null,
-            userProfile: null,
-            error: apiError.message || 'Erreur lors de la récupération du profil'
-          });
-        }
+        // Mettre à jour l'état avec le profil
+        setState({
+          isAuthenticated: true,
+          isLoading: false,
+          isProfileComplete: mockProfile.profileCompleted || false,
+          userId,
+          userEmail: attributes.email || null,
+          userProfile: mockProfile,
+          error: null
+        });
       } catch (error: any) {
         console.error('Erreur lors de l\'authentification:', error);
         

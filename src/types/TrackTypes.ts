@@ -3,14 +3,16 @@ export interface Track {
   user_id: string;
   title: string;
   genre: string;
-  bpm: number;
-  file_path: string;
+  bpm?: number;
+  file_path?: string;
   cover_image?: string;
   description?: string;
   tags?: string[];
   duration?: number;
   likes?: number;
+  downloads?: number;
   plays?: number;
+  artist?: string;
   isPremium?: boolean;
   price?: number;
   created_at?: string;

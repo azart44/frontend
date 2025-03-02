@@ -4,9 +4,10 @@ import { Authenticator } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
-import Header from './components/layout/Header';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './utils/queryClient';
+import ChordoraLayout from './components/layout/ChordoraLayout';
+import './ChordoraTheme.css';
 
 // Lazy load components pour améliorer les performances
 const Home = lazy(() => import('./components/Home'));
@@ -21,16 +22,6 @@ const Loading = () => (
   <div className="loading-container">
     <div className="loading-spinner"></div>
     <p>Chargement...</p>
-  </div>
-);
-
-// Composant de mise en page avec header
-const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="app-container">
-    <Header />
-    <main className="main-content">
-      {children}
-    </main>
   </div>
 );
 
@@ -70,7 +61,7 @@ function App() {
       <Authenticator.Provider>
         <AuthProvider>
           <Router>
-            <Layout>
+            <ChordoraLayout>
               <Suspense fallback={<Loading />}>
                 <Routes>
                   {/* Routes publiques */}
@@ -118,7 +109,7 @@ function App() {
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </Suspense>
-            </Layout>
+            </ChordoraLayout>
           </Router>
         </AuthProvider>
       </Authenticator.Provider>

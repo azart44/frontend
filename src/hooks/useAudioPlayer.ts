@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getTrackById } from '../api/track';
+import { Track } from '../types/TrackTypes';
 
 interface AudioPlayerOptions {
   onEnded?: () => void;
@@ -18,6 +18,14 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const intervalRef = useRef<number | null>(null);
+  
+  // Gestion des erreurs de lecture
+  const handlePlayError = useCallback((error: any) => {
+    console.error('Erreur de lecture audio:', error);
+    setIsPlaying(false);
+    setError('Impossible de lire ce fichier audio');
+    if (options.onError) options.onError(error);
+  }, [options]);
   
   // Initialiser l'élément audio
   useEffect(() => {
@@ -64,15 +72,7 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
         clearInterval(intervalRef.current);
       }
     };
-  }, [options]);
-  
-  // Gestion des erreurs de lecture
-  const handlePlayError = useCallback((error: any) => {
-    console.error('Erreur de lecture audio:', error);
-    setIsPlaying(false);
-    setError('Impossible de lire ce fichier audio');
-    if (options.onError) options.onError(error);
-  }, [options]);
+  }, [options, handlePlayError]);
   
   // Mise à jour de la progression
   useEffect(() => {
@@ -94,7 +94,7 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
   }, [isPlaying]);
   
   // Charger une piste
-  const loadTrack = useCallback(async (trackId: string) => {
+  const loadTrack = useCallback(async (track: Track) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -105,24 +105,25 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
         setIsPlaying(false);
       }
       
-      // Récupérer l'URL signée
-      const response = await getTrackById(trackId);
-      const { presigned_url } = response.data;
+      // Valider l'URL de la piste
+      const audioUrl = track.file_path;
       
-      if (!presigned_url) {
+      if (!audioUrl) {
         throw new Error('Impossible de charger l\'URL du fichier audio');
       }
       
       // Charger la nouvelle piste
       if (audioRef.current) {
-        audioRef.current.src = presigned_url;
+        audioRef.current.src = audioUrl;
         audioRef.current.load();
-        setCurrentTrackId(trackId);
+        setCurrentTrackId(track.track_id);
       }
     } catch (error) {
       console.error('Erreur lors du chargement de la piste:', error);
       setError('Erreur lors du chargement de la piste');
       if (options.onError) options.onError(error);
+    } finally {
+      setIsLoading(false);
     }
   }, [options]);
   
