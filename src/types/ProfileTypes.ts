@@ -21,8 +21,8 @@ export interface UserProfile {
   };
 
   // Médias et images
-  profileImageUrl?: string;
-  profileImageBase64?: string;
+  profileImageUrl?: string;     // URL présignée S3
+  profileImageBase64?: string;  // Alternative au format base64 (rétrocompatibilité)
   profileCompleted?: boolean;
 
   // Détails additionnels

@@ -36,7 +36,8 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
     setValues,
     validate 
   } = useForm<Partial<UserProfile>>({
-    username: userProfile.username,
+    userId: userProfile.userId,
+    username: userProfile.username || '',  // Assurez-vous que username n'est pas undefined
     userType: userProfile.userType,
     experienceLevel: userProfile.experienceLevel,
     bio: userProfile.bio || '',
@@ -52,6 +53,8 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
   useEffect(() => {
     if (newProfileImage) {
       setPreviewImage(newProfileImage);
+    } else if (userProfile.profileImageUrl) {
+      setPreviewImage(userProfile.profileImageUrl);
     } else if (userProfile.profileImageBase64) {
       setPreviewImage(
         userProfile.profileImageBase64.startsWith('data:image') 
@@ -59,7 +62,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
           : `data:image/jpeg;base64,${userProfile.profileImageBase64}`
       );
     }
-  }, [newProfileImage, userProfile.profileImageBase64]);
+  }, [newProfileImage, userProfile.profileImageBase64, userProfile.profileImageUrl]);
   
   // Gérer le changement d'image
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -127,11 +130,19 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
     const validationRules = {
       bio: (value: string) => 
         value.length > 150 ? 'La bio ne doit pas dépasser 150 caractères' : null,
+      username: (value: string) =>
+        !value ? 'Le pseudo est requis' : null,
     };
     
     if (!validate(validationRules)) {
       return;
     }
+
+    console.log("Données à envoyer :", {
+      ...values,
+      profileImageBase64: newProfileImage || userProfile.profileImageBase64,
+      userId: userProfile.userId
+    });
     
     try {
       await updateProfileMutation.mutateAsync({
@@ -180,7 +191,11 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
             label="Pseudo"
             name="username"
             value={values.username}
-            isReadOnly
+            onChange={handleChange}
+            required
+            hasError={!!errors.username}
+            errorMessage={errors.username}
+            placeholder="Entrez votre pseudo"
           />
           
           <SelectField
@@ -213,6 +228,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
             maxLength={150}
             hasError={!!errors.bio}
             errorMessage={errors.bio}
+            placeholder="Présentez-vous en quelques mots"
           />
           <Text fontSize="small">{`${values.bio?.length || 0}/150`}</Text>
           
@@ -220,6 +236,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
             label="Tags (séparés par des virgules, max 3)"
             value={(values.tags || []).join(', ')}
             onChange={handleTagsChange}
+            placeholder="Ex: Trap, Melodique, 808"
           />
           
           <SelectField
@@ -268,6 +285,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
               ...prev, 
               socialLinks: { ...prev.socialLinks, instagram: e.target.value } 
             }))}
+            placeholder="https://instagram.com/votre-compte"
           />
           
           <TextField
@@ -278,6 +296,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
               ...prev, 
               socialLinks: { ...prev.socialLinks, soundcloud: e.target.value } 
             }))}
+            placeholder="https://soundcloud.com/votre-compte"
           />
           
           {/* Boutons de soumission */}

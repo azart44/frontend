@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { 
   View, 
   Heading, 
@@ -8,10 +8,8 @@ import {
   Card,
   Flex,
   Loader,
-  useAuthenticator
+  Alert
 } from '@aws-amplify/ui-react';
-import { fetchUserAttributes } from 'aws-amplify/auth';
-
 import { useUserProfile } from '../../hooks/useProfile';
 import ProfileCard from './ProfileCard';
 import EditProfileForm from './EditProfileForm';
@@ -24,6 +22,7 @@ const Profile: React.FC = () => {
   const { isAuthenticated, userId: authUserId } = useAuth();
   
   const [isEditing, setIsEditing] = useState(false);
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
 
   // Utiliser l'userId du paramètre d'URL ou celui de l'utilisateur authentifié
   const targetUserId = urlUserId || authUserId;
@@ -33,7 +32,7 @@ const Profile: React.FC = () => {
     data: profile, 
     isLoading, 
     error,
-    refetch 
+    refetch
   } = useUserProfile(targetUserId);
 
   // Déterminer si c'est le profil de l'utilisateur courant
@@ -52,7 +51,8 @@ const Profile: React.FC = () => {
     console.log('Profile component - Auth state:', { isAuthenticated, authUserId });
     console.log('Profile component - Target userId:', targetUserId);
     console.log('Profile component - URL userId:', urlUserId);
-  }, [isAuthenticated, authUserId, targetUserId, urlUserId]);
+    console.log('Profile component - Profile data:', profile);
+  }, [isAuthenticated, authUserId, targetUserId, urlUserId, profile]);
 
   // Si en cours de chargement
   if (isLoading) {
@@ -68,22 +68,49 @@ const Profile: React.FC = () => {
   if (error) {
     return (
       <View padding="2rem">
-        <Heading level={3}>Erreur</Heading>
-        <Text>Une erreur est survenue lors du chargement du profil.</Text>
-        <pre>{JSON.stringify(error, null, 2)}</pre>
-        <Button onClick={() => navigate(-1)} marginTop="1rem">Retour</Button>
+        <Alert variation="error" heading="Erreur">
+          Une erreur est survenue lors du chargement du profil.
+        </Alert>
+        
+        <Button onClick={() => setShowDebugInfo(!showDebugInfo)} marginTop="1rem">
+          {showDebugInfo ? 'Masquer les détails d\'erreur' : 'Afficher les détails d\'erreur'}
+        </Button>
+        
+        {showDebugInfo && (
+          <Card variation="outlined" marginTop="1rem">
+            <pre style={{ whiteSpace: 'pre-wrap', overflow: 'auto' }}>
+              {JSON.stringify(error, null, 2)}
+            </pre>
+          </Card>
+        )}
+        
+        <Button onClick={() => navigate(-1)} marginTop="1rem">
+          Retour
+        </Button>
       </View>
     );
   }
 
-  // Si profil non trouvé
+  // Si profil non trouvé pour l'utilisateur courant, rediriger vers CompleteProfile
+  if (!profile && isOwnProfile) {
+    return <Navigate to="/complete-profile" replace />;
+  }
+
+  // Si profil non trouvé (pour un autre utilisateur)
   if (!profile) {
     return (
       <View padding="2rem">
-        <Heading level={3}>Profil non trouvé</Heading>
-        <Text>Ce profil n'existe pas ou a été supprimé.</Text>
-        <Text>ID utilisateur: {targetUserId || 'Non disponible'}</Text>
-        <Button onClick={() => navigate('/')} marginTop="1rem">Retour à l'accueil</Button>
+        <Alert variation="warning" heading="Profil non trouvé">
+          Ce profil n'existe pas ou a été supprimé.
+        </Alert>
+        <Flex marginTop="1rem" gap="1rem">
+          <Button onClick={() => navigate('/')} variation="primary">
+            Retour à l'accueil
+          </Button>
+          <Button onClick={() => refetch()} variation="link">
+            Réessayer
+          </Button>
+        </Flex>
       </View>
     );
   }
@@ -99,6 +126,11 @@ const Profile: React.FC = () => {
       ) : (
         <>
           <Flex direction="column" gap="2rem">
+            {/* En-tête du profil avec pseudo */}
+            <Heading level={2} textAlign="center">
+              {profile.username ? profile.username : 'Profil Utilisateur'}
+            </Heading>
+            
             {/* Carte de profil */}
             <ProfileCard profile={profile} />
             
@@ -114,6 +146,27 @@ const Profile: React.FC = () => {
             {targetUserId && <TrackList userId={targetUserId} />}
           </Flex>
         </>
+      )}
+      
+      {/* Afficher infos de débogage en mode développement */}
+      {process.env.NODE_ENV === 'development' && (
+        <Button onClick={() => setShowDebugInfo(!showDebugInfo)} marginTop="2rem" variation="link" size="small">
+          {showDebugInfo ? 'Masquer les infos de débogage' : 'Afficher les infos de débogage'}
+        </Button>
+      )}
+      
+      {showDebugInfo && (
+        <Card variation="outlined" marginTop="1rem">
+          <Text fontWeight="bold">Informations de débogage</Text>
+          <Text>ID utilisateur ciblé: {targetUserId || 'Non disponible'}</Text>
+          <Text>ID utilisateur courant: {authUserId || 'Non disponible'}</Text>
+          <Text>ID utilisateur URL: {urlUserId || 'Non disponible'}</Text>
+          <Text>Est mon profil: {isOwnProfile ? 'Oui' : 'Non'}</Text>
+          <Text>Pseudo: {profile.username || 'Non défini'}</Text>
+          <pre style={{ whiteSpace: 'pre-wrap', overflow: 'auto', fontSize: '0.8rem' }}>
+            {JSON.stringify(profile, null, 2)}
+          </pre>
+        </Card>
       )}
     </View>
   );
