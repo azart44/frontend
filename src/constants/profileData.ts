@@ -1,27 +1,40 @@
 export const MUSIC_GENRES = [
-  'Drill', 'Trap', 'Boom Bap', 'RnB', 'Hip Hop', 
-  'Afrobeat', 'Soul', 'Pop', 'Électronique'
+  'Hip Hop', 'Trap', 'Pop', 'R&B', 'Rock',
+  'Drill', 'Electronic', 'Afrobeat', 'Latin', 'Funk',
+  'Cinematic', 'Lofi', 'Country', 'World', 'Indie',
+  'Folk', 'Reggae', 'House', 'Synthwave', 'Amapiano'
 ];
 
-export const EXPERIENCE_LEVELS = [
-  { value: 'Débutant', label: 'Débutant 🌱' },
-  { value: 'Intermédiaire', label: 'Intermédiaire 🚀' },
-  { value: 'Confirmé', label: 'Confirmé 🏆' }
+export const EXPERIENCE_LEVELS = ['Débutant', 'Intermédiaire', 'Avancé', 'Professionnel'];
+
+export const USER_ROLES = [
+  { value: 'artist', label: 'Artist' },
+  { value: 'producer', label: 'Producer' },
+  { value: 'beatmaker', label: 'Beatmaker' },
+  { value: 'loopmaker', label: 'Loopmaker' }
+];
+
+export const MUSIC_MOODS = [
+  'Mélancolique', 'Énergique', 'Festif', 'Agressif', 
+  'Chill', 'Sombre', 'Inspirant', 'Romantique'
 ];
 
 export const SOFTWARE_OPTIONS = [
-  { value: 'FL Studio', label: 'FL Studio 🎚️' },
-  { value: 'Ableton Live', label: 'Ableton Live 🎛️' },
-  { value: 'Logic Pro', label: 'Logic Pro 🍏' },
-  { value: 'Maschine', label: 'Maschine 🥁' },
-  { value: 'Reason', label: 'Reason 🤖' },
-  { value: 'Pro Tools', label: 'Pro Tools 🎧' },
-  { value: 'Hardware MPC', label: 'MPC Hardware 🎚️' },
-  { value: 'Autre', label: 'Autre / En développement 🛠️' }
+  'FL Studio', 'Ableton Live', 'Logic Pro', 'Pro Tools',
+  'Studio One', 'Cubase', 'Reason', 'Maschine',
+  'GarageBand', 'Reaper', 'Autre'
 ];
 
-export const POPULAR_ARTISTS: string[] = [
-  'Ninho', 'Drake', 'Travis Scott', 'Freeze Corleone', 
-  'Jul', 'SCH', 'Damso', 'Nekfeu', 'Jay-Z', 'Kanye West',
-  'Booba', 'Gradur', 'PNL', 'Hamza', 'Future', '21 Savage'
+export const EQUIPMENT_OPTIONS = [
+  'Microphone', 'Audio Interface', 'MIDI Keyboard', 'Headphones',
+  'Monitors', 'Hardware Synth', 'Drum Machine', 'Drum Pad',
+  'Guitar', 'Bass', 'Turntable', 'Sampler'
+];
+
+export const POPULAR_ARTISTS = [
+  'Travis Scott', 'Drake', 'Kendrick Lamar', 'Rihanna',
+  'The Weeknd', 'Beyoncé', 'Doja Cat', 'Tyler, The Creator',
+  'J. Cole', 'Megan Thee Stallion', 'Post Malone', 'Cardi B',
+  'Billie Eilish', 'Ariana Grande', 'Metro Boomin', 'Booba',
+  'Ninho', 'Damso', 'PNL', 'SCH', 'Jul', 'Nekfeu', 'Niska'
 ];
