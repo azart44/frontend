@@ -150,6 +150,7 @@ const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
                 Ajouter une piste
               </Button>
               
+              {/* Bouton pour les favoris */}
               <Button
                 onClick={() => navigateTo('/favorites')}
                 backgroundColor={isActive('/favorites') ? 'rgba(135, 229, 76, 0.2)' : 'transparent'}
@@ -162,7 +163,6 @@ const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
                 Favoris
               </Button>
               
-              {/* Ajout du bouton vers les paramètres du compte */}
               <Button
                 onClick={() => navigateTo('/account-settings')}
                 backgroundColor={isActive('/account-settings') ? 'rgba(135, 229, 76, 0.2)' : 'transparent'}

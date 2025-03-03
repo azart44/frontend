@@ -20,6 +20,7 @@ export interface Track {
   created_at?: string | number;
   updated_at?: string | number;
   mood?: string;
+  isLiked?: boolean; // Indique si l'utilisateur courant a liké cette piste
 }
 
 export interface TrackFormData {
@@ -50,4 +51,9 @@ export interface AudioPlayerState {
   currentTime: number;
   volume: number;
   trackQueue: string[];
+}
+
+export interface TracksResponse {
+  tracks: Track[];
+  count: number;
 }

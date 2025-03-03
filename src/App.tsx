@@ -17,8 +17,9 @@ const AuthPage = lazy(() => import('./components/auth/AuthPage'));
 const CompleteProfile = lazy(() => import('./components/profile/CompleteProfile'));
 const UserList = lazy(() => import('./components/user/UserList'));
 const TrackUpload = lazy(() => import('./components/track/TrackUpload'));
-// Ajout du composant de paramètres du compte
 const AccountSettings = lazy(() => import('./components/account/AccountSettings'));
+// Ajouter le composant Favorites
+const Favorites = lazy(() => import('./components/favorites/Favorites'));
 
 // Composant de chargement réutilisable avec spinner
 const Loading = () => (
@@ -108,12 +109,21 @@ function App() {
                         </ProfileCompletionRoute>
                       } 
                     />
-                    {/* Ajout de la route pour les paramètres du compte */}
                     <Route 
                       path="/account-settings" 
                       element={
                         <ProfileCompletionRoute>
                           <AccountSettings />
+                        </ProfileCompletionRoute>
+                      } 
+                    />
+                    
+                    {/* Ajout de la route pour les favoris */}
+                    <Route 
+                      path="/favorites" 
+                      element={
+                        <ProfileCompletionRoute>
+                          <Favorites />
                         </ProfileCompletionRoute>
                       } 
                     />

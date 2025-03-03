@@ -1,5 +1,13 @@
 import apiClient from './index';
-import { Track, TrackFormData } from '../types/TrackTypes';
+import { Track } from '../types/TrackTypes';
+
+/**
+ * Interface pour la réponse de la liste des pistes
+ */
+export interface TracksResponse {
+  tracks: Track[];
+  count: number;
+}
 
 /**
  * Récupère les pistes audio, filtrées par utilisateur si spécifié
@@ -13,14 +21,28 @@ export const getTracks = (userId?: string, filters?: Record<string, string>) => 
     params.userId = userId;
   }
   
-  // Construire la chaîne de requête
-  const queryParams = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (value) queryParams.append(key, value);
+  return apiClient.get<TracksResponse>('/tracks', { params });
+};
+
+/**
+ * Récupère les pistes likées par l'utilisateur courant
+ * @returns Promise avec la liste des pistes likées
+ */
+export const getLikedTracks = () => {
+  return apiClient.get<TracksResponse>('/tracks', { 
+    params: { likedBy: 'current' }
   });
-  
-  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
-  return apiClient.get<Track[]>(`/tracks${queryString}`);
+};
+
+/**
+ * Récupère les pistes likées par un utilisateur spécifique
+ * @param userId ID de l'utilisateur
+ * @returns Promise avec la liste des pistes likées
+ */
+export const getLikedTracksByUserId = (userId: string) => {
+  return apiClient.get<TracksResponse>('/tracks', { 
+    params: { likedBy: userId }
+  });
 };
 
 /**
@@ -32,12 +54,24 @@ export const getTrackById = (trackId: string) =>
   apiClient.get<Track>(`/tracks/${trackId}`);
 
 /**
+ * Récupère plusieurs pistes par leurs IDs
+ * @param trackIds Liste des IDs de pistes
+ * @returns Promise avec la liste des pistes
+ */
+export const getTracksByIds = (trackIds: string[]) => {
+  const idsString = trackIds.join(',');
+  return apiClient.get<TracksResponse>('/tracks', { 
+    params: { ids: idsString }
+  });
+};
+
+/**
  * Crée une nouvelle piste audio
  * @param trackData Données du formulaire et métadonnées
  * @param file Fichier audio
  * @returns Promise avec la réponse de création
  */
-export const createTrack = (trackData: TrackFormData) => 
+export const createTrack = (trackData: any) => 
   apiClient.post<{trackId: string, uploadUrl: string}>('/tracks', trackData);
 
 /**
@@ -46,7 +80,7 @@ export const createTrack = (trackData: TrackFormData) =>
  * @param trackData Données à mettre à jour
  * @returns Promise avec la réponse de mise à jour
  */
-export const updateTrack = (trackId: string, trackData: Partial<TrackFormData>) => 
+export const updateTrack = (trackId: string, trackData: Partial<any>) => 
   apiClient.put<{message: string}>(`/tracks/${trackId}`, trackData);
 
 /**
@@ -63,12 +97,5 @@ export const deleteTrack = (trackId: string) =>
  * @returns Promise avec les résultats de recherche
  */
 export const searchTracks = (params: Record<string, string | number>) => {
-  const queryParams = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
-      queryParams.append(key, value.toString());
-    }
-  });
-  
-  return apiClient.get<Track[]>(`/search-tracks?${queryParams.toString()}`);
+  return apiClient.get<TracksResponse>('/search-tracks', { params });
 };

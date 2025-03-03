@@ -18,6 +18,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useAudioContext } from '../../contexts/AudioContext';
 import { useForm } from '../../hooks/useForm';
 import { Track } from '../../types/TrackTypes';
+import LikeButton from '../common/LikeButton';
 
 interface TrackListProps {
   userId: string;
@@ -241,6 +242,7 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {} }) => {
                 padding="0.5rem"
                 backgroundColor="#f0f0f0"
                 borderRadius="4px"
+                justifyContent="space-between"
               >
                 <Button 
                   onClick={() => handlePlayTrack(track)}
@@ -259,20 +261,27 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {} }) => {
                   )}
                 </Button>
                 
-                {currentTrack?.track_id === track.track_id && isPlaying && (
-                  <Flex 
-                    marginLeft="1rem" 
-                    alignItems="center" 
-                    gap="0.5rem" 
-                    flex="1" 
-                    style={{ 
-                      animation: 'pulse 1.5s infinite' 
-                    }}
-                  >
-                    <FaVolumeUp />
-                    <Text>Lecture en cours...</Text>
-                  </Flex>
-                )}
+                <Flex alignItems="center" gap="1rem">
+                  {/* Afficher le bouton Like pour tous les utilisateurs */}
+                  <LikeButton 
+                    trackId={track.track_id} 
+                    likesCount={track.likes || 0}
+                    showCount={true}
+                  />
+                  
+                  {currentTrack?.track_id === track.track_id && isPlaying && (
+                    <Flex 
+                      alignItems="center" 
+                      gap="0.5rem" 
+                      style={{ 
+                        animation: 'pulse 1.5s infinite' 
+                      }}
+                    >
+                      <FaVolumeUp />
+                      <Text>Lecture en cours...</Text>
+                    </Flex>
+                  )}
+                </Flex>
               </Flex>
             </Flex>
           )}
@@ -282,4 +291,4 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {} }) => {
   );
 };
 
-export default React.memo(TrackList);
+export default TrackList;
