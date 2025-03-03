@@ -24,7 +24,7 @@ export function useForm<T extends Record<string, any>>(initialValues: T) {
     const { name, value } = e.target;
     
     // Gérer différents types de champs
-    let fieldValue = value;
+    let fieldValue: any = value;
     
     // Gérer spécifiquement les checkbox (uniquement pour HTMLInputElement)
     if (e.target instanceof HTMLInputElement && e.target.type === 'checkbox') {
