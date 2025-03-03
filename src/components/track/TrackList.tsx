@@ -36,7 +36,7 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {} }) => {
   
   // Utiliser les hooks personnalisés pour les données et les mutations
   const { 
-    data: tracks, 
+    data, 
     isLoading, 
     error,
     refetch
@@ -123,7 +123,10 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {} }) => {
     <Text color="red">Erreur lors du chargement des pistes: {String(error)}</Text>
   );
   
-  if (!tracks || tracks.length === 0) return (
+  // Extraire les pistes du résultat de la requête
+  const tracks = data?.tracks || [];
+  
+  if (tracks.length === 0) return (
     <Card padding="2rem" textAlign="center">
       <Text>Aucune piste trouvée</Text>
       {userId === currentUserId && (
