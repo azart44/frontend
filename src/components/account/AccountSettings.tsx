@@ -17,6 +17,7 @@ import {
 } from 'aws-amplify/auth';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { deleteProfile } from '../../api/profile';
 import { FaLock, FaTrash, FaExclamationTriangle } from 'react-icons/fa';
 
 /**
@@ -26,7 +27,7 @@ import { FaLock, FaTrash, FaExclamationTriangle } from 'react-icons/fa';
 const AccountSettings: React.FC = () => {
   const navigate = useNavigate();
   const { signOut } = useAuthenticator(context => [context.signOut]);
-  const { userEmail } = useAuth();
+  const { userEmail, userId: authUserId } = useAuth();
   
   // États pour le changement de mot de passe
   const [oldPassword, setOldPassword] = useState('');
@@ -128,6 +129,18 @@ const AccountSettings: React.FC = () => {
     setIsDeleteLoading(true);
     
     try {
+      // 1. Supprimer le profil et toutes les données associées
+      if (authUserId) {
+        try {
+          await deleteProfile(authUserId);
+          console.log('Profil et données utilisateur supprimés avec succès');
+        } catch (deleteProfileError) {
+          console.error('Erreur lors de la suppression du profil:', deleteProfileError);
+          // Continuer malgré l'erreur pour supprimer le compte Cognito
+        }
+      }
+      
+      // 2. Supprimer le compte Cognito
       await deleteUser();
       
       // Passer à la deuxième étape (code de confirmation)

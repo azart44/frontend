@@ -49,3 +49,11 @@ export const getAllUsers = (filters?: Record<string, string>) => {
   }
   return apiClient.get(`/get-all-users${queryString}`);
 };
+
+/**
+ * Supprime le profil d'un utilisateur et toutes ses données associées
+ * @param userId ID de l'utilisateur à supprimer
+ * @returns Promise avec le résultat de la suppression
+ */
+export const deleteProfile = (userId: string) => 
+  apiClient.delete(`/user-profile/${userId}`);
