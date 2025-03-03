@@ -50,6 +50,4 @@ export interface AudioPlayerState {
   currentTime: number;
   volume: number;
   trackQueue: string[];
-  repeat: 'none' | 'one' | 'all';
-  shuffle: boolean;
 }
