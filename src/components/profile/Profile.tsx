@@ -24,10 +24,8 @@ const Profile: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [showDebugInfo, setShowDebugInfo] = useState(false);
 
-  // Utiliser l'userId du paramètre d'URL ou celui de l'utilisateur authentifié
   const targetUserId = urlUserId || authUserId;
 
-  // Récupérer le profil
   const { 
     data: profile, 
     isLoading, 
@@ -35,18 +33,15 @@ const Profile: React.FC = () => {
     refetch
   } = useUserProfile(targetUserId);
 
-  // Déterminer si c'est le profil de l'utilisateur courant
   const isOwnProfile = useMemo(() => {
     return !urlUserId || urlUserId === authUserId;
   }, [urlUserId, authUserId]);
 
-  // Gérer la mise à jour du profil
   const handleProfileUpdate = async () => {
     await refetch();
     setIsEditing(false);
   };
 
-  // Afficher les logs pour le débogage
   useEffect(() => {
     console.log('Profile component - Auth state:', { isAuthenticated, authUserId });
     console.log('Profile component - Target userId:', targetUserId);
@@ -54,7 +49,6 @@ const Profile: React.FC = () => {
     console.log('Profile component - Profile data:', profile);
   }, [isAuthenticated, authUserId, targetUserId, urlUserId, profile]);
 
-  // Si en cours de chargement
   if (isLoading) {
     return (
       <View padding="2rem">
@@ -64,7 +58,6 @@ const Profile: React.FC = () => {
     );
   }
 
-  // Si erreur
   if (error) {
     return (
       <View padding="2rem">
@@ -91,12 +84,10 @@ const Profile: React.FC = () => {
     );
   }
 
-  // Si profil non trouvé pour l'utilisateur courant, rediriger vers CompleteProfile
   if (!profile && isOwnProfile) {
     return <Navigate to="/complete-profile" replace />;
   }
 
-  // Si profil non trouvé (pour un autre utilisateur)
   if (!profile) {
     return (
       <View padding="2rem">
@@ -126,29 +117,24 @@ const Profile: React.FC = () => {
       ) : (
         <>
           <Flex direction="column" gap="2rem">
-            {/* En-tête du profil avec pseudo */}
             <Heading level={2} textAlign="center">
               {profile.username ? profile.username : 'Profil Utilisateur'}
             </Heading>
             
-            {/* Carte de profil */}
             <ProfileCard profile={profile} />
             
-            {/* Bouton d'édition (si c'est le profil de l'utilisateur) */}
             {isOwnProfile && (
               <Button onClick={() => setIsEditing(true)}>
                 Modifier mon profil
               </Button>
             )}
             
-            {/* Liste des pistes */}
             <Heading level={3}>Pistes</Heading>
             {targetUserId && <TrackList userId={targetUserId} />}
           </Flex>
         </>
       )}
       
-      {/* Afficher infos de débogage en mode développement */}
       {process.env.NODE_ENV === 'development' && (
         <Button onClick={() => setShowDebugInfo(!showDebugInfo)} marginTop="2rem" variation="link" size="small">
           {showDebugInfo ? 'Masquer les infos de débogage' : 'Afficher les infos de débogage'}
