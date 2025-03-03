@@ -5,6 +5,7 @@ export interface Track {
   genre: string;
   bpm?: number;
   file_path?: string;
+  presigned_url?: string; // URL présignée pour la lecture
   cover_image?: string;
   description?: string;
   tags?: string[];
@@ -14,24 +15,32 @@ export interface Track {
   plays?: number;
   artist?: string;
   isPremium?: boolean;
+  isPrivate?: boolean;
   price?: number;
-  created_at?: string;
-  updated_at?: string;
+  created_at?: string | number;
+  updated_at?: string | number;
   mood?: string;
-  presigned_url?: string; // Ajout pour l'URL du fichier audio
-  isPublic?: boolean;
 }
 
 export interface TrackFormData {
   title: string;
   genre: string;
   bpm: number;
+  fileName: string;
+  fileType: string;
   description?: string;
   tags?: string[];
   mood?: string;
-  isPublic?: boolean;
-  file_path?: string;
-  track_id?: string;
+  isPrivate?: boolean;
+}
+
+export interface TrackUploadResponse {
+  trackId: string;
+  uploadUrl: string;
+}
+
+export interface TrackUpdateResponse {
+  message: string;
 }
 
 export interface AudioPlayerState {

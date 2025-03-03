@@ -7,12 +7,18 @@ interface AudioPlayerOptions {
   autoplay?: boolean;
 }
 
+/**
+ * Hook pour gérer le lecteur audio global
+ * @param options Options du lecteur audio
+ * @returns Fonctions et état du lecteur audio
+ */
 export function useAudioPlayer(options: AudioPlayerOptions = {}) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTrackId, setCurrentTrackId] = useState<string | null>(null);
+  const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
-  const [volume, setVolume] = useState(1);
+  const [volume, setVolume] = useState(0.8); // 80% par défaut
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -34,13 +40,16 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
       
       // Événements audio
       audioRef.current.addEventListener('loadedmetadata', () => {
-        setDuration(audioRef.current?.duration || 0);
-        setIsLoading(false);
-        
-        if (options.autoplay) {
-          audioRef.current?.play()
-            .then(() => setIsPlaying(true))
-            .catch(handlePlayError);
+        if (audioRef.current) {
+          setDuration(audioRef.current.duration || 0);
+          setIsLoading(false);
+          
+          // Autoplay si spécifié dans les options
+          if (options.autoplay) {
+            audioRef.current.play()
+              .then(() => setIsPlaying(true))
+              .catch(handlePlayError);
+          }
         }
       });
       
@@ -55,6 +64,9 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
         setError('Erreur lors du chargement de l\'audio');
         if (options.onError) options.onError(e);
       });
+
+      // Initialiser le volume
+      audioRef.current.volume = volume;
     }
     
     // Nettoyer les événements à la sortie
@@ -72,7 +84,7 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
         clearInterval(intervalRef.current);
       }
     };
-  }, [options, handlePlayError]);
+  }, [options, handlePlayError, volume]);
   
   // Mise à jour de la progression
   useEffect(() => {
@@ -106,17 +118,16 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
       }
       
       // Valider l'URL de la piste
-      const audioUrl = track.file_path;
-      
-      if (!audioUrl) {
+      if (!track.presigned_url) {
         throw new Error('Impossible de charger l\'URL du fichier audio');
       }
       
       // Charger la nouvelle piste
       if (audioRef.current) {
-        audioRef.current.src = audioUrl;
+        audioRef.current.src = track.presigned_url;
         audioRef.current.load();
         setCurrentTrackId(track.track_id);
+        setCurrentTrack(track);
       }
     } catch (error) {
       console.error('Erreur lors du chargement de la piste:', error);
@@ -159,9 +170,25 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
     setCurrentTime(validSeconds);
   }, [duration]);
   
+  // Nettoyage lors du démontage du composant
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+        audioRef.current.load();
+      }
+    };
+  }, []);
+  
   return {
     isPlaying,
     currentTrackId,
+    currentTrack,
     duration,
     currentTime,
     volume,

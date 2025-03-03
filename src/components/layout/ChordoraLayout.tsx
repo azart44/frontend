@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   View, 
@@ -14,57 +14,35 @@ import {
   FaMusic, 
   FaUser, 
   FaHeart,
-  FaPlay, 
-  FaPause, 
-  FaStepForward, 
-  FaStepBackward, 
-  FaVolumeUp,
-  FaSignOutAlt
+  FaSignOutAlt,
+  FaSignInAlt
 } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
-import { useAudioPlayer } from '../../hooks/useAudioPlayer';
-import { Track } from '../../types/TrackTypes';
 
 interface ChordoraLayoutProps {
   children: React.ReactNode;
 }
 
+/**
+ * Layout principal de l'application avec menu latéral et zones de contenu
+ */
 const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated } = useAuth();
   const { signOut } = useAuthenticator(context => [context.signOut]);
-  const [currentTrack] = useState<Track | null>(null);
-  
-  // Utiliser le hook useAudioPlayer pour contrôler le player audio
-  const { 
-    isPlaying, 
-    currentTime, 
-    duration, 
-    volume,
-    togglePlay, 
-    seek, 
-    changeVolume 
-  } = useAudioPlayer({ 
-    onEnded: () => console.log('Lecture terminée') 
-  });
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   // Déterminer si le menu est actif
   const isActive = (path: string) => {
     return location.pathname === path;
   };
 
-  // Formater le temps (secondes -> MM:SS)
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
-
   // Navigation vers un chemin
-  const navigateTo = (path: string) => {
+  const navigateTo = useCallback((path: string) => {
     navigate(path);
-  };
+    setShowMobileMenu(false);
+  }, [navigate]);
 
   // Déconnexion
   const handleLogout = async () => {
@@ -76,20 +54,31 @@ const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
     }
   };
 
+  // Toggle du menu mobile
+  const toggleMobileMenu = () => {
+    setShowMobileMenu(prev => !prev);
+  };
+
   return (
     <Flex className="chordora-layout">
-      {/* Menu latéral sticky */}
+      {/* Menu latéral */}
       <View 
         className="sidebar"
         backgroundColor="#1e2024"
         color="white"
-        width="240px"
+        width={{ base: showMobileMenu ? '100%' : '0', medium: '240px' }}
         height="100vh"
-        position="fixed"
+        position={{ base: 'fixed', medium: 'sticky' }}
         left="0"
         top="0"
-        padding="1rem"
-        style={{ overflowY: 'auto' }}
+        padding={{ base: showMobileMenu ? '1rem' : '0', medium: '1rem' }}
+        style={{ 
+          overflowY: 'auto',
+          zIndex: 100,
+          transition: 'width 0.3s ease, padding 0.3s ease',
+          display: showMobileMenu ? 'block' : 'none',
+          [window.matchMedia('(min-width: 768px)').matches ? 'display' : '']: 'block'
+        }}
       >
         {/* Logo */}
         <Flex justifyContent="center" marginBottom="2rem">
@@ -104,7 +93,7 @@ const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
 
         {/* Menu principal */}
         <Flex direction="column" gap="0.5rem">
-          <Text color="#87e54c" fontWeight="bold" marginBottom="0.5rem">MAIN</Text>
+          <Text color="#87e54c" fontWeight="bold" marginBottom="0.5rem">MENU</Text>
           
           <Button
             onClick={() => navigateTo('/')}
@@ -132,7 +121,9 @@ const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
           
           {isAuthenticated && (
             <>
-              <Text color="#87e54c" fontWeight="bold" marginTop="1.5rem" marginBottom="0.5rem">LIBRARY</Text>
+              <Text color="#87e54c" fontWeight="bold" marginTop="1.5rem" marginBottom="0.5rem">
+                MON COMPTE
+              </Text>
               
               <Button
                 onClick={() => navigateTo('/profile')}
@@ -155,7 +146,7 @@ const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
                 style={{ borderRadius: '8px', padding: '0.75rem 1rem' }}
               >
                 <FaMusic style={{ marginRight: '12px' }} />
-                Ajouter un son
+                Ajouter une piste
               </Button>
               
               <Button
@@ -170,18 +161,21 @@ const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
                 Favoris
               </Button>
               
-              <View marginTop="auto" paddingTop="2rem">
-                <Button
-                  onClick={handleLogout}
-                  backgroundColor="transparent"
-                  color="white"
-                  justifyContent="flex-start"
-                  style={{ borderRadius: '8px', padding: '0.75rem 1rem' }}
-                >
-                  <FaSignOutAlt style={{ marginRight: '12px' }} />
-                  Déconnexion
-                </Button>
-              </View>
+              <Button
+                onClick={handleLogout}
+                backgroundColor="transparent"
+                color="white"
+                justifyContent="flex-start"
+                style={{ 
+                  borderRadius: '8px', 
+                  padding: '0.75rem 1rem',
+                  marginTop: 'auto',
+                  marginBottom: '2rem'
+                }}
+              >
+                <FaSignOutAlt style={{ marginRight: '12px' }} />
+                Déconnexion
+              </Button>
             </>
           )}
           
@@ -190,8 +184,16 @@ const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
               onClick={() => navigateTo('/auth')}
               backgroundColor="#3e1dfc"
               color="white"
-              style={{ borderRadius: '8px', padding: '0.75rem 1rem', marginTop: '2rem' }}
+              style={{ 
+                borderRadius: '8px', 
+                padding: '0.75rem 1rem', 
+                marginTop: '2rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
             >
+              <FaSignInAlt />
               Connexion / Inscription
             </Button>
           )}
@@ -199,127 +201,36 @@ const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
       </View>
 
       {/* Contenu principal */}
-      <View 
-        className="main-content"
+      <View
         backgroundColor="#1e2024"
         color="white"
-        marginLeft="240px" 
-        width="calc(100% - 240px)"
-        minHeight="100vh"
-        paddingBottom="80px" // Espace pour le player
+        padding={{ base: '1rem', medium: '2rem' }}
+        width="100%"
+        style={{ minHeight: '100vh' }}
       >
-        {children}
-      </View>
-
-      {/* Player audio fixé en bas */}
-      {currentTrack && (
-        <View
-          className="audio-player"
+        {/* Bouton de menu hamburger sur mobile */}
+        <Button
+          onClick={toggleMobileMenu}
+          display={{ base: 'flex', medium: 'none' }}
           position="fixed"
-          bottom="0"
-          left="0"
-          right="0"
-          height="80px"
-          backgroundColor="#121416"
-          padding="0 1rem"
+          top="1rem"
+          left="1rem"
           style={{ 
-            borderTop: "1px solid #2a2d36",
-            zIndex: 1000 
+            backdropFilter: 'blur(5px)',
+            backgroundColor: 'rgba(30, 32, 36, 0.8)',
+            zIndex: 10
           }}
+          size="small"
+          variation="link"
         >
-          <Flex height="100%" alignItems="center" justifyContent="space-between">
-            {/* Informations sur la piste en cours */}
-            <Flex alignItems="center" flex="1" maxWidth="30%">
-              <Image
-                src={currentTrack.cover_image || "/default-cover.jpg"}
-                alt={currentTrack.title}
-                width="50px"
-                height="50px"
-                style={{ objectFit: 'cover', borderRadius: '4px' }}
-                marginRight="1rem"
-              />
-              <Flex direction="column">
-                <Text fontSize="0.9rem" fontWeight="bold" isTruncated>{currentTrack.title}</Text>
-                <Text fontSize="0.8rem" color="#87e54c" isTruncated>{currentTrack.genre}</Text>
-              </Flex>
-            </Flex>
-
-            {/* Contrôles de lecture */}
-            <Flex direction="column" flex="2" alignItems="center">
-              <Flex alignItems="center" gap="1rem">
-                <Button
-                  backgroundColor="transparent"
-                  color="white"
-                  padding="0"
-                  onClick={() => console.log('Previous track')}
-                >
-                  <FaStepBackward size={14} />
-                </Button>
-                
-                <Button
-                  backgroundColor="#3e1dfc"
-                  color="white"
-                  size="small"
-                  borderRadius="50%"
-                  width="36px"
-                  height="36px"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  onClick={togglePlay}
-                >
-                  {isPlaying ? <FaPause size={14} /> : <FaPlay size={14} />}
-                </Button>
-                
-                <Button
-                  backgroundColor="transparent"
-                  color="white"
-                  padding="0"
-                  onClick={() => console.log('Next track')}
-                >
-                  <FaStepForward size={14} />
-                </Button>
-              </Flex>
-              
-              <Flex alignItems="center" width="100%" gap="0.5rem">
-                <Text fontSize="0.7rem" color="#808080">{formatTime(currentTime)}</Text>
-                <input
-                  type="range"
-                  min="0"
-                  max={duration || 1}
-                  value={currentTime}
-                  onChange={(e) => seek(parseFloat(e.target.value))}
-                  style={{ 
-                    flex: 1, 
-                    height: '4px',
-                    accentColor: '#87e54c', 
-                    background: 'linear-gradient(to right, #87e54c 0%, #87e54c ' + (currentTime / duration * 100) + '%, #333 ' + (currentTime / duration * 100) + '%, #333 100%)'
-                  }}
-                />
-                <Text fontSize="0.7rem" color="#808080">{formatTime(duration)}</Text>
-              </Flex>
-            </Flex>
-
-            {/* Contrôle du volume */}
-            <Flex alignItems="center" gap="0.5rem" flex="1" maxWidth="20%" justifyContent="flex-end">
-              <FaVolumeUp color="#808080" />
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={volume}
-                onChange={(e) => changeVolume(parseFloat(e.target.value))}
-                style={{ 
-                  width: '80px', 
-                  accentColor: '#3e1dfc',
-                  height: '4px' 
-                }}
-              />
-            </Flex>
-          </Flex>
+          {showMobileMenu ? '×' : '☰'}
+        </Button>
+        
+        {/* Contenu de la page */}
+        <View paddingTop={{ base: '3rem', medium: '0' }}>
+          {children}
         </View>
-      )}
+      </View>
     </Flex>
   );
 };

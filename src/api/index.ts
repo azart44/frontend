@@ -6,7 +6,7 @@ import { fetchAuthSession } from 'aws-amplify/auth';
  * et des logs de performance
  */
 const API_BASE_URL = 'https://z8qzoeztpc.execute-api.us-east-1.amazonaws.com/prod';
-const API_TIMEOUT = 15000; // Augmenté à 15 secondes pour les requêtes impliquant des images
+const API_TIMEOUT = 15000; // 15 secondes pour les requêtes impliquant des images
 
 // Instance axios avec configuration optimisée
 export const apiClient = axios.create({
@@ -15,7 +15,6 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  // Désactiver temporairement withCredentials
   withCredentials: false
 });
 
@@ -25,8 +24,7 @@ apiClient.interceptors.request.use(async (config) => {
   config.metadata = { startTime: performance.now() };
   
   try {
-    // Ne pas ajouter manuellement l'en-tête Origin - le navigateur le fait automatiquement
-    
+    // Récupérer le token d'authentification
     const session = await fetchAuthSession();
     const token = session.tokens?.idToken?.toString();
     if (token) {
@@ -64,7 +62,7 @@ apiClient.interceptors.response.use(
         // Éviter les redirections en boucle
         if (window.location.pathname !== '/auth') {
           console.log('Session expirée, redirection vers la page de connexion');
-          // window.location.href = '/auth';
+          // Possibilité d'implémenter une redirection automatique ici
         }
       }
     } else if (error.request) {

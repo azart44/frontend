@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import { Authenticator } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
 import { AuthProvider } from './contexts/AuthContext';
+import { AudioProvider } from './contexts/AudioContext';
 import { useAuth } from './contexts/AuthContext';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './utils/queryClient';
@@ -60,57 +61,59 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <Authenticator.Provider>
         <AuthProvider>
-          <Router>
-            <ChordoraLayout>
-              <Suspense fallback={<Loading />}>
-                <Routes>
-                  {/* Routes publiques */}
-                  <Route path="/" element={<Home />} />
-                  <Route path="/auth" element={<AuthPage />} />
-                  <Route path="/profile/:userId" element={<Profile />} />
-                  
-                  {/* Routes qui nécessitent une authentification */}
-                  <Route 
-                    path="/complete-profile" 
-                    element={
-                      <PrivateRoute>
-                        <CompleteProfile />
-                      </PrivateRoute>
-                    } 
-                  />
-                  
-                  {/* Routes qui nécessitent un profil complet */}
-                  <Route 
-                    path="/profile" 
-                    element={
-                      <ProfileCompletionRoute>
-                        <Profile />
-                      </ProfileCompletionRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/users" 
-                    element={
-                      <ProfileCompletionRoute>
-                        <UserList />
-                      </ProfileCompletionRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/add-track" 
-                    element={
-                      <ProfileCompletionRoute>
-                        <TrackUpload />
-                      </ProfileCompletionRoute>
-                    } 
-                  />
-                  
-                  {/* Fallback pour les routes inconnues */}
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </Suspense>
-            </ChordoraLayout>
-          </Router>
+          <AudioProvider>
+            <Router>
+              <ChordoraLayout>
+                <Suspense fallback={<Loading />}>
+                  <Routes>
+                    {/* Routes publiques */}
+                    <Route path="/" element={<Home />} />
+                    <Route path="/auth" element={<AuthPage />} />
+                    <Route path="/profile/:userId" element={<Profile />} />
+                    
+                    {/* Routes qui nécessitent une authentification */}
+                    <Route 
+                      path="/complete-profile" 
+                      element={
+                        <PrivateRoute>
+                          <CompleteProfile />
+                        </PrivateRoute>
+                      } 
+                    />
+                    
+                    {/* Routes qui nécessitent un profil complet */}
+                    <Route 
+                      path="/profile" 
+                      element={
+                        <ProfileCompletionRoute>
+                          <Profile />
+                        </ProfileCompletionRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/users" 
+                      element={
+                        <ProfileCompletionRoute>
+                          <UserList />
+                        </ProfileCompletionRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/add-track" 
+                      element={
+                        <ProfileCompletionRoute>
+                          <TrackUpload />
+                        </ProfileCompletionRoute>
+                      } 
+                    />
+                    
+                    {/* Fallback pour les routes inconnues */}
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </Suspense>
+              </ChordoraLayout>
+            </Router>
+          </AudioProvider>
         </AuthProvider>
       </Authenticator.Provider>
     </QueryClientProvider>

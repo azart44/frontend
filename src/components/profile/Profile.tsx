@@ -8,14 +8,21 @@ import {
   Card,
   Flex,
   Loader,
-  Alert
+  Alert,
+  Image,
+  Badge,
+  Divider
 } from '@aws-amplify/ui-react';
 import { useUserProfile } from '../../hooks/useProfile';
-import ProfileCard from './ProfileCard';
 import EditProfileForm from './EditProfileForm';
 import TrackList from '../track/TrackList';
 import { useAuth } from '../../contexts/AuthContext';
+import { FaEdit, FaMapMarkerAlt, FaToolbox, FaMusic, FaTag } from 'react-icons/fa';
 
+/**
+ * Composant d'affichage d'un profil utilisateur
+ * Gère à la fois l'affichage du profil personnel et des profils d'autres utilisateurs
+ */
 const Profile: React.FC = () => {
   const navigate = useNavigate();
   const { userId: urlUserId } = useParams<{ userId?: string }>();
@@ -23,9 +30,12 @@ const Profile: React.FC = () => {
   
   const [isEditing, setIsEditing] = useState(false);
   const [showDebugInfo, setShowDebugInfo] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
+  // ID de l'utilisateur ciblé (celui de l'URL ou l'utilisateur authentifié)
   const targetUserId = urlUserId || authUserId;
 
+  // Récupération du profil utilisateur
   const { 
     data: profile, 
     isLoading, 
@@ -33,49 +43,45 @@ const Profile: React.FC = () => {
     refetch
   } = useUserProfile(targetUserId);
 
+  // Détermine si c'est le propre profil de l'utilisateur
   const isOwnProfile = useMemo(() => {
     return !urlUserId || urlUserId === authUserId;
   }, [urlUserId, authUserId]);
 
+  // Gestion de la mise à jour du profil
   const handleProfileUpdate = async () => {
     await refetch();
     setIsEditing(false);
   };
 
+  // Logging à des fins de débogage
   useEffect(() => {
-    console.log('Profile component - Auth state:', { isAuthenticated, authUserId });
-    console.log('Profile component - Target userId:', targetUserId);
-    console.log('Profile component - URL userId:', urlUserId);
-    console.log('Profile component - Profile data:', profile);
-  }, [isAuthenticated, authUserId, targetUserId, urlUserId, profile]);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Profile component - Auth state:', { isAuthenticated, authUserId });
+      console.log('Profile component - Target userId:', targetUserId);
+      console.log('Profile component - URL userId:', urlUserId);
+      console.log('Profile component - Is own profile:', isOwnProfile);
+      console.log('Profile component - Profile data:', profile);
+    }
+  }, [isAuthenticated, authUserId, targetUserId, urlUserId, profile, isOwnProfile]);
 
+  // Affichage du loader pendant le chargement
   if (isLoading) {
     return (
-      <View padding="2rem">
-        <Loader />
+      <View padding="2rem" textAlign="center">
+        <Loader size="large" />
         <Text textAlign="center" marginTop="1rem">Chargement du profil...</Text>
       </View>
     );
   }
 
+  // Gestion des erreurs
   if (error) {
     return (
       <View padding="2rem">
         <Alert variation="error" heading="Erreur">
           Une erreur est survenue lors du chargement du profil.
         </Alert>
-        
-        <Button onClick={() => setShowDebugInfo(!showDebugInfo)} marginTop="1rem">
-          {showDebugInfo ? 'Masquer les détails d\'erreur' : 'Afficher les détails d\'erreur'}
-        </Button>
-        
-        {showDebugInfo && (
-          <Card variation="outlined" marginTop="1rem">
-            <pre style={{ whiteSpace: 'pre-wrap', overflow: 'auto' }}>
-              {JSON.stringify(error, null, 2)}
-            </pre>
-          </Card>
-        )}
         
         <Button onClick={() => navigate(-1)} marginTop="1rem">
           Retour
@@ -84,10 +90,12 @@ const Profile: React.FC = () => {
     );
   }
 
+  // Redirection vers le formulaire de complétion de profil si nécessaire
   if (!profile && isOwnProfile) {
     return <Navigate to="/complete-profile" replace />;
   }
 
+  // Gestion du cas où le profil n'existe pas
   if (!profile) {
     return (
       <View padding="2rem">
@@ -106,54 +114,263 @@ const Profile: React.FC = () => {
     );
   }
 
+  // Si en mode édition, afficher le formulaire d'édition
+  if (isEditing) {
+    return (
+      <EditProfileForm 
+        userProfile={profile} 
+        onCancel={() => setIsEditing(false)}
+        onSuccess={handleProfileUpdate}
+      />
+    );
+  }
+
+  // URL de l'image de profil avec gestion d'erreur
+  const profileImageSrc = imageError || !profile.profileImageUrl 
+    ? '/default-profile.jpg' 
+    : profile.profileImageUrl;
+
+  // Affichage du profil
   return (
     <View padding="2rem">
-      {isEditing ? (
-        <EditProfileForm 
-          userProfile={profile} 
-          onCancel={() => setIsEditing(false)}
-          onSuccess={handleProfileUpdate}
-        />
-      ) : (
-        <>
-          <Flex direction="column" gap="2rem">
-            <Heading level={2} textAlign="center">
-              {profile.username ? profile.username : 'Profil Utilisateur'}
-            </Heading>
+      <Flex direction="column" gap="2rem">
+        {/* En-tête du profil */}
+        <Card padding="2rem">
+          <Flex direction={{ base: 'column', medium: 'row' }} gap="2rem" alignItems="center">
+            {/* Image de profil */}
+            <Image
+              src={profileImageSrc}
+              alt={`${profile.username || 'Utilisateur'} profile`}
+              width="150px"
+              height="150px"
+              style={{ 
+                objectFit: 'cover',
+                borderRadius: '50%' 
+              }}
+              onError={() => setImageError(true)}
+            />
             
-            <ProfileCard profile={profile} />
+            {/* Informations principales */}
+            <Flex direction="column" flex="1" gap="0.5rem">
+              <Heading level={2}>
+                {profile.username || `User_${profile.userId?.substring(0, 6)}`}
+              </Heading>
+              
+              <Flex gap="0.5rem" wrap="wrap">
+                {profile.userType && (
+                  <Badge variation="info">{profile.userType}</Badge>
+                )}
+                {profile.experienceLevel && (
+                  <Badge variation="success">{profile.experienceLevel}</Badge>
+                )}
+              </Flex>
+              
+              {profile.bio && (
+                <Text marginTop="0.5rem">
+                  {profile.bio}
+                </Text>
+              )}
+              
+              {profile.location && (
+                <Flex alignItems="center" gap="0.5rem" marginTop="0.5rem">
+                  <FaMapMarkerAlt size={14} />
+                  <Text>{profile.location}</Text>
+                </Flex>
+              )}
+              
+              {/* Tags */}
+              {profile.tags && profile.tags.length > 0 && (
+                <Flex gap="0.5rem" wrap="wrap" marginTop="0.5rem" alignItems="center">
+                  <FaTag size={14} />
+                  {profile.tags.map(tag => (
+                    <Badge 
+                      key={tag} 
+                      variation="warning"
+                      size="small"
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
+                </Flex>
+              )}
+            </Flex>
             
+            {/* Bouton d'édition (uniquement pour son propre profil) */}
             {isOwnProfile && (
-              <Button onClick={() => setIsEditing(true)}>
+              <Button 
+                onClick={() => setIsEditing(true)}
+                variation="primary"
+                size="small"
+              >
+                <FaEdit style={{ marginRight: '0.5rem' }} />
                 Modifier mon profil
               </Button>
             )}
-            
-            <Heading level={3}>Pistes</Heading>
-            {targetUserId && <TrackList userId={targetUserId} />}
           </Flex>
-        </>
-      )}
-      
-      {process.env.NODE_ENV === 'development' && (
-        <Button onClick={() => setShowDebugInfo(!showDebugInfo)} marginTop="2rem" variation="link" size="small">
-          {showDebugInfo ? 'Masquer les infos de débogage' : 'Afficher les infos de débogage'}
-        </Button>
-      )}
-      
-      {showDebugInfo && (
-        <Card variation="outlined" marginTop="1rem">
-          <Text fontWeight="bold">Informations de débogage</Text>
-          <Text>ID utilisateur ciblé: {targetUserId || 'Non disponible'}</Text>
-          <Text>ID utilisateur courant: {authUserId || 'Non disponible'}</Text>
-          <Text>ID utilisateur URL: {urlUserId || 'Non disponible'}</Text>
-          <Text>Est mon profil: {isOwnProfile ? 'Oui' : 'Non'}</Text>
-          <Text>Pseudo: {profile.username || 'Non défini'}</Text>
-          <pre style={{ whiteSpace: 'pre-wrap', overflow: 'auto', fontSize: '0.8rem' }}>
-            {JSON.stringify(profile, null, 2)}
-          </pre>
         </Card>
-      )}
+        
+        {/* Informations supplémentaires */}
+        <Card padding="1.5rem">
+          <Heading level={4} marginBottom="1rem">Détails musicaux</Heading>
+          
+          <Flex gap="2rem" wrap="wrap">
+            {/* Genres musicaux */}
+            {((profile.musicGenres && profile.musicGenres.length > 0) || profile.musicGenre) && (
+              <View>
+                <Flex alignItems="center" gap="0.5rem">
+                  <FaMusic size={16} />
+                  <Heading level={5}>Genres musicaux</Heading>
+                </Flex>
+                <Flex gap="0.5rem" marginTop="0.5rem" wrap="wrap">
+                  {profile.musicGenres && profile.musicGenres.map(genre => (
+                    <Badge key={genre} variation="info">{genre}</Badge>
+                  ))}
+                  {profile.musicGenre && !profile.musicGenres?.includes(profile.musicGenre) && (
+                    <Badge variation="info">{profile.musicGenre}</Badge>
+                  )}
+                </Flex>
+              </View>
+            )}
+            
+            {/* Mood musical */}
+            {profile.musicalMood && (
+              <View>
+                <Heading level={5}>Mood musical</Heading>
+                <Text marginTop="0.5rem">{profile.musicalMood}</Text>
+              </View>
+            )}
+            
+            {/* Équipement */}
+            {profile.equipment && profile.equipment.length > 0 && (
+              <View>
+                <Flex alignItems="center" gap="0.5rem">
+                  <FaToolbox size={16} />
+                  <Heading level={5}>Équipement</Heading>
+                </Flex>
+                <Flex gap="0.5rem" marginTop="0.5rem" wrap="wrap">
+                  {profile.equipment.map(item => (
+                    <Badge key={item} variation="warning">{item}</Badge>
+                  ))}
+                </Flex>
+              </View>
+            )}
+            
+            {/* Logiciel */}
+            {profile.software && (
+              <View>
+                <Heading level={5}>Logiciel principal</Heading>
+                <Text marginTop="0.5rem">{profile.software}</Text>
+              </View>
+            )}
+          </Flex>
+          
+          {/* Artistes favoris */}
+          {profile.favoriteArtists && profile.favoriteArtists.some(artist => artist) && (
+            <>
+              <Divider marginTop="1.5rem" marginBottom="1.5rem" />
+              <Heading level={5}>Artistes favoris</Heading>
+              <Text marginTop="0.5rem">
+                {profile.favoriteArtists.filter(Boolean).join(', ')}
+              </Text>
+            </>
+          )}
+          
+          {/* Réseaux sociaux */}
+          {profile.socialLinks && Object.values(profile.socialLinks).some(link => link) && (
+            <>
+              <Divider marginTop="1.5rem" marginBottom="1.5rem" />
+              <Heading level={5}>Réseaux sociaux</Heading>
+              <Flex gap="1rem" marginTop="0.5rem" wrap="wrap">
+                {profile.socialLinks.instagram && (
+                  <Button
+                    as="a"
+                    href={profile.socialLinks.instagram}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variation="link"
+                  >
+                    Instagram
+                  </Button>
+                )}
+                {profile.socialLinks.soundcloud && (
+                  <Button
+                    as="a"
+                    href={profile.socialLinks.soundcloud}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variation="link"
+                  >
+                    SoundCloud
+                  </Button>
+                )}
+                {profile.socialLinks.youtube && (
+                  <Button
+                    as="a"
+                    href={profile.socialLinks.youtube}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variation="link"
+                  >
+                    YouTube
+                  </Button>
+                )}
+                {profile.socialLinks.twitter && (
+                  <Button
+                    as="a"
+                    href={profile.socialLinks.twitter}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variation="link"
+                  >
+                    Twitter
+                  </Button>
+                )}
+              </Flex>
+            </>
+          )}
+        </Card>
+        
+        {/* Pistes audio de l'utilisateur */}
+        <View>
+          <Heading level={3} marginBottom="1rem">Pistes</Heading>
+          {targetUserId && <TrackList userId={targetUserId} />}
+        </View>
+        
+        {/* Information de débogage (uniquement en développement) */}
+        {process.env.NODE_ENV === 'development' && (
+          <>
+            <Button 
+              onClick={() => setShowDebugInfo(!showDebugInfo)} 
+              marginTop="2rem" 
+              variation="link" 
+              size="small"
+            >
+              {showDebugInfo ? 'Masquer les infos de débogage' : 'Afficher les infos de débogage'}
+            </Button>
+            
+            {showDebugInfo && (
+              <Card variation="outlined" marginTop="1rem">
+                <Text fontWeight="bold">Informations de débogage</Text>
+                <Text>ID utilisateur ciblé: {targetUserId || 'Non disponible'}</Text>
+                <Text>ID utilisateur courant: {authUserId || 'Non disponible'}</Text>
+                <Text>ID utilisateur URL: {urlUserId || 'Non disponible'}</Text>
+                <Text>Est mon profil: {isOwnProfile ? 'Oui' : 'Non'}</Text>
+                <Text>Pseudo: {profile.username || 'Non défini'}</Text>
+                <pre style={{ 
+                  whiteSpace: 'pre-wrap', 
+                  overflow: 'auto', 
+                  fontSize: '0.8rem',
+                  background: '#f0f0f0',
+                  padding: '1rem',
+                  borderRadius: '4px'
+                }}>
+                  {JSON.stringify(profile, null, 2)}
+                </pre>
+              </Card>
+            )}
+          </>
+        )}
+      </Flex>
     </View>
   );
 };

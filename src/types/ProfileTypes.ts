@@ -1,5 +1,5 @@
 export interface UserProfile {
-  // Identifiant
+  // Identifiants
   userId: string;
   email: string;
 
@@ -12,6 +12,7 @@ export interface UserProfile {
 
   // Préférences musicales
   musicGenres?: string[];
+  musicGenre?: string; // Compatibilité avec l'ancien format
   musicalMood?: string;
   tags?: string[];
   favoriteArtists?: string[];
@@ -22,7 +23,7 @@ export interface UserProfile {
 
   // Médias et images
   profileImageUrl?: string;     // URL présignée S3
-  profileImageBase64?: string;  // Alternative au format base64 (rétrocompatibilité)
+  profileImageBase64?: string;  // Pour l'upload d'image
   bannerImageUrl?: string;      // URL pour la bannière du profil
   
   // Réseaux sociaux
@@ -33,7 +34,7 @@ export interface UserProfile {
     twitter?: string;
     spotify?: string;
     tiktok?: string;
-    [key: string]: string | undefined; // Pour toute autre plateforme
+    [key: string]: string | undefined;
   };
 
   // Indicateurs d'état

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '../api';
+import * as ProfileAPI from '../api/profile';
 import { UserProfile } from '../types/ProfileTypes';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -9,21 +9,6 @@ const profileKeys = {
   profile: (userId: string | undefined) => [...profileKeys.all, userId] as const,
   search: (term: string) => [...profileKeys.all, 'search', term] as const,
   list: (filter?: string) => [...profileKeys.all, 'list', filter || 'all'] as const
-};
-
-/**
- * Fonction utilitaire pour ajouter une extension d'image si nécessaire
- */
-const ensureImageExtension = (url: string | undefined): string | undefined => {
-  if (!url) return url;
-  
-  // Si l'URL a déjà une extension connue, la retourner telle quelle
-  if (/\.(jpg|jpeg|png|webp|gif)$/i.test(url)) {
-    return url;
-  }
-  
-  // Sinon, ajouter .jpg comme extension par défaut
-  return `${url}.jpg`;
 };
 
 /**
@@ -45,12 +30,9 @@ export const useUserProfile = (userId?: string | null) => {
 
       try {
         console.log('Récupération du profil avec userId:', targetUserId);
-        const response = await apiClient.get<UserProfile>(`/user-profile/${targetUserId}`);
-        
-        // Traiter l'URL de l'image si elle existe
-        if (response.data && response.data.profileImageUrl) {
-          response.data.profileImageUrl = ensureImageExtension(response.data.profileImageUrl);
-        }
+        const response = targetUserId === authUserId
+          ? await ProfileAPI.getMyProfile()
+          : await ProfileAPI.getProfileById(targetUserId);
         
         // Si c'est le profil de l'utilisateur courant, mettre à jour également dans le contexte
         if (targetUserId === authUserId && updateLocalProfile) {
@@ -91,19 +73,7 @@ export const useSearchProfiles = (searchTerm: string, options?: { enabled?: bool
         return [];
       }
       
-      const response = await apiClient.get('/search-profiles', {
-        params: { term: searchTerm }
-      });
-      
-      // S'assurer que les URLs d'images ont des extensions
-      if (response.data && Array.isArray(response.data)) {
-        response.data.forEach((profile: any) => {
-          if (profile.profileImageUrl) {
-            profile.profileImageUrl = ensureImageExtension(profile.profileImageUrl);
-          }
-        });
-      }
-      
+      const response = await ProfileAPI.searchProfiles(searchTerm);
       return response.data;
     },
     enabled: !!searchTerm && searchTerm.length >= 2 && (options?.enabled !== false),
@@ -114,35 +84,16 @@ export const useSearchProfiles = (searchTerm: string, options?: { enabled?: bool
 /**
  * Hook pour lister tous les utilisateurs avec filtres optionnels
  */
-export const useListProfiles = (filter?: string) => {
+export const useListProfiles = (filters?: Record<string, string>) => {
   return useQuery({
-    queryKey: profileKeys.list(filter),
+    queryKey: profileKeys.list(JSON.stringify(filters)),
     queryFn: async () => {
-      const params = filter ? { filter } : undefined;
-      const response = await apiClient.get('/get-all-users', { params });
-      
-      // S'assurer que les URLs d'images ont des extensions
-      if (response.data && Array.isArray(response.data)) {
-        response.data.forEach((profile: any) => {
-          if (profile.profileImageUrl) {
-            profile.profileImageUrl = ensureImageExtension(profile.profileImageUrl);
-          }
-        });
-      }
-      
+      const response = await ProfileAPI.getAllUsers(filters);
       return response.data;
     },
     staleTime: 5 * 60 * 1000 // 5 minutes
   });
 };
-
-/**
- * Type pour traiter correctement null ou undefined dans userId
- */
-interface ProfileUpdateData {
-  userId?: string;
-  [key: string]: any;
-}
 
 /**
  * Hook pour mettre à jour un profil
@@ -153,32 +104,14 @@ export const useUpdateProfile = () => {
 
   return useMutation({
     mutationFn: async (profileData: Partial<UserProfile>) => {
-      // S'assurer que userId est correctement défini (remplacer null par undefined)
-      const cleanUserId = profileData.userId || authUserId || undefined;
-      
-      const updatedProfileData: ProfileUpdateData = {
+      // S'assurer que userId est correctement défini (non null)
+      const cleanProfileData = {
         ...profileData,
-        userId: cleanUserId
+        userId: profileData.userId || authUserId || undefined
       };
       
-      // Si l'URL de l'image ne contient pas d'extension, en ajouter une
-      if (updatedProfileData.profileImageUrl) {
-        updatedProfileData.profileImageUrl = ensureImageExtension(updatedProfileData.profileImageUrl);
-      }
-      
-      // Log les données avant envoi
-      console.log('Mise à jour du profil avec les données:', updatedProfileData);
-      
-      const response = await apiClient.post('/user-profile', { 
-        profileData: updatedProfileData 
-      });
-      
-      // S'assurer que l'URL de l'image dans la réponse a une extension
-      if (response.data && response.data.updatedProfile && response.data.updatedProfile.profileImageUrl) {
-        response.data.updatedProfile.profileImageUrl = ensureImageExtension(
-          response.data.updatedProfile.profileImageUrl
-        );
-      }
+      console.log('Mise à jour du profil avec les données:', cleanProfileData);
+      const response = await ProfileAPI.updateProfile(cleanProfileData);
       
       // Mettre à jour le profil local dans le contexte
       if (updateLocalProfile && response.data && response.data.updatedProfile) {
@@ -191,7 +124,7 @@ export const useUpdateProfile = () => {
       console.log('Profil mis à jour avec succès:', data);
       
       // Invalider les requêtes correspondantes
-      const targetUserId = variables.userId || authUserId || undefined;
+      const targetUserId = variables.userId || authUserId;
       
       if (targetUserId) {
         queryClient.invalidateQueries({ 
@@ -199,23 +132,15 @@ export const useUpdateProfile = () => {
         });
       }
       
-      // Si c'est un profil public, invalider également la liste des utilisateurs
-      if (variables.userType || variables.tags || variables.musicGenres) {
-        queryClient.invalidateQueries({ 
-          queryKey: profileKeys.list(),
-        });
-      }
+      // Invalider également la liste des utilisateurs si nécessaire
+      queryClient.invalidateQueries({ 
+        queryKey: profileKeys.list(),
+      });
       
       return data;
     },
     onError: (error: any) => {
       console.error('Erreur lors de la mise à jour du profil:', error);
-      if (error.response) {
-        console.error('Détail de l\'erreur serveur:', {
-          status: error.response.status,
-          data: error.response.data
-        });
-      }
       throw error;
     }
   });

@@ -12,6 +12,7 @@ import {
   fetchAuthSession 
 } from 'aws-amplify/auth';
 import { UserProfile } from '../types/ProfileTypes';
+import { getMyProfile } from '../api/profile';
 
 // Interface définissant la structure de l'état d'authentification
 interface AuthState {
@@ -100,24 +101,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!userId) {
           throw new Error('ID utilisateur non disponible');
         }
-
-        // Pour notre exemple, nous définissons simplement le profil sans appel API
-        // Dans une application réelle, vous feriez un appel API ici
-        const mockProfile: UserProfile = {
-          userId,
-          email: attributes.email || '',
-          username: attributes.preferred_username || `User_${userId.slice(-6)}`,
-          profileCompleted: attributes['custom:profileCompleted'] === 'true'
-        };
+        
+        // Récupérer le profil de l'utilisateur depuis l'API
+        let userProfile: UserProfile | null = null;
+        try {
+          const profileResponse = await getMyProfile();
+          userProfile = profileResponse.data;
+          console.log('Profil récupéré:', userProfile);
+        } catch (profileError) {
+          console.warn('Impossible de récupérer le profil utilisateur:', profileError);
+          // Créer un profil minimal à partir des attributs Cognito
+          userProfile = {
+            userId,
+            email: attributes.email || '',
+            username: attributes.preferred_username || `User_${userId.slice(-6)}`,
+            profileCompleted: attributes['custom:profileCompleted'] === 'true'
+          };
+        }
 
         // Mettre à jour l'état avec le profil
         setState({
           isAuthenticated: true,
           isLoading: false,
-          isProfileComplete: mockProfile.profileCompleted || false,
+          isProfileComplete: userProfile.profileCompleted || false,
           userId,
           userEmail: attributes.email || null,
-          userProfile: mockProfile,
+          userProfile,
           error: null
         });
       } catch (error: any) {
