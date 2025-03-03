@@ -13,7 +13,7 @@ import {
 } from '@aws-amplify/ui-react';
 import { 
   deleteUser, 
-  updatePassword 
+  updatePassword
 } from 'aws-amplify/auth';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -40,10 +40,11 @@ const AccountSettings: React.FC = () => {
   // États pour la suppression de compte
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
-  const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
+  const [deleteConfirmCode, setDeleteConfirmCode] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleteLoading, setIsDeleteLoading] = useState(false);
   const [currentDeleteStep, setCurrentDeleteStep] = useState(1);
+  const [deleteEmailSent, setDeleteEmailSent] = useState(false);
   
   // Validation du mot de passe
   const validatePasswordChange = () => {
@@ -129,7 +130,7 @@ const AccountSettings: React.FC = () => {
     setIsDeleteLoading(true);
     
     try {
-      // 1. Supprimer le profil et toutes les données associées
+      // 1. Supprimer les données du profil (avant la suppression du compte Cognito)
       if (authUserId) {
         try {
           await deleteProfile(authUserId);
@@ -140,12 +141,17 @@ const AccountSettings: React.FC = () => {
         }
       }
       
-      // 2. Supprimer le compte Cognito
-      await deleteUser();
+      // 2. Initier la suppression du compte
+      // Note: Dans Amplify v6, deleteUser n'accepte pas de paramètres
+      // mais nous devons simuler un processus en deux étapes
       
-      // Passer à la deuxième étape (code de confirmation)
+      // Simuler l'envoi d'un email en passant directement à l'étape 2
+      setDeleteEmailSent(true);
       setCurrentDeleteStep(2);
       setDeleteError(null);
+      
+      // Dans une vraie implémentation, vous devriez ici appeler une API backend
+      // qui enverrait un code par email à l'utilisateur
     } catch (error: any) {
       console.error('Erreur lors de l\'initiation de suppression:', error);
       
@@ -165,7 +171,7 @@ const AccountSettings: React.FC = () => {
   const handleDeleteStep2 = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!deleteConfirmInput) {
+    if (!deleteConfirmCode) {
       setDeleteError('Veuillez saisir le code de confirmation');
       return;
     }
@@ -173,9 +179,16 @@ const AccountSettings: React.FC = () => {
     setIsDeleteLoading(true);
     
     try {
-      // Pour Amplify v6, nous devons utiliser signOut après deleteUser
-      // car il n'y a pas de confirmDeleteUser
+      // Dans une vraie implémentation, vous devriez vérifier le code
+      // via votre backend ou un service de vérification
+      
+      // Pour ce prototype, nous allons simplement supprimer le compte directement
+      await deleteUser();
+      
+      // Déconnexion après suppression réussie
       await signOut();
+      
+      // Rediriger vers la page d'accueil
       navigate('/', { replace: true });
     } catch (error: any) {
       console.error('Erreur lors de la confirmation de suppression:', error);
@@ -197,9 +210,10 @@ const AccountSettings: React.FC = () => {
   const handleCancelDelete = () => {
     setShowDeleteConfirm(false);
     setDeletePassword('');
-    setDeleteConfirmInput('');
+    setDeleteConfirmCode('');
     setDeleteError(null);
     setCurrentDeleteStep(1);
+    setDeleteEmailSent(false);
   };
   
   return (
@@ -378,9 +392,9 @@ const AccountSettings: React.FC = () => {
                   
                   <TextField
                     label="Code de confirmation"
-                    name="deleteConfirmInput"
-                    value={deleteConfirmInput}
-                    onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                    name="deleteConfirmCode"
+                    value={deleteConfirmCode}
+                    onChange={(e) => setDeleteConfirmCode(e.target.value)}
                     required
                   />
                   
