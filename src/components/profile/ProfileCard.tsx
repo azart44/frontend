@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Card, 
   Heading, 
@@ -9,6 +9,7 @@ import {
   Loader,
   View
 } from '@aws-amplify/ui-react';
+import { getUrl } from 'aws-amplify/storage';
 import { UserProfile } from '../../types/ProfileTypes';
 
 interface ProfileCardProps {
@@ -22,102 +23,89 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
   isPreview = false,
   showExtendedInfo = true 
 }) => {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
-  const [imageLoading, setImageLoading] = useState(true);
-  
-  // Fonction pour tester les différentes extensions possibles
-  const tryImageExtensions = (baseUrl: string) => {
-    // Si l'URL contient déjà une extension connue, la retourner telle quelle
-    if (/\.(jpg|jpeg|png|webp|gif)$/i.test(baseUrl)) {
-      return baseUrl;
-    }
-    
-    // Sinon, ajouter .jpg comme extension par défaut
-    return `${baseUrl}.jpg`;
-  };
-  
-  // Memoize the profile image source
-  const profileImageSrc = useMemo(() => {
-    // Si erreur détectée, utiliser l'image par défaut locale
-    if (imageError) {
-      return '/default-profile.jpg';
-    }
-    
-    // Premier choix: l'URL présignée du serveur
-    if (profile.profileImageUrl) {
-      return tryImageExtensions(profile.profileImageUrl);
-    }
-    
-    // Deuxième choix: si nous avons des données base64
-    if (profile.profileImageBase64) {
-      return profile.profileImageBase64.startsWith('data:') 
-        ? profile.profileImageBase64 
-        : `data:image/jpeg;base64,${profile.profileImageBase64}`;
-    }
-    
-    // Fallback: image par défaut locale
-    return '/default-profile.jpg';
-  }, [profile.profileImageUrl, profile.profileImageBase64, imageError]);
-  
-  const handleImageError = () => {
-    console.error('Erreur lors du chargement de l\'image de profil:', {
-      profileImageUrl: profile.profileImageUrl,
-      hasBase64: !!profile.profileImageBase64,
-      formattedUrl: profileImageSrc
-    });
-    setImageError(true);
-    setImageLoading(false);
-  };
-  
-  const handleImageLoad = () => {
-    setImageLoading(false);
-  };
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Dimensions de l'image selon le mode
+  // Extraire le chemin de l'image de profil sans slash initial
+  const profileImageKey = useMemo(() => {
+    if (profile.profileImageUrl) {
+      // Extraire la clé S3 à partir de l'URL complète
+      const matches = profile.profileImageUrl.match(/\/public\/users\/([^/]+)\/profile-image/);
+      const key = matches ? matches[0].replace(/^\//, '') : null;
+      return key;
+    }
+    return null;
+  }, [profile.profileImageUrl]);
+
+  // Récupérer l'URL signée
+  useEffect(() => {
+    const fetchImageUrl = async () => {
+      // Fallback sur l'image base64 ou l'image par défaut
+      const fallbackToDefault = () => {
+        if (profile.profileImageBase64) {
+          setImageUrl(profile.profileImageBase64);
+        } else {
+          setImageUrl('/default-profile.jpg');
+        }
+        setIsLoading(false);
+      };
+
+      // Si aucune clé d'image, utiliser le fallback
+      if (!profileImageKey) {
+        fallbackToDefault();
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const { url } = await getUrl({
+          path: profileImageKey,
+          options: {
+            validateObjectExistence: true
+          }
+        });
+        setImageUrl(url.toString());
+      } catch (error) {
+        console.error('Erreur de récupération de l\'image:', error);
+        // En cas d'erreur, utiliser le fallback
+        fallbackToDefault();
+        setImageError(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchImageUrl();
+  }, [profileImageKey, profile.profileImageBase64]);
+
+  // Dimensions de l'image
   const imageSize = isPreview ? "80px" : "150px";
   
   return (
-    <Card 
-      variation="elevated"
-      padding={isPreview ? "1rem" : "2rem"}
-      onClick={isPreview ? () => {} : undefined}
-      style={isPreview ? { cursor: 'pointer' } : undefined}
-    >
+    <Card variation="elevated" padding={isPreview ? "1rem" : "2rem"}>
       <Flex direction="column" alignItems="center">
-        {/* Conteneur d'image avec état de chargement */}
-        <View position="relative" width={imageSize} height={imageSize}>
-          {imageLoading && (
-            <View 
-              position="absolute" 
-              top="0" 
-              left="0" 
-              right="0" 
-              bottom="0" 
-              backgroundColor="rgba(0,0,0,0.05)"
-              borderRadius="50%"
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center'
-              }}
-            >
-              <Loader size="small" />
-            </View>
-          )}
+        {isLoading ? (
+          <Loader />
+        ) : (
           <Image
-            src={profileImageSrc}
+            src={imageError ? '/default-profile.jpg' : (imageUrl || '/default-profile.jpg')}
             alt={`${profile.username || 'User'}'s profile`}
-            width="100%"
-            height="100%"
-            style={{ 
-              objectFit: 'cover', 
-              borderRadius: '50%',
-              display: imageLoading ? 'none' : 'block'
+            width={imageSize}
+            height={imageSize}
+            objectFit="cover"
+            borderRadius="50%"
+            onError={() => {
+              console.error('Image loading error', {
+                profileImageUrl: profile.profileImageUrl,
+                imageUrl,
+                hasBase64: !!profile.profileImageBase64,
+                imageKey: profileImageKey
+              });
+              setImageError(true);
             }}
-            onError={handleImageError}
-            onLoad={handleImageLoad}
           />
-        </View>
+        )}
         
         <Heading 
           level={isPreview ? 5 : 3} 
@@ -137,6 +125,31 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
             </Badge>
           )}
         </Flex>
+
+        {showExtendedInfo && (
+          <>
+            {profile.bio && (
+              <Text 
+                marginTop="1rem" 
+                textAlign="center" 
+                fontSize="small" 
+                color="gray"
+              >
+                {profile.bio}
+              </Text>
+            )}
+
+            {profile.musicGenres && profile.musicGenres.length > 0 && (
+              <Flex wrap="wrap" gap="0.5rem" marginTop="1rem" justifyContent="center">
+                {profile.musicGenres.map(genre => (
+                  <Badge key={genre} variation="info" size="small">
+                    {genre}
+                  </Badge>
+                ))}
+              </Flex>
+            )}
+          </>
+        )}
       </Flex>
     </Card>
   );

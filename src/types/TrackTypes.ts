@@ -18,6 +18,7 @@ export interface Track {
   created_at?: string;
   updated_at?: string;
   mood?: string;
+  presigned_url?: string; // Ajout pour l'URL du fichier audio
   isPublic?: boolean;
 }
 
@@ -29,6 +30,8 @@ export interface TrackFormData {
   tags?: string[];
   mood?: string;
   isPublic?: boolean;
+  file_path?: string;
+  track_id?: string;
 }
 
 export interface AudioPlayerState {

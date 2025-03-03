@@ -12,18 +12,10 @@ import {
 } from '@aws-amplify/ui-react';
 import { FaPlay, FaPause, FaEdit, FaTrash } from 'react-icons/fa';
 import { useUserTracks, useDeleteTrack, useUpdateTrack } from '../../hooks/useTracks';
+import { getTrackAudioUrl } from '../../api/track';
 import { useAuth } from '../../contexts/AuthContext';
 import { useForm } from '../../hooks/useForm';
-
-interface Track {
-  track_id: string;
-  title: string;
-  genre: string;
-  bpm: number;
-  file_path: string;
-  user_id: string;
-  created_at?: string;
-}
+import { Track } from '../../types/TrackTypes';
 
 interface TrackListProps {
   userId: string;
@@ -33,9 +25,10 @@ const TrackList: React.FC<TrackListProps> = ({ userId }) => {
   const { userId: currentUserId } = useAuth();
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
   const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
+  const [trackUrls, setTrackUrls] = useState<{[key: string]: string}>({});
+  const [isLoadingUrls, setIsLoadingUrls] = useState(true);
   const audioRef = useRef<HTMLAudioElement>(null);
   
-  // Utiliser les hooks personnalisés pour les données et les mutations
   const { 
     data: tracks, 
     isLoading, 
@@ -45,7 +38,6 @@ const TrackList: React.FC<TrackListProps> = ({ userId }) => {
   const deleteTrackMutation = useDeleteTrack();
   const updateTrackMutation = useUpdateTrack();
   
-  // Formulaire pour l'édition d'une piste
   const { 
     values: editValues, 
     handleChange: handleEditChange, 
@@ -55,9 +47,48 @@ const TrackList: React.FC<TrackListProps> = ({ userId }) => {
     genre: '',
     bpm: 0
   });
+
+  // Charger les URL des pistes
+  useEffect(() => {
+    const fetchTrackUrls = async () => {
+      if (tracks && tracks.length > 0) {
+        setIsLoadingUrls(true);
+        const urls: {[key: string]: string} = {};
+        
+        try {
+          for (const track of tracks) {
+            if (track.file_path) {
+              try {
+                const url = await getTrackAudioUrl(track.file_path);
+                urls[track.track_id] = url.toString();
+              } catch (error) {
+                console.error(`Erreur de récupération URL pour ${track.track_id}:`, error);
+              }
+            }
+          }
+          
+          setTrackUrls(urls);
+        } catch (error) {
+          console.error('Erreur lors de la récupération des URLs de pistes:', error);
+        } finally {
+          setIsLoadingUrls(false);
+        }
+      }
+    };
+
+    fetchTrackUrls();
+  }, [tracks]);
   
   // Gérer la lecture audio
-  const togglePlay = async (trackId: string, presignedUrl?: string) => {
+  const togglePlay = async (trackId: string) => {
+    // Récupérer l'URL de la piste
+    const trackUrl = trackUrls[trackId];
+    
+    if (!trackUrl) {
+      console.error('URL de piste non disponible');
+      return;
+    }
+
     if (currentlyPlaying === trackId) {
       // Arrêter la lecture
       if (audioRef.current) {
@@ -66,14 +97,15 @@ const TrackList: React.FC<TrackListProps> = ({ userId }) => {
       }
     } else {
       // Démarrer la lecture
-      if (audioRef.current && presignedUrl) {
-        audioRef.current.src = presignedUrl;
-        audioRef.current.play()
-          .then(() => setCurrentlyPlaying(trackId))
-          .catch(error => {
-            console.error('Erreur de lecture audio:', error);
-            alert('Impossible de lire ce fichier audio');
-          });
+      if (audioRef.current) {
+        audioRef.current.src = trackUrl;
+        try {
+          await audioRef.current.play();
+          setCurrentlyPlaying(trackId);
+        } catch (error) {
+          console.error('Erreur de lecture audio:', error);
+          alert('Impossible de lire ce fichier audio');
+        }
       }
     }
   };
@@ -133,7 +165,7 @@ const TrackList: React.FC<TrackListProps> = ({ userId }) => {
   }, []);
   
   // États de chargement et d'erreur
-  if (isLoading) return <Loader />;
+  if (isLoading || isLoadingUrls) return <Loader />;
   if (error) return <Text color="red">Erreur lors du chargement des pistes</Text>;
   if (!tracks || tracks.length === 0) return <Text>Aucune piste trouvée</Text>;
   
@@ -221,10 +253,11 @@ const TrackList: React.FC<TrackListProps> = ({ userId }) => {
               </Flex>
               
               <Button 
-                onClick={() => togglePlay(track.track_id, track.file_path)}
+                onClick={() => togglePlay(track.track_id)}
                 marginTop="0.5rem"
                 variation="primary"
                 gap="0.5rem"
+                isDisabled={!trackUrls[track.track_id]}
               >
                 {currentlyPlaying === track.track_id ? (
                   <>
