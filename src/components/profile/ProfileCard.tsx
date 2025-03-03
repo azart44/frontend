@@ -25,101 +25,57 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
   
-  const profileImageSrc = useMemo(() => {
-    if (profile.profileImageUrl) {
-      console.log('Using profile image URL:', profile.profileImageUrl);
-      return profile.profileImageUrl;
+  // Fonction pour tester les différentes extensions possibles
+  const tryImageExtensions = (baseUrl: string) => {
+    // Si l'URL contient déjà une extension connue, la retourner telle quelle
+    if (/\.(jpg|jpeg|png|webp|gif)$/i.test(baseUrl)) {
+      return baseUrl;
     }
-    return null;
-  }, [profile.profileImageUrl]);
+    
+    // Sinon, ajouter .jpg comme extension par défaut
+    return `${baseUrl}.jpg`;
+  };
   
-  useEffect(() => {
-    console.log('ProfileCard mounted/updated:', {
-      username: profile.username,
-      hasProfileImageUrl: !!profile.profileImageUrl
-    });
-
-    // Reset image state when profile changes
-    setImageError(false);
-    setImageLoading(true);
-  }, [profile]);
-
+  // Memoize the profile image source
+  const profileImageSrc = useMemo(() => {
+    // Si erreur détectée, utiliser l'image par défaut locale
+    if (imageError) {
+      return '/default-profile.jpg';
+    }
+    
+    // Premier choix: l'URL présignée du serveur
+    if (profile.profileImageUrl) {
+      return tryImageExtensions(profile.profileImageUrl);
+    }
+    
+    // Deuxième choix: si nous avons des données base64
+    if (profile.profileImageBase64) {
+      return profile.profileImageBase64.startsWith('data:') 
+        ? profile.profileImageBase64 
+        : `data:image/jpeg;base64,${profile.profileImageBase64}`;
+    }
+    
+    // Fallback: image par défaut locale
+    return '/default-profile.jpg';
+  }, [profile.profileImageUrl, profile.profileImageBase64, imageError]);
+  
   const handleImageError = () => {
-    console.error('Image load error:', {
+    console.error('Erreur lors du chargement de l\'image de profil:', {
       profileImageUrl: profile.profileImageUrl,
-      currentSrc: profileImageSrc,
-      imageError,
-      imageLoading
+      hasBase64: !!profile.profileImageBase64,
+      formattedUrl: profileImageSrc
     });
     setImageError(true);
     setImageLoading(false);
   };
   
   const handleImageLoad = () => {
-    console.log('Image loaded successfully:', {
-      profileImageUrl: profile.profileImageUrl,
-      currentSrc: profileImageSrc
-    });
     setImageLoading(false);
   };
 
+  // Dimensions de l'image selon le mode
   const imageSize = isPreview ? "80px" : "150px";
   
-  const renderProfileImage = () => {
-    if (!profileImageSrc || imageError) {
-      return (
-        <View 
-          width="100%" 
-          height="100%" 
-          backgroundColor="lightgray"
-          borderRadius="50%"
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center'
-          }}
-        >
-          <Text>{profile.username ? profile.username[0].toUpperCase() : 'U'}</Text>
-        </View>
-      );
-    }
-
-    return (
-      <>
-        {imageLoading && (
-          <View 
-            position="absolute" 
-            top="0" 
-            left="0" 
-            right="0" 
-            bottom="0" 
-            backgroundColor="rgba(0,0,0,0.05)"
-            borderRadius="50%"
-            style={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center'
-            }}
-          >
-            <Loader size="small" />
-          </View>
-        )}
-        <Image
-          src={profileImageSrc}
-          alt={`\${profile.username || 'User'}'s profile`}
-          width="100%"
-          height="100%"
-          style={{ 
-            objectFit: 'cover', 
-            borderRadius: '50%'
-          }}
-          onError={handleImageError}
-          onLoad={handleImageLoad}
-        />
-      </>
-    );
-  };
-
   return (
     <Card 
       variation="elevated"
@@ -128,8 +84,39 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
       style={isPreview ? { cursor: 'pointer' } : undefined}
     >
       <Flex direction="column" alignItems="center">
+        {/* Conteneur d'image avec état de chargement */}
         <View position="relative" width={imageSize} height={imageSize}>
-          {renderProfileImage()}
+          {imageLoading && (
+            <View 
+              position="absolute" 
+              top="0" 
+              left="0" 
+              right="0" 
+              bottom="0" 
+              backgroundColor="rgba(0,0,0,0.05)"
+              borderRadius="50%"
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}
+            >
+              <Loader size="small" />
+            </View>
+          )}
+          <Image
+            src={profileImageSrc}
+            alt={`${profile.username || 'User'}'s profile`}
+            width="100%"
+            height="100%"
+            style={{ 
+              objectFit: 'cover', 
+              borderRadius: '50%',
+              display: imageLoading ? 'none' : 'block'
+            }}
+            onError={handleImageError}
+            onLoad={handleImageLoad}
+          />
         </View>
         
         <Heading 
@@ -150,38 +137,6 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
             </Badge>
           )}
         </Flex>
-        
-        {showExtendedInfo && (
-          <Flex direction="column" marginTop="1rem">
-            {profile.bio && <Text>{profile.bio}</Text>}
-            {profile.musicGenres && profile.musicGenres.length > 0 && (
-              <Text>Genres: {profile.musicGenres.join(', ')}</Text>
-            )}
-            {profile.equipment && profile.equipment.length > 0 && (
-              <Text>Équipement: {profile.equipment.join(', ')}</Text>
-            )}
-            {profile.favoriteArtists && profile.favoriteArtists.length > 0 && (
-              <Text>Artistes favoris: {profile.favoriteArtists.join(', ')}</Text>
-            )}
-            {profile.software && (
-              <Text>Logiciels: {profile.software}</Text>
-            )}
-            {profile.musicalMood && (
-              <Text>Ambiance musicale: {profile.musicalMood}</Text>
-            )}
-          </Flex>
-        )}
-        
-        {showExtendedInfo && profile.socialLinks && Object.keys(profile.socialLinks).length > 0 && (
-          <Flex direction="column" marginTop="1rem">
-            <Text fontWeight="bold">Liens sociaux:</Text>
-            {Object.entries(profile.socialLinks).map(([platform, url]) => (
-              <Text key={platform}>
-                {platform}: <a href={url} target="_blank" rel="noopener noreferrer">{url}</a>
-              </Text>
-            ))}
-          </Flex>
-        )}
       </Flex>
     </Card>
   );

@@ -6,7 +6,7 @@ import { fetchAuthSession } from 'aws-amplify/auth';
  * et des logs de performance
  */
 const API_BASE_URL = 'https://z8qzoeztpc.execute-api.us-east-1.amazonaws.com/prod';
-const API_TIMEOUT = 8000; // 8 secondes
+const API_TIMEOUT = 15000; // Augmenté à 15 secondes pour les requêtes impliquant des images
 
 // Instance axios avec configuration optimisée
 export const apiClient = axios.create({

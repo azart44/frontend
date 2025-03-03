@@ -12,6 +12,21 @@ const profileKeys = {
 };
 
 /**
+ * Fonction utilitaire pour ajouter une extension d'image si nécessaire
+ */
+const ensureImageExtension = (url: string | undefined): string | undefined => {
+  if (!url) return url;
+  
+  // Si l'URL a déjà une extension connue, la retourner telle quelle
+  if (/\.(jpg|jpeg|png|webp|gif)$/i.test(url)) {
+    return url;
+  }
+  
+  // Sinon, ajouter .jpg comme extension par défaut
+  return `${url}.jpg`;
+};
+
+/**
  * Hook pour récupérer un profil utilisateur
  * @param userId ID utilisateur (optionnel, utilise l'ID de l'utilisateur authentifié par défaut)
  */
@@ -31,6 +46,11 @@ export const useUserProfile = (userId?: string | null) => {
       try {
         console.log('Récupération du profil avec userId:', targetUserId);
         const response = await apiClient.get<UserProfile>(`/user-profile/${targetUserId}`);
+        
+        // Traiter l'URL de l'image si elle existe
+        if (response.data && response.data.profileImageUrl) {
+          response.data.profileImageUrl = ensureImageExtension(response.data.profileImageUrl);
+        }
         
         // Si c'est le profil de l'utilisateur courant, mettre à jour également dans le contexte
         if (targetUserId === authUserId && updateLocalProfile) {
@@ -74,6 +94,16 @@ export const useSearchProfiles = (searchTerm: string, options?: { enabled?: bool
       const response = await apiClient.get('/search-profiles', {
         params: { term: searchTerm }
       });
+      
+      // S'assurer que les URLs d'images ont des extensions
+      if (response.data && Array.isArray(response.data)) {
+        response.data.forEach((profile: any) => {
+          if (profile.profileImageUrl) {
+            profile.profileImageUrl = ensureImageExtension(profile.profileImageUrl);
+          }
+        });
+      }
+      
       return response.data;
     },
     enabled: !!searchTerm && searchTerm.length >= 2 && (options?.enabled !== false),
@@ -90,6 +120,16 @@ export const useListProfiles = (filter?: string) => {
     queryFn: async () => {
       const params = filter ? { filter } : undefined;
       const response = await apiClient.get('/get-all-users', { params });
+      
+      // S'assurer que les URLs d'images ont des extensions
+      if (response.data && Array.isArray(response.data)) {
+        response.data.forEach((profile: any) => {
+          if (profile.profileImageUrl) {
+            profile.profileImageUrl = ensureImageExtension(profile.profileImageUrl);
+          }
+        });
+      }
+      
       return response.data;
     },
     staleTime: 5 * 60 * 1000 // 5 minutes
@@ -121,6 +161,11 @@ export const useUpdateProfile = () => {
         userId: cleanUserId
       };
       
+      // Si l'URL de l'image ne contient pas d'extension, en ajouter une
+      if (updatedProfileData.profileImageUrl) {
+        updatedProfileData.profileImageUrl = ensureImageExtension(updatedProfileData.profileImageUrl);
+      }
+      
       // Log les données avant envoi
       console.log('Mise à jour du profil avec les données:', updatedProfileData);
       
@@ -128,9 +173,16 @@ export const useUpdateProfile = () => {
         profileData: updatedProfileData 
       });
       
+      // S'assurer que l'URL de l'image dans la réponse a une extension
+      if (response.data && response.data.updatedProfile && response.data.updatedProfile.profileImageUrl) {
+        response.data.updatedProfile.profileImageUrl = ensureImageExtension(
+          response.data.updatedProfile.profileImageUrl
+        );
+      }
+      
       // Mettre à jour le profil local dans le contexte
-      if (updateLocalProfile && updatedProfileData) {
-        updateLocalProfile(updatedProfileData);
+      if (updateLocalProfile && response.data && response.data.updatedProfile) {
+        updateLocalProfile(response.data.updatedProfile);
       }
       
       return response.data;

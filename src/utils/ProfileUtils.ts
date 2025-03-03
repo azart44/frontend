@@ -1,54 +1,80 @@
-import { getUrl, list } from '@aws-amplify/storage';
-import localforage from 'localforage';
+/**
+ * Utilitaires pour le traitement des profils et des images
+ */
 
-export const DEFAULT_PROFILE_IMAGE = 'default-profile.jpg';
+// Image de profil par défaut (chemin dans le dossier public)
+export const DEFAULT_PROFILE_IMAGE = '/default-profile.jpg';
 
-export const getProfileImageUrl = async (imageKey: string): Promise<string | null> => {
-  try {
-    console.log('Getting URL for image key:', imageKey);
-    const { url } = await getUrl({ key: imageKey, options: { expiresIn: 3600 } });
-    console.log('Retrieved URL:', url);
-    return url ? url.toString() : null;
-  } catch (error) {
-    console.error('Error getting profile image URL:', error);
-    return null;
+/**
+ * Vérifie et ajoute une extension d'image si nécessaire
+ * @param url URL de l'image à vérifier
+ * @returns URL avec extension garantie
+ */
+export const ensureImageExtension = (url: string | undefined): string | undefined => {
+  if (!url) return url;
+  
+  // Si l'URL a déjà une extension connue, la retourner telle quelle
+  if (/\.(jpg|jpeg|png|webp|gif)$/i.test(url)) {
+    return url;
   }
+  
+  // Sinon, ajouter .jpg comme extension par défaut
+  return `${url}.jpg`;
 };
 
-export const fetchProfileImage = async (username: string): Promise<string | null> => {
-  const cacheKey = `profileImage_${username}`;
-  
-  // Vérifier d'abord le cache
-  const cachedUrl = await localforage.getItem<string>(cacheKey);
-  if (cachedUrl) {
-    console.log('Using cached image URL');
-    return cachedUrl;
-  }
+/**
+ * Crée un tableau des extensions possibles à essayer pour une image
+ * @returns Tableau d'extensions d'images courantes
+ */
+export const getImageExtensions = (): string[] => {
+  return ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+};
 
-  // Utiliser une extension de fichier explicite
-  const imageKey = `users/${username}/profile-image.jpg`;
-  console.log('Fetching image for key:', imageKey);
-  
-  try {
-    const imageExists = await list({ prefix: imageKey });
-    console.log('Image exists:', imageExists.items.length > 0);
-    
-    if (imageExists.items.length > 0) {
-      const imageUrl = await getProfileImageUrl(imageKey);
-      console.log('Retrieved image URL:', imageUrl);
-      if (imageUrl) {
-        // Mettre en cache pour les futures requêtes
-        await localforage.setItem(cacheKey, imageUrl);
-      }
-      return imageUrl;
-    } else {
-      console.log('Using default image');
-      const defaultImageUrl = await getProfileImageUrl(DEFAULT_PROFILE_IMAGE);
-      console.log('Default image URL:', defaultImageUrl);
-      return defaultImageUrl;
-    }
-  } catch (error) {
-    console.error('Error fetching profile image:', error);
-    return null;
+/**
+ * Génère un ensemble d'URLs alternatives avec différentes extensions
+ * @param baseUrl URL de base de l'image sans extension
+ * @returns Tableau d'URLs avec différentes extensions
+ */
+export const generateImageUrlsWithExtensions = (baseUrl: string): string[] => {
+  // Si l'URL a déjà une extension, ne retourner que celle-ci
+  if (/\.(jpg|jpeg|png|webp|gif)$/i.test(baseUrl)) {
+    return [baseUrl];
   }
+  
+  // Sinon, générer des alternatives avec chaque extension
+  return getImageExtensions().map(ext => `${baseUrl}${ext}`);
+};
+
+/**
+ * Charge une image et retourne la première URL qui fonctionne
+ * @param urls Tableau d'URLs à essayer
+ * @returns Promise avec l'URL qui a fonctionné ou undefined
+ */
+export const findWorkingImageUrl = async (urls: string[]): Promise<string | undefined> => {
+  // Fonction pour tester une URL d'image
+  const testImage = (url: string): Promise<string | undefined> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      
+      img.onload = () => {
+        resolve(url);
+      };
+      
+      img.onerror = () => {
+        resolve(undefined);
+      };
+      
+      img.src = url;
+    });
+  };
+  
+  // Essayer chaque URL en séquence
+  for (const url of urls) {
+    const result = await testImage(url);
+    if (result) {
+      return result;
+    }
+  }
+  
+  return undefined;
 };
