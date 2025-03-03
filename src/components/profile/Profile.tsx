@@ -17,7 +17,7 @@ import { useUserProfile } from '../../hooks/useProfile';
 import EditProfileForm from './EditProfileForm';
 import TrackList from '../track/TrackList';
 import { useAuth } from '../../contexts/AuthContext';
-import { FaEdit, FaMapMarkerAlt, FaToolbox, FaMusic, FaTag } from 'react-icons/fa';
+import { FaEdit, FaMapMarkerAlt, FaToolbox, FaMusic, FaTag, FaCog } from 'react-icons/fa';
 
 /**
  * Composant d'affichage d'un profil utilisateur
@@ -197,14 +197,26 @@ const Profile: React.FC = () => {
             
             {/* Bouton d'édition (uniquement pour son propre profil) */}
             {isOwnProfile && (
-              <Button 
-                onClick={() => setIsEditing(true)}
-                variation="primary"
-                size="small"
-              >
-                <FaEdit style={{ marginRight: '0.5rem' }} />
-                Modifier mon profil
-              </Button>
+              <Flex direction="column" gap="0.5rem">
+                <Button 
+                  onClick={() => setIsEditing(true)}
+                  variation="primary"
+                  size="small"
+                >
+                  <FaEdit style={{ marginRight: '0.5rem' }} />
+                  Modifier mon profil
+                </Button>
+                
+                {/* Ajouter ce bouton */}
+                <Button 
+                  onClick={() => navigate('/account-settings')}
+                  variation="link"
+                  size="small"
+                >
+                  <FaCog style={{ marginRight: '0.5rem' }} />
+                  Paramètres du compte
+                </Button>
+              </Flex>
             )}
           </Flex>
         </Card>

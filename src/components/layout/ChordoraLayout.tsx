@@ -15,7 +15,8 @@ import {
   FaUser, 
   FaHeart,
   FaSignOutAlt,
-  FaSignInAlt
+  FaSignInAlt,
+  FaCog
 } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -159,6 +160,19 @@ const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
               >
                 <FaHeart style={{ marginRight: '12px' }} />
                 Favoris
+              </Button>
+              
+              {/* Ajout du bouton vers les paramètres du compte */}
+              <Button
+                onClick={() => navigateTo('/account-settings')}
+                backgroundColor={isActive('/account-settings') ? 'rgba(135, 229, 76, 0.2)' : 'transparent'}
+                color={isActive('/account-settings') ? '#87e54c' : 'white'}
+                justifyContent="flex-start"
+                fontWeight={isActive('/account-settings') ? 'bold' : 'normal'}
+                style={{ borderRadius: '8px', padding: '0.75rem 1rem' }}
+              >
+                <FaCog style={{ marginRight: '12px' }} />
+                Paramètres du compte
               </Button>
               
               <Button
