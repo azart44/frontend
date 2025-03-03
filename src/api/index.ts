@@ -14,7 +14,9 @@ export const apiClient = axios.create({
   timeout: API_TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
-  }
+  },
+  // Désactiver temporairement withCredentials
+  withCredentials: false
 });
 
 // Interception des requêtes pour ajouter le token
@@ -23,6 +25,8 @@ apiClient.interceptors.request.use(async (config) => {
   config.metadata = { startTime: performance.now() };
   
   try {
+    // Ne pas ajouter manuellement l'en-tête Origin - le navigateur le fait automatiquement
+    
     const session = await fetchAuthSession();
     const token = session.tokens?.idToken?.toString();
     if (token) {
@@ -33,7 +37,7 @@ apiClient.interceptors.request.use(async (config) => {
     // Continuer sans token si erreur d'authentification
   }
   return config;
-});
+}, (error) => Promise.reject(error));
 
 // Interception des réponses pour mesurer la performance et gérer les erreurs
 apiClient.interceptors.response.use(
