@@ -67,32 +67,36 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (index >= 0 && index < queue.length) {
       const trackToPlay = queue[index];
       
-      // Vérifier si l'URL présignée est disponible
-      if (!trackToPlay.presigned_url) {
-        // Essayer de charger la piste depuis l'API
-        const updatedTrack = await loadTrackFromApi(trackToPlay.track_id);
-        if (updatedTrack && updatedTrack.presigned_url) {
-          // Mettre à jour la piste dans la file d'attente
-          const updatedQueue = [...queue];
-          updatedQueue[index] = updatedTrack;
-          setQueue(updatedQueue);
+      try {
+        // Vérifier si l'URL présignée est disponible
+        if (!trackToPlay.presigned_url) {
+          // Essayer de charger la piste depuis l'API
+          const updatedTrack = await loadTrackFromApi(trackToPlay.track_id);
           
-          // Charger et jouer la piste mise à jour
-          loadTrack(updatedTrack);
-          toggleAudioPlay();
+          if (updatedTrack && updatedTrack.presigned_url) {
+            // Mettre à jour la piste dans la file d'attente
+            const updatedQueue = [...queue];
+            updatedQueue[index] = updatedTrack;
+            setQueue(updatedQueue);
+            
+            // Charger et jouer la piste mise à jour
+            await loadTrack(updatedTrack);
+          } else {
+            console.error('Impossible de charger l\'URL présignée pour la piste:', trackToPlay.track_id);
+            return;
+          }
         } else {
-          console.error('Impossible de charger l\'URL présignée pour la piste:', trackToPlay.track_id);
+          // Charger et jouer la piste directement
+          await loadTrack(trackToPlay);
         }
-      } else {
-        // Charger et jouer la piste directement
-        loadTrack(trackToPlay);
-        toggleAudioPlay();
+        
+        setQueueIndex(index);
+        setShowPlayer(true);
+      } catch (error) {
+        console.error('Erreur lors de la lecture de la piste:', error);
       }
-      
-      setQueueIndex(index);
-      setShowPlayer(true);
     }
-  }, [queue, loadTrack, toggleAudioPlay, loadTrackFromApi]);
+  }, [queue, loadTrack, loadTrackFromApi]);
   
   // Jouer une piste
   const playTrack = useCallback((track: Track) => {
@@ -104,8 +108,9 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       playTrackAtIndex(existingIndex);
     } else {
       // Sinon, l'ajouter à la file d'attente et la jouer
-      setQueue(prev => [...prev, track]);
-      playTrackAtIndex(queue.length);
+      const newQueue = [...queue, track];
+      setQueue(newQueue);
+      playTrackAtIndex(newQueue.length - 1);
     }
   }, [queue, playTrackAtIndex]);
   
