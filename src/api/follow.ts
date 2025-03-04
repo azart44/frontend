@@ -1,12 +1,10 @@
 import apiClient from './index';
 
-// Types pour les réponses de l'API
 export interface FollowStatusResponse {
   isFollowing: boolean;
   isFollowedBy: boolean;
   follower_id: string;
   followed_id: string;
-  followDate?: number;
 }
 
 export interface FollowCountsResponse {
@@ -35,49 +33,49 @@ export interface FollowingResponse {
 }
 
 /**
- * Suit un utilisateur
- * @param followed_id ID de l'utilisateur à suivre
+ * Suivre un utilisateur
+ * @param followedId ID de l'utilisateur à suivre
  */
-export const followUser = (followed_id: string) => 
-  apiClient.post('/follows', { followed_id });
+export const followUser = (followedId: string) => 
+  apiClient.post('/follow', { followedId });
 
 /**
- * Arrête de suivre un utilisateur
- * @param followed_id ID de l'utilisateur à ne plus suivre
+ * Arrêter de suivre un utilisateur
+ * @param followedId ID de l'utilisateur à ne plus suivre
  */
-export const unfollowUser = (followed_id: string) => 
-  apiClient.delete('/follows', { data: { followed_id } });
+export const unfollowUser = (followedId: string) => 
+  apiClient.delete('/follow', { data: { followedId } });
 
 /**
- * Vérifie le statut de suivi entre l'utilisateur connecté et un autre utilisateur
+ * Vérifier le statut de suivi entre l'utilisateur connecté et un autre utilisateur
  * @param targetId ID de l'utilisateur cible
  */
 export const getFollowStatus = (targetId: string) => 
-  apiClient.get<FollowStatusResponse>(`/follows/status?targetId=${targetId}`);
+  apiClient.get<FollowStatusResponse>(`/follow/status/${targetId}`);
 
 /**
- * Obtient les compteurs de followers et de suivis d'un utilisateur
+ * Obtenir les compteurs de followers et de suivis d'un utilisateur
  * @param userId ID de l'utilisateur (facultatif, utilise l'utilisateur authentifié par défaut)
  */
 export const getFollowCounts = (userId?: string) => {
-  const queryParam = userId ? `?userId=${userId}` : '';
-  return apiClient.get<FollowCountsResponse>(`/follows${queryParam}`);
+  const url = userId ? `/follow/${userId}` : '/follow';
+  return apiClient.get<FollowCountsResponse>(url);
 };
 
 /**
- * Obtient la liste des utilisateurs suivis par un utilisateur
- * @param userId ID de l'utilisateur (facultatif, utilise l'utilisateur authentifié par défaut)
- */
-export const getFollowing = (userId?: string) => {
-  const queryParam = userId ? `?userId=${userId}` : '';
-  return apiClient.get<FollowingResponse>(`/follows/following${queryParam}`);
-};
-
-/**
- * Obtient la liste des followers d'un utilisateur
+ * Obtenir la liste des followers d'un utilisateur
  * @param userId ID de l'utilisateur (facultatif, utilise l'utilisateur authentifié par défaut)
  */
 export const getFollowers = (userId?: string) => {
-  const queryParam = userId ? `?userId=${userId}` : '';
-  return apiClient.get<FollowersResponse>(`/follows/followers${queryParam}`);
+  const url = userId ? `/follow/followers/${userId}` : '/follow/followers';
+  return apiClient.get<FollowersResponse>(url);
+};
+
+/**
+ * Obtenir la liste des utilisateurs suivis par un utilisateur
+ * @param userId ID de l'utilisateur (facultatif, utilise l'utilisateur authentifié par défaut)
+ */
+export const getFollowing = (userId?: string) => {
+  const url = userId ? `/follow/following/${userId}` : '/follow/following';
+  return apiClient.get<FollowingResponse>(url);
 };

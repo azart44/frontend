@@ -7,46 +7,43 @@ import {
   Flex, 
   Loader, 
   Card, 
-  Button,
   Alert
 } from '@aws-amplify/ui-react';
 import { useNavigate } from 'react-router-dom';
-import { getFollowers, followUser, unfollowUser } from '../../api/follow';
-import { FaUserPlus, FaUserCheck } from 'react-icons/fa';
-import { useAuth } from '../../contexts/AuthContext';
+import { getFollowers } from '../../api/follow';
 
 interface FollowersListProps {
   userId: string;
   title?: string;
 }
 
-/**
- * Composant affichant la liste des followers d'un utilisateur
- */
 const FollowersList: React.FC<FollowersListProps> = ({
   userId,
   title = 'Abonnés'
 }) => {
   const navigate = useNavigate();
-  const { isAuthenticated, userId: authUserId } = useAuth();
   const [followers, setFollowers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [processingIds, setProcessingIds] = useState<string[]>([]);
   
   // Charger les followers au montage et quand userId change
   useEffect(() => {
     const loadFollowers = async () => {
-      if (!userId) return;
+      if (!userId) {
+        setIsLoading(false);
+        return;
+      }
       
       try {
         setIsLoading(true);
         setError(null);
         const response = await getFollowers(userId);
-        setFollowers(response.data.followers);
+        // Ajout d'une vérification sécurisée
+        setFollowers(response.data?.followers || []);
       } catch (error) {
         console.error('Erreur lors du chargement des followers:', error);
         setError('Impossible de charger les abonnés');
+        setFollowers([]);
       } finally {
         setIsLoading(false);
       }
@@ -58,37 +55,6 @@ const FollowersList: React.FC<FollowersListProps> = ({
   // Gérer le clic sur un utilisateur
   const handleUserClick = (userId: string) => {
     navigate(`/profile/${userId}`);
-  };
-  
-  // Gérer le suivi/désabonnement
-  const handleFollowToggle = async (followerId: string, currentlyFollowing: boolean) => {
-    if (!isAuthenticated) {
-      navigate('/auth');
-      return;
-    }
-    
-    setProcessingIds(prev => [...prev, followerId]);
-    
-    try {
-      if (currentlyFollowing) {
-        await unfollowUser(followerId);
-      } else {
-        await followUser(followerId);
-      }
-      
-      // Mettre à jour localement le statut de suivi
-      setFollowers(prevFollowers => 
-        prevFollowers.map(follower => 
-          follower.userId === followerId 
-            ? { ...follower, isFollowing: !currentlyFollowing } 
-            : follower
-        )
-      );
-    } catch (error) {
-      console.error('Erreur lors de la modification du statut de suivi:', error);
-    } finally {
-      setProcessingIds(prev => prev.filter(id => id !== followerId));
-    }
   };
   
   // Afficher un loader pendant le chargement
@@ -157,27 +123,6 @@ const FollowersList: React.FC<FollowersListProps> = ({
                   </Text>
                 )}
               </Flex>
-              
-              {isAuthenticated && authUserId !== follower.userId && (
-                <Button 
-                  onClick={() => handleFollowToggle(follower.userId, follower.isFollowing)}
-                  isLoading={processingIds.includes(follower.userId)}
-                  loadingText={follower.isFollowing ? "Désabonnement..." : "Abonnement..."}
-                  variation={follower.isFollowing ? "link" : "primary"}
-                >
-                  {follower.isFollowing ? (
-                    <>
-                      <FaUserCheck style={{ marginRight: '0.5rem' }} />
-                      Abonné
-                    </>
-                  ) : (
-                    <>
-                      <FaUserPlus style={{ marginRight: '0.5rem' }} />
-                      Suivre
-                    </>
-                  )}
-                </Button>
-              )}
             </Flex>
           </Card>
         ))}
