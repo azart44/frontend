@@ -8,8 +8,8 @@ import { followUser, unfollowUser, getFollowStatus } from '../../api/follow';
 interface FollowButtonProps {
   targetUserId: string;
   onFollowChange?: (isFollowing: boolean) => void;
-  size?: 'small' | 'medium' | 'large';
-  variant?: 'primary' | 'outline' | 'link';
+  size?: 'small' | 'large';  // Suppression de 'medium'
+  variant?: 'primary' | 'link'; // Changé 'outline' en 'link'
 }
 
 /**
@@ -18,7 +18,7 @@ interface FollowButtonProps {
 const FollowButton: React.FC<FollowButtonProps> = ({
   targetUserId,
   onFollowChange,
-  size = 'medium',
+  size = 'small',
   variant = 'primary'
 }) => {
   const navigate = useNavigate();
@@ -26,7 +26,7 @@ const FollowButton: React.FC<FollowButtonProps> = ({
   const [isFollowing, setIsFollowing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
   // Ne pas afficher le bouton pour son propre profil
   if (userId === targetUserId) {
@@ -43,12 +43,12 @@ const FollowButton: React.FC<FollowButtonProps> = ({
       
       try {
         setIsLoading(true);
-        setError(null);
+        setErrorMsg(null);
         const response = await getFollowStatus(targetUserId);
         setIsFollowing(response.data.isFollowing);
       } catch (error) {
         console.error('Erreur lors de la vérification du statut de suivi:', error);
-        setError('Impossible de vérifier le statut de suivi');
+        setErrorMsg('Impossible de vérifier le statut de suivi');
       } finally {
         setIsLoading(false);
       }
@@ -66,7 +66,7 @@ const FollowButton: React.FC<FollowButtonProps> = ({
     
     try {
       setIsProcessing(true);
-      setError(null);
+      setErrorMsg(null);
       
       if (isFollowing) {
         await unfollowUser(targetUserId);
@@ -82,7 +82,7 @@ const FollowButton: React.FC<FollowButtonProps> = ({
       }
     } catch (error) {
       console.error('Erreur lors du changement de statut de suivi:', error);
-      setError('Erreur lors du traitement de votre demande');
+      setErrorMsg('Erreur lors du traitement de votre demande');
     } finally {
       setIsProcessing(false);
     }

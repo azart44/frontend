@@ -12,7 +12,6 @@ import {
   Image,
   Badge,
   Divider,
-  Modal,
   Tabs
 } from '@aws-amplify/ui-react';
 import { useUserProfile } from '../../hooks/useProfile';
@@ -27,7 +26,8 @@ import {
   FaTag, 
   FaCog,
   FaUserPlus,
-  FaUserCheck
+  FaUserCheck,
+  FaTimes
 } from 'react-icons/fa';
 import { followUser, unfollowUser, getFollowStatus, getFollowCounts } from '../../api/follow';
 import FollowersList from '../follow/FollowersList';
@@ -325,7 +325,7 @@ const Profile: React.FC = () => {
                   onClick={handleFollowToggle}
                   isLoading={isFollowLoading}
                   loadingText={isFollowing ? "Désabonnement..." : "Abonnement..."}
-                  variation={isFollowing ? "default" : "primary"}
+                  variation={isFollowing ? "link" : "primary"}
                 >
                   {isFollowing ? (
                     <>
@@ -510,53 +510,75 @@ const Profile: React.FC = () => {
         )}
       </Flex>
       
-      {/* Modal pour afficher les followers/following */}
+      {/* Modal personnalisée pour afficher les followers/following */}
       {showFollowModal && (
-        <Modal
-          isOpen={showFollowModal}
-          onClose={() => setShowFollowModal(false)}
-          size="large"
+        <Card 
+          position="fixed"
+          left="50%"
+          top="50%"
+          style={{
+            transform: 'translate(-50%, -50%)',
+            maxWidth: '600px',
+            width: '90%',
+            maxHeight: '80vh',
+            zIndex: 1000,
+            overflowY: 'auto',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+          }}
         >
-          <Modal.Header>
+          <Flex justifyContent="space-between" alignItems="center" padding="1rem">
             <Heading level={4}>
               {modalTab === 'followers' ? 'Abonnés' : 'Abonnements'}
             </Heading>
-          </Modal.Header>
-          
-          <Modal.Body>
-            <Tabs
-              items={[
-                { id: 'followers', label: 'Abonnés' },
-                { id: 'following', label: 'Abonnements' }
-              ]}
-              defaultIndex={modalTab === 'followers' ? 0 : 1}
-              onChange={index => 
-                setModalTab(index === 0 ? 'followers' : 'following')
-              }
+            <Button 
+              onClick={() => setShowFollowModal(false)} 
+              variation="link"
+              padding="0"
             >
-              {modalTab === 'followers' && targetUserId && (
-                <View>
-                  <FollowersList userId={targetUserId} />
-                </View>
-              )}
-              
-              {modalTab === 'following' && targetUserId && (
-                <View>
-                  <FollowingList userId={targetUserId} />
-                </View>
-              )}
-            </Tabs>
-          </Modal.Body>
+              <FaTimes size={20} />
+            </Button>
+          </Flex>
           
-          <Modal.Footer>
+          <Divider />
+          
+          <View padding="1rem">
+            <Flex marginBottom="1rem">
+              <Button 
+                onClick={() => setModalTab('followers')}
+                variation={modalTab === 'followers' ? 'primary' : 'link'}
+                flex={1}
+              >
+                Abonnés
+              </Button>
+              <Button 
+                onClick={() => setModalTab('following')}
+                variation={modalTab === 'following' ? 'primary' : 'link'}
+                flex={1}
+              >
+                Abonnements
+              </Button>
+            </Flex>
+            
+            {modalTab === 'followers' && targetUserId && (
+              <FollowersList userId={targetUserId} />
+            )}
+            
+            {modalTab === 'following' && targetUserId && (
+              <FollowingList userId={targetUserId} />
+            )}
+          </View>
+          
+          <Divider />
+          
+          <Flex justifyContent="center" padding="1rem">
             <Button 
               onClick={() => setShowFollowModal(false)} 
               variation="primary"
             >
               Fermer
             </Button>
-          </Modal.Footer>
-        </Modal>
+          </Flex>
+        </Card>
       )}
     </View>
   );

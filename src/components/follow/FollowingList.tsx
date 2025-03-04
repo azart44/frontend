@@ -7,7 +7,6 @@ import {
   Flex, 
   Loader, 
   Card, 
-  Button,
   Alert
 } from '@aws-amplify/ui-react';
 import { useNavigate } from 'react-router-dom';
@@ -63,15 +62,6 @@ const FollowingList: React.FC<FollowingListProps> = ({
     setFollowing(prevFollowing => 
       prevFollowing.filter(user => user.userId !== followedId)
     );
-    
-    // Option 2: Mettre à jour le statut (moins brutal visuellement)
-    // setFollowing(prevFollowing => 
-    //   prevFollowing.map(user => 
-    //     user.userId === followedId 
-    //       ? { ...user, isFollowing: false } 
-    //       : user
-    //   )
-    // );
   };
   
   // Afficher un loader pendant le chargement
@@ -120,8 +110,8 @@ const FollowingList: React.FC<FollowingListProps> = ({
                   cursor: 'pointer'
                 }}
                 onClick={() => handleUserClick(user.userId)}
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
+                onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                  const target = e.currentTarget;
                   target.src = '/default-profile.jpg';
                 }}
               />
@@ -149,7 +139,7 @@ const FollowingList: React.FC<FollowingListProps> = ({
                   }
                 }}
                 size="small"
-                variant="outline"
+                variant="link"
               />
             </Flex>
           </Card>

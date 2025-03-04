@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { 
   View, 
   Heading, 
-  Dialog, 
-  Button, 
-  Tabs, 
-  TabItem 
+  Button,
+  Tabs,
+  Flex
 } from '@aws-amplify/ui-react';
 import FollowersList from './FollowersList';
 import FollowingList from './FollowingList';
+import CustomModal from '../common/CustomModal';
 
 interface FollowModalProps {
   userId: string;
@@ -33,39 +33,49 @@ const FollowModal: React.FC<FollowModalProps> = ({
   if (!isOpen) return null;
   
   return (
-    <Dialog
+    <CustomModal
       isOpen={isOpen}
       onClose={onClose}
-      aria-labelledby="follow-modal-title"
+      title={activeTab === 'followers' ? `Abonnés de ${username}` : `Abonnements de ${username}`}
+      footer={
+        <Button onClick={onClose} variation="primary">
+          Fermer
+        </Button>
+      }
     >
-      <View padding="0">
-        <Tabs
-          currentIndex={activeTab === 'followers' ? 0 : 1}
-          onChange={(i) => setActiveTab(i === 0 ? 'followers' : 'following')}
-          justifyContent="center"
-        >
-          <TabItem title="Abonnés">
-            <FollowersList 
-              userId={userId} 
-              title={`Abonnés de ${username}`} 
-            />
-          </TabItem>
-          
-          <TabItem title="Abonnements">
-            <FollowingList 
-              userId={userId} 
-              title={`Abonnements de ${username}`} 
-            />
-          </TabItem>
-        </Tabs>
-        
-        <View padding="1rem" textAlign="center">
-          <Button onClick={onClose} variation="primary">
-            Fermer
+      <CustomModal.Body>
+        <Flex marginBottom="1rem">
+          <Button 
+            onClick={() => setActiveTab('followers')}
+            variation={activeTab === 'followers' ? 'primary' : 'link'}
+            flex={1}
+          >
+            Abonnés
           </Button>
-        </View>
-      </View>
-    </Dialog>
+          <Button 
+            onClick={() => setActiveTab('following')}
+            variation={activeTab === 'following' ? 'primary' : 'link'}
+            flex={1}
+          >
+            Abonnements
+          </Button>
+        </Flex>
+        
+        {activeTab === 'followers' && userId && (
+          <FollowersList 
+            userId={userId} 
+            title={`Abonnés de ${username}`} 
+          />
+        )}
+        
+        {activeTab === 'following' && userId && (
+          <FollowingList 
+            userId={userId} 
+            title={`Abonnements de ${username}`} 
+          />
+        )}
+      </CustomModal.Body>
+    </CustomModal>
   );
 };
 
