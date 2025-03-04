@@ -11,6 +11,7 @@ import {
 } from '@aws-amplify/ui-react';
 import { useNavigate } from 'react-router-dom';
 import { getFollowers } from '../../api/follow';
+import FollowButton from './FollowButton';
 
 interface FollowersListProps {
   userId: string;
@@ -38,8 +39,15 @@ const FollowersList: React.FC<FollowersListProps> = ({
         setIsLoading(true);
         setError(null);
         const response = await getFollowers(userId);
-        // Ajout d'une vérification sécurisée
-        setFollowers(response.data?.followers || []);
+        
+        // Vérification sécurisée des données reçues
+        if (response && response.data && Array.isArray(response.data.followers)) {
+          setFollowers(response.data.followers);
+        } else {
+          // Si response.data.followers n'est pas un tableau, initialiser avec un tableau vide
+          console.warn('Données de followers invalides reçues:', response.data);
+          setFollowers([]);
+        }
       } catch (error) {
         console.error('Erreur lors du chargement des followers:', error);
         setError('Impossible de charger les abonnés');
@@ -67,7 +75,7 @@ const FollowersList: React.FC<FollowersListProps> = ({
   }
   
   // Afficher un message si aucun follower
-  if (followers.length === 0) {
+  if (!followers || followers.length === 0) {
     return (
       <View padding="1rem">
         <Heading level={4} marginBottom="1rem">{title}</Heading>
@@ -94,7 +102,7 @@ const FollowersList: React.FC<FollowersListProps> = ({
             <Flex alignItems="center" gap="1rem">
               <Image
                 src={follower.profileImageUrl || '/default-profile.jpg'}
-                alt={follower.username}
+                alt={follower.username || 'Utilisateur'}
                 height="50px"
                 width="50px"
                 style={{ 
@@ -115,7 +123,7 @@ const FollowersList: React.FC<FollowersListProps> = ({
                   style={{ cursor: 'pointer' }}
                   onClick={() => handleUserClick(follower.userId)}
                 >
-                  {follower.username}
+                  {follower.username || `Utilisateur_${follower.userId.substring(0, 6)}`}
                 </Text>
                 {follower.userType && (
                   <Text fontSize="0.8rem" color="gray">
@@ -123,6 +131,12 @@ const FollowersList: React.FC<FollowersListProps> = ({
                   </Text>
                 )}
               </Flex>
+              
+              <FollowButton 
+                targetUserId={follower.userId}
+                size="small"
+                variant="link"
+              />
             </Flex>
           </Card>
         ))}

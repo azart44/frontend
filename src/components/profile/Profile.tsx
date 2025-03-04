@@ -12,7 +12,6 @@ import {
   Image,
   Badge,
   Divider,
-  Tabs
 } from '@aws-amplify/ui-react';
 import { useUserProfile } from '../../hooks/useProfile';
 import EditProfileForm from './EditProfileForm';
@@ -27,11 +26,9 @@ import {
   FaCog,
   FaUserPlus,
   FaUserCheck,
-  FaTimes
 } from 'react-icons/fa';
 import { followUser, unfollowUser, getFollowStatus, getFollowCounts } from '../../api/follow';
-import FollowersList from '../follow/FollowersList';
-import FollowingList from '../follow/FollowingList';
+import FollowModal from '../follow/FollowModal';
 
 /**
  * Composant d'affichage d'un profil utilisateur
@@ -84,13 +81,17 @@ const Profile: React.FC = () => {
       try {
         // Charger les compteurs
         const countsResponse = await getFollowCounts(targetUserId);
-        setFollowersCount(countsResponse.data.followersCount);
-        setFollowingCount(countsResponse.data.followingCount);
+        if (countsResponse && countsResponse.data) {
+          setFollowersCount(countsResponse.data.followersCount || 0);
+          setFollowingCount(countsResponse.data.followingCount || 0);
+        }
         
         // Vérifier si l'utilisateur connecté suit cet utilisateur
         if (isAuthenticated && !isOwnProfile && authUserId) {
           const statusResponse = await getFollowStatus(targetUserId);
-          setIsFollowing(statusResponse.data.isFollowing);
+          if (statusResponse && statusResponse.data) {
+            setIsFollowing(statusResponse.data.isFollowing || false);
+          }
         }
       } catch (error) {
         console.error('Erreur lors du chargement des données de suivi:', error);
@@ -510,75 +511,15 @@ const Profile: React.FC = () => {
         )}
       </Flex>
       
-      {/* Modal personnalisée pour afficher les followers/following */}
-      {showFollowModal && (
-        <Card 
-          position="fixed"
-          left="50%"
-          top="50%"
-          style={{
-            transform: 'translate(-50%, -50%)',
-            maxWidth: '600px',
-            width: '90%',
-            maxHeight: '80vh',
-            zIndex: 1000,
-            overflowY: 'auto',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
-          }}
-        >
-          <Flex justifyContent="space-between" alignItems="center" padding="1rem">
-            <Heading level={4}>
-              {modalTab === 'followers' ? 'Abonnés' : 'Abonnements'}
-            </Heading>
-            <Button 
-              onClick={() => setShowFollowModal(false)} 
-              variation="link"
-              padding="0"
-            >
-              <FaTimes size={20} />
-            </Button>
-          </Flex>
-          
-          <Divider />
-          
-          <View padding="1rem">
-            <Flex marginBottom="1rem">
-              <Button 
-                onClick={() => setModalTab('followers')}
-                variation={modalTab === 'followers' ? 'primary' : 'link'}
-                flex={1}
-              >
-                Abonnés
-              </Button>
-              <Button 
-                onClick={() => setModalTab('following')}
-                variation={modalTab === 'following' ? 'primary' : 'link'}
-                flex={1}
-              >
-                Abonnements
-              </Button>
-            </Flex>
-            
-            {modalTab === 'followers' && targetUserId && (
-              <FollowersList userId={targetUserId} />
-            )}
-            
-            {modalTab === 'following' && targetUserId && (
-              <FollowingList userId={targetUserId} />
-            )}
-          </View>
-          
-          <Divider />
-          
-          <Flex justifyContent="center" padding="1rem">
-            <Button 
-              onClick={() => setShowFollowModal(false)} 
-              variation="primary"
-            >
-              Fermer
-            </Button>
-          </Flex>
-        </Card>
+      {/* Modal pour afficher les followers/following */}
+      {showFollowModal && targetUserId && (
+        <FollowModal
+          userId={targetUserId}
+          isOpen={showFollowModal}
+          onClose={() => setShowFollowModal(false)}
+          initialTab={modalTab}
+          username={profile?.username || 'Utilisateur'}
+        />
       )}
     </View>
   );

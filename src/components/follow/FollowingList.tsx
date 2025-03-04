@@ -33,16 +33,28 @@ const FollowingList: React.FC<FollowingListProps> = ({
   // Charger les abonnements au montage et quand userId change
   useEffect(() => {
     const loadFollowing = async () => {
-      if (!userId) return;
+      if (!userId) {
+        setIsLoading(false);
+        return;
+      }
       
       try {
         setIsLoading(true);
         setError(null);
         const response = await getFollowing(userId);
-        setFollowing(response.data.following);
+        
+        // Vérification sécurisée des données reçues
+        if (response && response.data && Array.isArray(response.data.following)) {
+          setFollowing(response.data.following);
+        } else {
+          // Si response.data.following n'est pas un tableau, initialiser avec un tableau vide
+          console.warn('Données de following invalides reçues:', response.data);
+          setFollowing([]);
+        }
       } catch (error) {
         console.error('Erreur lors du chargement des abonnements:', error);
         setError('Impossible de charger les abonnements');
+        setFollowing([]);
       } finally {
         setIsLoading(false);
       }
@@ -58,7 +70,7 @@ const FollowingList: React.FC<FollowingListProps> = ({
   
   // Mettre à jour la liste après un unfollow
   const handleUnfollow = (followedId: string) => {
-    // Option 1: Supprimer l'utilisateur de la liste
+    // Supprimer l'utilisateur de la liste
     setFollowing(prevFollowing => 
       prevFollowing.filter(user => user.userId !== followedId)
     );
@@ -74,7 +86,7 @@ const FollowingList: React.FC<FollowingListProps> = ({
   }
   
   // Afficher un message si aucun abonnement
-  if (following.length === 0) {
+  if (!following || following.length === 0) {
     return (
       <View padding="1rem">
         <Heading level={4} marginBottom="1rem">{title}</Heading>
@@ -101,7 +113,7 @@ const FollowingList: React.FC<FollowingListProps> = ({
             <Flex alignItems="center" gap="1rem">
               <Image
                 src={user.profileImageUrl || '/default-profile.jpg'}
-                alt={user.username}
+                alt={user.username || 'Utilisateur'}
                 height="50px"
                 width="50px"
                 style={{ 
@@ -122,7 +134,7 @@ const FollowingList: React.FC<FollowingListProps> = ({
                   style={{ cursor: 'pointer' }}
                   onClick={() => handleUserClick(user.userId)}
                 >
-                  {user.username}
+                  {user.username || `Utilisateur_${user.userId.substring(0, 6)}`}
                 </Text>
                 {user.userType && (
                   <Text fontSize="0.8rem" color="gray">
