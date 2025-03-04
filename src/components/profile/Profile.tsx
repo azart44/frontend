@@ -11,13 +11,27 @@ import {
   Alert,
   Image,
   Badge,
-  Divider
+  Divider,
+  Modal,
+  Tabs
 } from '@aws-amplify/ui-react';
 import { useUserProfile } from '../../hooks/useProfile';
 import EditProfileForm from './EditProfileForm';
 import TrackList from '../track/TrackList';
 import { useAuth } from '../../contexts/AuthContext';
-import { FaEdit, FaMapMarkerAlt, FaToolbox, FaMusic, FaTag, FaCog } from 'react-icons/fa';
+import { 
+  FaEdit, 
+  FaMapMarkerAlt, 
+  FaToolbox, 
+  FaMusic, 
+  FaTag, 
+  FaCog,
+  FaUserPlus,
+  FaUserCheck
+} from 'react-icons/fa';
+import { followUser, unfollowUser, getFollowStatus, getFollowCounts } from '../../api/follow';
+import FollowersList from '../follow/FollowersList';
+import FollowingList from '../follow/FollowingList';
 
 /**
  * Composant d'affichage d'un profil utilisateur
@@ -31,6 +45,14 @@ const Profile: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [showDebugInfo, setShowDebugInfo] = useState(false);
   const [imageError, setImageError] = useState(false);
+
+  // États pour la gestion des followers/following
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
+  const [showFollowModal, setShowFollowModal] = useState(false);
+  const [modalTab, setModalTab] = useState<'followers' | 'following'>('followers');
 
   // ID de l'utilisateur ciblé (celui de l'URL ou l'utilisateur authentifié)
   const targetUserId = urlUserId || authUserId;
@@ -52,6 +74,56 @@ const Profile: React.FC = () => {
   const handleProfileUpdate = async () => {
     await refetch();
     setIsEditing(false);
+  };
+
+  // Charger les données de suivi
+  useEffect(() => {
+    const loadFollowData = async () => {
+      if (!targetUserId) return;
+      
+      try {
+        // Charger les compteurs
+        const countsResponse = await getFollowCounts(targetUserId);
+        setFollowersCount(countsResponse.data.followersCount);
+        setFollowingCount(countsResponse.data.followingCount);
+        
+        // Vérifier si l'utilisateur connecté suit cet utilisateur
+        if (isAuthenticated && !isOwnProfile && authUserId) {
+          const statusResponse = await getFollowStatus(targetUserId);
+          setIsFollowing(statusResponse.data.isFollowing);
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement des données de suivi:', error);
+      }
+    };
+    
+    loadFollowData();
+  }, [targetUserId, isAuthenticated, isOwnProfile, authUserId]);
+
+  // Gestion du suivi/désabonnement
+  const handleFollowToggle = async () => {
+    if (!isAuthenticated || !targetUserId) {
+      navigate('/auth');
+      return;
+    }
+    
+    setIsFollowLoading(true);
+    
+    try {
+      if (isFollowing) {
+        await unfollowUser(targetUserId);
+        setIsFollowing(false);
+        setFollowersCount(prev => Math.max(0, prev - 1));
+      } else {
+        await followUser(targetUserId);
+        setIsFollowing(true);
+        setFollowersCount(prev => prev + 1);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la modification du statut de suivi:', error);
+    } finally {
+      setIsFollowLoading(false);
+    }
   };
 
   // Logging à des fins de débogage
@@ -165,6 +237,37 @@ const Profile: React.FC = () => {
                 )}
               </Flex>
               
+              {/* Statistiques de followers et suivis */}
+              <Flex marginTop="1rem" gap="1.5rem">
+                <Button
+                  onClick={() => {
+                    setModalTab('followers');
+                    setShowFollowModal(true);
+                  }}
+                  variation="link"
+                  padding="0"
+                >
+                  <Text fontWeight="bold">{followersCount}</Text>
+                  <Text marginLeft="0.25rem" color="gray">
+                    {followersCount === 1 ? 'abonné' : 'abonnés'}
+                  </Text>
+                </Button>
+                
+                <Button
+                  onClick={() => {
+                    setModalTab('following');
+                    setShowFollowModal(true);
+                  }}
+                  variation="link"
+                  padding="0"
+                >
+                  <Text fontWeight="bold">{followingCount}</Text>
+                  <Text marginLeft="0.25rem" color="gray">
+                    abonnements
+                  </Text>
+                </Button>
+              </Flex>
+              
               {profile.bio && (
                 <Text marginTop="0.5rem">
                   {profile.bio}
@@ -195,29 +298,49 @@ const Profile: React.FC = () => {
               )}
             </Flex>
             
-            {/* Bouton d'édition (uniquement pour son propre profil) */}
-            {isOwnProfile && (
-              <Flex direction="column" gap="0.5rem">
-                <Button 
-                  onClick={() => setIsEditing(true)}
-                  variation="primary"
-                  size="small"
+            {/* Bouton d'édition (pour son profil) ou bouton de suivi (pour les autres profils) */}
+            <Flex direction="column" gap="0.5rem">
+              {isOwnProfile ? (
+                <>
+                  <Button 
+                    onClick={() => setIsEditing(true)}
+                    variation="primary"
+                    size="small"
+                  >
+                    <FaEdit style={{ marginRight: '0.5rem' }} />
+                    Modifier mon profil
+                  </Button>
+                  
+                  <Button 
+                    onClick={() => navigate('/account-settings')}
+                    variation="link"
+                    size="small"
+                  >
+                    <FaCog style={{ marginRight: '0.5rem' }} />
+                    Paramètres du compte
+                  </Button>
+                </>
+              ) : isAuthenticated && (
+                <Button
+                  onClick={handleFollowToggle}
+                  isLoading={isFollowLoading}
+                  loadingText={isFollowing ? "Désabonnement..." : "Abonnement..."}
+                  variation={isFollowing ? "default" : "primary"}
                 >
-                  <FaEdit style={{ marginRight: '0.5rem' }} />
-                  Modifier mon profil
+                  {isFollowing ? (
+                    <>
+                      <FaUserCheck style={{ marginRight: '0.5rem' }} />
+                      Abonné
+                    </>
+                  ) : (
+                    <>
+                      <FaUserPlus style={{ marginRight: '0.5rem' }} />
+                      Suivre
+                    </>
+                  )}
                 </Button>
-                
-                {/* Ajouter ce bouton */}
-                <Button 
-                  onClick={() => navigate('/account-settings')}
-                  variation="link"
-                  size="small"
-                >
-                  <FaCog style={{ marginRight: '0.5rem' }} />
-                  Paramètres du compte
-                </Button>
-              </Flex>
-            )}
+              )}
+            </Flex>
           </Flex>
         </Card>
         
@@ -367,6 +490,9 @@ const Profile: React.FC = () => {
                 <Text>ID utilisateur courant: {authUserId || 'Non disponible'}</Text>
                 <Text>ID utilisateur URL: {urlUserId || 'Non disponible'}</Text>
                 <Text>Est mon profil: {isOwnProfile ? 'Oui' : 'Non'}</Text>
+                <Text>Est en train de suivre: {isFollowing ? 'Oui' : 'Non'}</Text>
+                <Text>Nombre de followers: {followersCount}</Text>
+                <Text>Nombre d'abonnements: {followingCount}</Text>
                 <Text>Pseudo: {profile.username || 'Non défini'}</Text>
                 <pre style={{ 
                   whiteSpace: 'pre-wrap', 
@@ -383,6 +509,55 @@ const Profile: React.FC = () => {
           </>
         )}
       </Flex>
+      
+      {/* Modal pour afficher les followers/following */}
+      {showFollowModal && (
+        <Modal
+          isOpen={showFollowModal}
+          onClose={() => setShowFollowModal(false)}
+          size="large"
+        >
+          <Modal.Header>
+            <Heading level={4}>
+              {modalTab === 'followers' ? 'Abonnés' : 'Abonnements'}
+            </Heading>
+          </Modal.Header>
+          
+          <Modal.Body>
+            <Tabs
+              items={[
+                { id: 'followers', label: 'Abonnés' },
+                { id: 'following', label: 'Abonnements' }
+              ]}
+              defaultIndex={modalTab === 'followers' ? 0 : 1}
+              onChange={index => 
+                setModalTab(index === 0 ? 'followers' : 'following')
+              }
+            >
+              {modalTab === 'followers' && targetUserId && (
+                <View>
+                  <FollowersList userId={targetUserId} />
+                </View>
+              )}
+              
+              {modalTab === 'following' && targetUserId && (
+                <View>
+                  <FollowingList userId={targetUserId} />
+                </View>
+              )}
+            </Tabs>
+          </Modal.Body>
+          
+          <Modal.Footer>
+            <Button 
+              onClick={() => setShowFollowModal(false)} 
+              variation="primary"
+            >
+              Fermer
+            </Button>
+          </Modal.Footer>
+        </Modal>
+      )}
     </View>
   );
 };
