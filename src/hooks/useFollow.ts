@@ -13,31 +13,29 @@ export const followKeys = {
 /**
  * Hook pour vérifier le statut de suivi entre l'utilisateur connecté et un autre utilisateur
  */
-export const useFollowStatus = (targetId: string) => {
-  return useQuery({
-    queryKey: followKeys.status(targetId),
-    queryFn: async () => {
-      const response = await FollowAPI.getFollowStatus(targetId);
-      return response.data;
-    },
-    enabled: !!targetId,
-    staleTime: 5 * 60 * 1000 // 5 minutes
-  });
-};
-
-/**
- * Hook pour obtenir les statistiques de suivi d'un utilisateur
- */
-export const useFollowCounts = (userId?: string) => {
-  return useQuery({
-    queryKey: followKeys.counts(userId),
-    queryFn: async () => {
-      const response = await FollowAPI.getFollowCounts(userId);
-      return response.data;
-    },
-    staleTime: 5 * 60 * 1000 // 5 minutes
-  });
-};
+export const useFollowStatus = (targetId: string | null) => {
+    return useQuery({
+      queryKey: followKeys.status(targetId || ''),
+      queryFn: async () => {
+        const response = await FollowAPI.getFollowStatus(targetId!);
+        return response.data;
+      },
+      enabled: !!targetId,
+      staleTime: 5 * 60 * 1000 // 5 minutes
+    });
+  };
+  
+  export const useFollowCounts = (userId?: string | null) => {
+    return useQuery({
+      queryKey: followKeys.counts(userId || undefined),
+      queryFn: async () => {
+        const response = await FollowAPI.getFollowCounts(userId!);
+        return response.data;
+      },
+      enabled: !!userId,
+      staleTime: 5 * 60 * 1000 // 5 minutes
+    });
+  };
 
 /**
  * Hook pour obtenir la liste des followers d'un utilisateur
@@ -74,16 +72,29 @@ export const useFollowUser = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (followedId: string) => FollowAPI.followUser(followedId),
+    mutationFn: async (followedId: string) => {
+      const response = await FollowAPI.followUser(followedId);
+      return response.data;
+    },
     onSuccess: (_, followedId) => {
-      // Invalider les requêtes concernées
-      queryClient.invalidateQueries({ queryKey: followKeys.status(followedId) });
-      queryClient.invalidateQueries({ queryKey: followKeys.counts() });
-      queryClient.invalidateQueries({ queryKey: followKeys.following() });
+      // Mettre à jour immédiatement le statut de suivi dans le cache
+      queryClient.setQueryData(followKeys.status(followedId), { isFollowing: true });
       
-      // Si nécessaire, invalidez également les compteurs de l'utilisateur suivi
-      queryClient.invalidateQueries({ queryKey: followKeys.counts(followedId) });
-      queryClient.invalidateQueries({ queryKey: followKeys.followers(followedId) });
+      // Invalider les requêtes concernées
+      queryClient.invalidateQueries({ 
+        queryKey: followKeys.counts() 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: followKeys.following() 
+      });
+      
+      // Si nécessaire, invalider également les compteurs de l'utilisateur suivi
+      queryClient.invalidateQueries({ 
+        queryKey: followKeys.counts(followedId) 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: followKeys.followers(followedId) 
+      });
     }
   });
 };
@@ -95,16 +106,29 @@ export const useUnfollowUser = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (followedId: string) => FollowAPI.unfollowUser(followedId),
+    mutationFn: async (followedId: string) => {
+      const response = await FollowAPI.unfollowUser(followedId);
+      return response.data;
+    },
     onSuccess: (_, followedId) => {
-      // Invalider les requêtes concernées
-      queryClient.invalidateQueries({ queryKey: followKeys.status(followedId) });
-      queryClient.invalidateQueries({ queryKey: followKeys.counts() });
-      queryClient.invalidateQueries({ queryKey: followKeys.following() });
+      // Mettre à jour immédiatement le statut de suivi dans le cache
+      queryClient.setQueryData(followKeys.status(followedId), { isFollowing: false });
       
-      // Si nécessaire, invalidez également les compteurs de l'utilisateur qui n'est plus suivi
-      queryClient.invalidateQueries({ queryKey: followKeys.counts(followedId) });
-      queryClient.invalidateQueries({ queryKey: followKeys.followers(followedId) });
+      // Invalider les requêtes concernées
+      queryClient.invalidateQueries({ 
+        queryKey: followKeys.counts() 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: followKeys.following() 
+      });
+      
+      // Si nécessaire, invalider également les compteurs de l'utilisateur qui n'est plus suivi
+      queryClient.invalidateQueries({ 
+        queryKey: followKeys.counts(followedId) 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: followKeys.followers(followedId) 
+      });
     }
   });
 };

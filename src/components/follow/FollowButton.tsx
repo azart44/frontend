@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+// src/components/follow/FollowButton.tsx
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button, Loader } from '@aws-amplify/ui-react';
 import { FaUserPlus, FaUserCheck } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { followUser, unfollowUser, getFollowStatus } from '../../api/follow';
+import { useFollowStatus, useFollowUser, useUnfollowUser } from '../../hooks/useFollow';
 
 interface FollowButtonProps {
   targetUserId: string;
@@ -12,9 +14,6 @@ interface FollowButtonProps {
   variant?: 'primary' | 'link';
 }
 
-/**
- * Bouton pour suivre/ne plus suivre un utilisateur
- */
 const FollowButton: React.FC<FollowButtonProps> = ({
   targetUserId,
   onFollowChange,
@@ -23,76 +22,52 @@ const FollowButton: React.FC<FollowButtonProps> = ({
 }) => {
   const navigate = useNavigate();
   const { isAuthenticated, userId } = useAuth();
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  
+  // Utiliser les hooks React Query pour une gestion optimisée et consistante
+  const { data: followStatus, isLoading: isStatusLoading } = useFollowStatus(targetUserId);
+  const followMutation = useFollowUser();
+  const unfollowMutation = useUnfollowUser();
   
   // Vérifier si c'est le propre profil de l'utilisateur
   const isSelfProfile = userId === targetUserId;
   
-  // Vérifier le statut de suivi au chargement
-  useEffect(() => {
-    const checkFollowStatus = async () => {
-      if (!isAuthenticated || !userId || isSelfProfile) {
-        setIsLoading(false);
-        return;
-      }
-      
-      try {
-        setIsLoading(true);
-        setErrorMsg(null);
-        const response = await getFollowStatus(targetUserId);
-        setIsFollowing(response.data.isFollowing);
-      } catch (error) {
-        console.error('Erreur lors de la vérification du statut de suivi:', error);
-        setErrorMsg('Impossible de vérifier le statut de suivi');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    checkFollowStatus();
-  }, [isAuthenticated, userId, targetUserId, isSelfProfile]);
+  // Détecter le statut de suivi depuis les données
+  const isFollowing = followStatus?.isFollowing || false;
+  
+  // État isProcessing pour éviter les doubles clics
+  const isProcessing = followMutation.isPending || unfollowMutation.isPending;
   
   // Gestion du clic sur le bouton
-  const handleFollowClick = async () => {
+  const handleFollowClick = useCallback(() => {
     if (!isAuthenticated) {
       navigate('/auth');
       return;
     }
     
-    try {
-      setIsProcessing(true);
-      setErrorMsg(null);
-      
-      if (isFollowing) {
-        await unfollowUser(targetUserId);
-        setIsFollowing(false);
-      } else {
-        await followUser(targetUserId);
-        setIsFollowing(true);
-      }
-      
-      // Notifier le parent si nécessaire
-      if (onFollowChange) {
-        onFollowChange(!isFollowing);
-      }
-    } catch (error) {
-      console.error('Erreur lors du changement de statut de suivi:', error);
-      setErrorMsg('Erreur lors du traitement de votre demande');
-    } finally {
-      setIsProcessing(false);
+    if (isProcessing) return; // Éviter les doubles clics
+    
+    if (isFollowing) {
+      unfollowMutation.mutate(targetUserId, {
+        onSuccess: () => {
+          if (onFollowChange) onFollowChange(false);
+        }
+      });
+    } else {
+      followMutation.mutate(targetUserId, {
+        onSuccess: () => {
+          if (onFollowChange) onFollowChange(true);
+        }
+      });
     }
-  };
-  
+  }, [isAuthenticated, isFollowing, isProcessing, targetUserId, unfollowMutation, followMutation, navigate, onFollowChange]);
+
   // Ne pas afficher le bouton pour son propre profil
   if (isSelfProfile) {
     return null;
   }
   
   // Afficher un loader pendant le chargement initial
-  if (isLoading) {
+  if (isStatusLoading) {
     return <Loader size="small" />;
   }
   
@@ -120,4 +95,4 @@ const FollowButton: React.FC<FollowButtonProps> = ({
   );
 };
 
-export default FollowButton;
+export default React.memo(FollowButton);  // Utiliser memo pour éviter les rendus inutiles

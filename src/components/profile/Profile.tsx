@@ -27,7 +27,12 @@ import {
   FaUserPlus,
   FaUserCheck,
 } from 'react-icons/fa';
-import { followUser, unfollowUser, getFollowStatus, getFollowCounts } from '../../api/follow';
+import { 
+  useFollowStatus, 
+  useFollowCounts, 
+  useFollowUser, 
+  useUnfollowUser 
+} from '../../hooks/useFollow';
 import FollowModal from '../follow/FollowModal';
 
 /**
@@ -42,12 +47,6 @@ const Profile: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [showDebugInfo, setShowDebugInfo] = useState(false);
   const [imageError, setImageError] = useState(false);
-
-  // États pour la gestion des followers/following
-  const [followersCount, setFollowersCount] = useState(0);
-  const [followingCount, setFollowingCount] = useState(0);
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [showFollowModal, setShowFollowModal] = useState(false);
   const [modalTab, setModalTab] = useState<'followers' | 'following'>('followers');
 
@@ -57,73 +56,52 @@ const Profile: React.FC = () => {
   // Récupération du profil utilisateur
   const { 
     data: profile, 
-    isLoading, 
-    error,
-    refetch
+    isLoading: isProfileLoading, 
+    error: profileError,
+    refetch: refetchProfile
   } = useUserProfile(targetUserId);
+
+  // Utiliser les hooks React Query pour les données de suivi
+  const { 
+    data: followStatus, 
+    isLoading: isFollowStatusLoading 
+  } = useFollowStatus(targetUserId);
+  
+  const { 
+    data: followCounts, 
+    isLoading: isFollowCountsLoading 
+  } = useFollowCounts(targetUserId);
+  
+  const followMutation = useFollowUser();
+  const unfollowMutation = useUnfollowUser();
 
   // Détermine si c'est le propre profil de l'utilisateur
   const isOwnProfile = useMemo(() => {
     return !urlUserId || urlUserId === authUserId;
   }, [urlUserId, authUserId]);
 
+  // Extraire les données de suivi
+  const isFollowing = followStatus?.isFollowing || false;
+  const followersCount = followCounts?.followersCount || 0;
+  const followingCount = followCounts?.followingCount || 0;
+
   // Gestion de la mise à jour du profil
   const handleProfileUpdate = async () => {
-    await refetch();
+    await refetchProfile();
     setIsEditing(false);
   };
 
-  // Charger les données de suivi
-  useEffect(() => {
-    const loadFollowData = async () => {
-      if (!targetUserId) return;
-      
-      try {
-        // Charger les compteurs
-        const countsResponse = await getFollowCounts(targetUserId);
-        if (countsResponse && countsResponse.data) {
-          setFollowersCount(countsResponse.data.followersCount || 0);
-          setFollowingCount(countsResponse.data.followingCount || 0);
-        }
-        
-        // Vérifier si l'utilisateur connecté suit cet utilisateur
-        if (isAuthenticated && !isOwnProfile && authUserId) {
-          const statusResponse = await getFollowStatus(targetUserId);
-          if (statusResponse && statusResponse.data) {
-            setIsFollowing(statusResponse.data.isFollowing || false);
-          }
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement des données de suivi:', error);
-      }
-    };
-    
-    loadFollowData();
-  }, [targetUserId, isAuthenticated, isOwnProfile, authUserId]);
-
   // Gestion du suivi/désabonnement
-  const handleFollowToggle = async () => {
+  const handleFollowToggle = () => {
     if (!isAuthenticated || !targetUserId) {
       navigate('/auth');
       return;
     }
     
-    setIsFollowLoading(true);
-    
-    try {
-      if (isFollowing) {
-        await unfollowUser(targetUserId);
-        setIsFollowing(false);
-        setFollowersCount(prev => Math.max(0, prev - 1));
-      } else {
-        await followUser(targetUserId);
-        setIsFollowing(true);
-        setFollowersCount(prev => prev + 1);
-      }
-    } catch (error) {
-      console.error('Erreur lors de la modification du statut de suivi:', error);
-    } finally {
-      setIsFollowLoading(false);
+    if (isFollowing) {
+      unfollowMutation.mutate(targetUserId);
+    } else {
+      followMutation.mutate(targetUserId);
     }
   };
 
@@ -135,11 +113,12 @@ const Profile: React.FC = () => {
       console.log('Profile component - URL userId:', urlUserId);
       console.log('Profile component - Is own profile:', isOwnProfile);
       console.log('Profile component - Profile data:', profile);
+      console.log('Profile component - Follow status:', { isFollowing, followersCount, followingCount });
     }
-  }, [isAuthenticated, authUserId, targetUserId, urlUserId, profile, isOwnProfile]);
+  }, [isAuthenticated, authUserId, targetUserId, urlUserId, profile, isOwnProfile, isFollowing, followersCount, followingCount]);
 
   // Affichage du loader pendant le chargement
-  if (isLoading) {
+  if (isProfileLoading || isFollowStatusLoading || isFollowCountsLoading) {
     return (
       <View padding="2rem" textAlign="center">
         <Loader size="large" />
@@ -149,7 +128,7 @@ const Profile: React.FC = () => {
   }
 
   // Gestion des erreurs
-  if (error) {
+  if (profileError) {
     return (
       <View padding="2rem">
         <Alert variation="error" heading="Erreur">
@@ -179,7 +158,7 @@ const Profile: React.FC = () => {
           <Button onClick={() => navigate('/')} variation="primary">
             Retour à l'accueil
           </Button>
-          <Button onClick={() => refetch()} variation="link">
+          <Button onClick={() => refetchProfile()} variation="link">
             Réessayer
           </Button>
         </Flex>
@@ -324,9 +303,10 @@ const Profile: React.FC = () => {
               ) : isAuthenticated && (
                 <Button
                   onClick={handleFollowToggle}
-                  isLoading={isFollowLoading}
+                  isLoading={followMutation.isPending || unfollowMutation.isPending}
                   loadingText={isFollowing ? "Désabonnement..." : "Abonnement..."}
                   variation={isFollowing ? "link" : "primary"}
+                  isDisabled={followMutation.isPending || unfollowMutation.isPending}
                 >
                   {isFollowing ? (
                     <>
@@ -495,6 +475,7 @@ const Profile: React.FC = () => {
                 <Text>Nombre de followers: {followersCount}</Text>
                 <Text>Nombre d'abonnements: {followingCount}</Text>
                 <Text>Pseudo: {profile.username || 'Non défini'}</Text>
+                <Text>Mutation en cours: {(followMutation.isPending || unfollowMutation.isPending) ? 'Oui' : 'Non'}</Text>
                 <pre style={{ 
                   whiteSpace: 'pre-wrap', 
                   overflow: 'auto', 
@@ -505,6 +486,19 @@ const Profile: React.FC = () => {
                 }}>
                   {JSON.stringify(profile, null, 2)}
                 </pre>
+                {followStatus && (
+                  <pre style={{ 
+                    whiteSpace: 'pre-wrap', 
+                    overflow: 'auto', 
+                    fontSize: '0.8rem',
+                    background: '#f0f0f0',
+                    padding: '1rem',
+                    borderRadius: '4px',
+                    marginTop: '1rem'
+                  }}>
+                    {JSON.stringify(followStatus, null, 2)}
+                  </pre>
+                )}
               </Card>
             )}
           </>
