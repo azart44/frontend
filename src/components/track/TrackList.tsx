@@ -1,24 +1,23 @@
 import React, { useState } from 'react';
 import { 
-  Card, 
-  Text, 
+  View, 
   Heading, 
-  Flex, 
-  Badge, 
+  Text, 
   Button, 
-  TextField, 
-  SelectField,
+  Flex, 
   Loader,
-  View,
+  Card,
+  TextField,
+  SelectField,
   TextAreaField
 } from '@aws-amplify/ui-react';
-import { FaPlay, FaPause, FaEdit, FaTrash, FaVolumeUp } from 'react-icons/fa';
 import { useUserTracks, useDeleteTrack, useUpdateTrack } from '../../hooks/useTracks';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAudioContext } from '../../contexts/AudioContext';
 import { useForm } from '../../hooks/useForm';
 import { Track } from '../../types/TrackTypes';
-import LikeButton from '../common/LikeButton';
+import TrackCard from '../track/TrackCard';
+import { FaEdit, FaTrash } from 'react-icons/fa';
 
 interface TrackListProps {
   userId: string;
@@ -31,7 +30,7 @@ interface TrackListProps {
  */
 const TrackList: React.FC<TrackListProps> = ({ userId, filters = {} }) => {
   const { userId: currentUserId } = useAuth();
-  const { playTrack, currentTrack, isPlaying, togglePlay } = useAudioContext();
+  const { playTrack } = useAudioContext();
   const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
   
   // Utiliser les hooks personnalisés pour les données et les mutations
@@ -56,17 +55,6 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {} }) => {
     bpm: 0,
     description: ''
   });
-  
-  // Gérer la lecture audio en utilisant le contexte audio
-  const handlePlayTrack = (track: Track) => {
-    if (currentTrack?.track_id === track.track_id) {
-      // Si c'est la piste actuelle, simplement basculer lecture/pause
-      togglePlay();
-    } else {
-      // Sinon, charger et jouer la nouvelle piste
-      playTrack(track);
-    }
-  };
   
   // Initialiser le formulaire d'édition
   const startEditing = (track: Track) => {
@@ -112,6 +100,11 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {} }) => {
     }
   };
   
+  // Fonction pour jouer une piste
+  const handlePlayTrack = (track: Track) => {
+    playTrack(track);
+  };
+  
   // États de chargement et d'erreur
   if (isLoading) return (
     <Flex justifyContent="center" padding="2rem">
@@ -147,70 +140,86 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {} }) => {
   return (
     <Flex direction="column" gap="1rem">
       {tracks.map((track: Track) => (
-        <Card key={track.track_id} padding="1rem" variation="outlined">
+        <div key={track.track_id} style={{ marginBottom: '1.5rem' }}>
           {editingTrackId === track.track_id ? (
-            <Flex direction="column" gap="1rem">
-              <TextField
-                label="Titre"
-                name="title"
-                value={editValues.title}
-                onChange={handleEditChange}
-                required
-              />
-              <SelectField
-                label="Genre"
-                name="genre"
-                value={editValues.genre}
-                onChange={handleEditChange}
-              >
-                <option value="Drill">Drill</option>
-                <option value="Trap">Trap</option>
-                <option value="Boom Bap">Boom Bap</option>
-                <option value="RnB">RnB</option>
-                <option value="Hip Hop">Hip Hop</option>
-                <option value="Electronic">Electronic</option>
-                <option value="Autre">Autre</option>
-              </SelectField>
-              <TextField
-                label="BPM"
-                name="bpm"
-                type="number"
-                value={editValues.bpm?.toString() || ''}
-                onChange={handleEditChange}
-              />
-              <TextAreaField
-                label="Description"
-                name="description"
-                value={editValues.description || ''}
-                onChange={handleEditChange}
-                rows={3}
-              />
-              <Flex gap="1rem">
-                <Button 
-                  onClick={() => saveTrackEdit(track.track_id)}
-                  variation="primary"
-                  isLoading={updateTrackMutation.isPending}
+            <Card padding="1.5rem" borderRadius="8px">
+              <Flex direction="column" gap="1rem">
+                <TextField
+                  label="Titre"
+                  name="title"
+                  value={editValues.title}
+                  onChange={handleEditChange}
+                  required
+                />
+                <SelectField
+                  label="Genre"
+                  name="genre"
+                  value={editValues.genre}
+                  onChange={handleEditChange}
                 >
-                  Sauvegarder
-                </Button>
-                <Button onClick={cancelEditing} variation="warning">
-                  Annuler
-                </Button>
+                  <option value="Drill">Drill</option>
+                  <option value="Trap">Trap</option>
+                  <option value="Boom Bap">Boom Bap</option>
+                  <option value="RnB">RnB</option>
+                  <option value="Hip Hop">Hip Hop</option>
+                  <option value="Electronic">Electronic</option>
+                  <option value="Autre">Autre</option>
+                </SelectField>
+                <TextField
+                  label="BPM"
+                  name="bpm"
+                  type="number"
+                  value={editValues.bpm?.toString() || ''}
+                  onChange={handleEditChange}
+                />
+                <TextAreaField
+                  label="Description"
+                  name="description"
+                  value={editValues.description || ''}
+                  onChange={handleEditChange}
+                  rows={3}
+                />
+                <Flex gap="1rem">
+                  <Button 
+                    onClick={() => saveTrackEdit(track.track_id)}
+                    variation="primary"
+                    isLoading={updateTrackMutation.isPending}
+                  >
+                    Sauvegarder
+                  </Button>
+                  <Button onClick={cancelEditing} variation="warning">
+                    Annuler
+                  </Button>
+                </Flex>
               </Flex>
-            </Flex>
+            </Card>
           ) : (
-            <Flex direction="column" gap="0.5rem">
-              <Flex justifyContent="space-between" alignItems="center">
-                <Heading level={4}>{track.title}</Heading>
+            <Card style={{ overflow: 'hidden', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
+              <div className="track-card-container">
+                {/* Utiliser TrackCard pour l'affichage cohérent */}
+                <TrackCard 
+                  track={track}
+                  showLikeButton={true}
+                  displayStyle="full"
+                  onPlay={() => handlePlayTrack(track)}
+                />
                 
+                {/* Boutons d'édition/suppression en dessous de la carte */}
                 {canEdit && (
-                  <Flex gap="0.5rem">
+                  <Flex 
+                    direction="row"
+                    justifyContent="flex-end"
+                    padding="0.75rem 1rem"
+                    backgroundColor="rgba(0,0,0,0.03)"
+                    borderTop="1px solid rgba(0,0,0,0.1)"
+                  >
                     <Button 
                       onClick={() => startEditing(track)} 
                       size="small"
                       variation="link"
+                      marginRight="1.5rem"
                     >
-                      <FaEdit /> Modifier
+                      <FaEdit style={{ marginRight: '5px' }} /> Modifier
                     </Button>
                     <Button 
                       onClick={() => handleDeleteTrack(track.track_id)} 
@@ -218,77 +227,14 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {} }) => {
                       variation="link"
                       style={{ color: "red" }}
                     >
-                      <FaTrash /> Supprimer
+                      <FaTrash style={{ marginRight: '5px' }} /> Supprimer
                     </Button>
                   </Flex>
                 )}
-              </Flex>
-              
-              <Flex gap="0.5rem" marginTop="0.5rem" wrap="wrap">
-                <Badge variation="info">{track.genre}</Badge>
-                {track.bpm && <Badge variation="warning">{track.bpm} BPM</Badge>}
-                {track.created_at && (
-                  <Badge variation="info">
-                    {new Date(Number(track.created_at) * 1000).toLocaleDateString()}
-                  </Badge>
-                )}
-                {track.isPrivate && <Badge variation="error">Privé</Badge>}
-              </Flex>
-              
-              {track.description && (
-                <Text marginTop="0.5rem" fontSize="0.9rem">{track.description}</Text>
-              )}
-              
-              <Flex 
-                marginTop="0.5rem" 
-                alignItems="center" 
-                padding="0.5rem"
-                backgroundColor="#f0f0f0"
-                borderRadius="4px"
-                justifyContent="space-between"
-              >
-                <Button 
-                  onClick={() => handlePlayTrack(track)}
-                  variation="primary"
-                  size="small"
-                  gap="0.5rem"
-                >
-                  {currentTrack?.track_id === track.track_id && isPlaying ? (
-                    <>
-                      <FaPause /> Pause
-                    </>
-                  ) : (
-                    <>
-                      <FaPlay /> Écouter
-                    </>
-                  )}
-                </Button>
-                
-                <Flex alignItems="center" gap="1rem">
-                  {/* Afficher le bouton Like pour tous les utilisateurs */}
-                  <LikeButton 
-                    trackId={track.track_id} 
-                    likesCount={track.likes || 0}
-                    showCount={true}
-                  />
-                  
-                  {currentTrack?.track_id === track.track_id && isPlaying && (
-                    <Flex 
-                      alignItems="center" 
-                      gap="0.5rem" 
-                      style={{ 
-                        animation: 'pulse 1.5s infinite' 
-                      }}
-                    >
-                      <FaVolumeUp />
-                      <Text>Lecture en cours...</Text>
-                    </Flex>
-                  )}
-                </Flex>
-              </Flex>
-            </Flex>
+              </div>
+            </Card>
           )}
-        </Card>
+        </div>
       ))}
     </Flex>
   );

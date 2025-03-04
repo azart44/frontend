@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Card, 
   Text, 
@@ -8,7 +8,7 @@ import {
   Image,
   View
 } from '@aws-amplify/ui-react';
-import { FaPlay, FaPause, FaDownload, FaEllipsisH, FaMusic } from 'react-icons/fa';
+import { FaPlay, FaPause, FaDownload, FaMusic } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { Track } from '../../types/TrackTypes';
 import { useAudioContext } from '../../contexts/AudioContext';
@@ -19,7 +19,7 @@ interface TrackCardProps {
   onPlay?: () => void;
   showLikeButton?: boolean;
   isInFavorites?: boolean;
-  displayStyle?: 'compact' | 'full'; // Différents styles d'affichage
+  displayStyle?: 'compact' | 'full';
 }
 
 /**
@@ -39,6 +39,11 @@ const TrackCard: React.FC<TrackCardProps> = ({
   // État pour gérer les erreurs de chargement d'image
   const [imageError, setImageError] = useState(false);
   
+  // Log pour déboguer les données de l'image
+  useEffect(() => {
+    console.log(`TrackCard - Track: ${track.title}, Cover image:`, track.cover_image);
+  }, [track]);
+  
   const handlePlayClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onPlay) {
@@ -53,9 +58,9 @@ const TrackCard: React.FC<TrackCardProps> = ({
   };
   
   // URL de l'image de couverture avec fallback
-  const coverImageSrc = imageError || !track.cover_image 
-    ? "/default-cover.jpg" 
-    : track.cover_image;
+  const coverImageSrc = !imageError && track.cover_image 
+    ? track.cover_image 
+    : "/default-cover.jpg";
   
   // Affichage compact pour les listes
   if (displayStyle === 'compact') {
@@ -116,7 +121,7 @@ const TrackCard: React.FC<TrackCardProps> = ({
               }}
               style={{ cursor: 'pointer' }}
             >
-              {track.artist}
+              {track.artist || 'Artiste'}
             </Text>
           </Flex>
           
@@ -144,12 +149,12 @@ const TrackCard: React.FC<TrackCardProps> = ({
     >
       <Flex gap="1rem">
         {/* Image de couverture */}
-        <View position="relative" width="80px" height="80px">
+        <View position="relative" width="100px" height="100px">
           <Image
             src={coverImageSrc}
             alt={track.title}
-            width="80px"
-            height="80px"
+            width="100px"
+            height="100px"
             style={{ 
               objectFit: 'cover',
               borderRadius: '4px' 
@@ -211,7 +216,7 @@ const TrackCard: React.FC<TrackCardProps> = ({
                 e.currentTarget.style.color = '#a0a0a0';
               }}
             >
-              {track.artist}
+              {track.artist || 'Artiste'}
             </Text>
           </Flex>
           
@@ -224,6 +229,24 @@ const TrackCard: React.FC<TrackCardProps> = ({
               <Badge key={tag} variation="success" size="small">{tag}</Badge>
             ))}
           </Flex>
+          
+          {/* Description (tronquée) si disponible */}
+          {track.description && (
+            <Text 
+              fontSize="0.85rem" 
+              color="#6c757d"
+              style={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                marginTop: '0.5rem'
+              }}
+            >
+              {track.description}
+            </Text>
+          )}
           
           {/* Visualisation audio (forme d'onde) */}
           {isCurrentTrack && isPlaying && (

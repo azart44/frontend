@@ -6,8 +6,9 @@ export interface Track {
   bpm?: number;
   file_path?: string;
   presigned_url?: string; // URL présignée pour la lecture
-  cover_image?: string;    // URL de l'image de couverture
+  cover_image?: string;    // URL présignée de l'image de couverture
   cover_image_path?: string; // Chemin S3 de l'image de couverture
+  coverImageUrl?: string;  // Champ alternatif pour la compatibilité
   description?: string;
   tags?: string[];
   duration?: number;
