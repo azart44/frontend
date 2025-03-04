@@ -8,8 +8,8 @@ import { followUser, unfollowUser, getFollowStatus } from '../../api/follow';
 interface FollowButtonProps {
   targetUserId: string;
   onFollowChange?: (isFollowing: boolean) => void;
-  size?: 'small' | 'large';  // Suppression de 'medium'
-  variant?: 'primary' | 'link'; // Changé 'outline' en 'link'
+  size?: 'small' | 'large';
+  variant?: 'primary' | 'link';
 }
 
 /**
@@ -28,15 +28,13 @@ const FollowButton: React.FC<FollowButtonProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
-  // Ne pas afficher le bouton pour son propre profil
-  if (userId === targetUserId) {
-    return null;
-  }
+  // Vérifier si c'est le propre profil de l'utilisateur
+  const isSelfProfile = userId === targetUserId;
   
   // Vérifier le statut de suivi au chargement
   useEffect(() => {
     const checkFollowStatus = async () => {
-      if (!isAuthenticated || !userId) {
+      if (!isAuthenticated || !userId || isSelfProfile) {
         setIsLoading(false);
         return;
       }
@@ -55,7 +53,7 @@ const FollowButton: React.FC<FollowButtonProps> = ({
     };
     
     checkFollowStatus();
-  }, [isAuthenticated, userId, targetUserId]);
+  }, [isAuthenticated, userId, targetUserId, isSelfProfile]);
   
   // Gestion du clic sur le bouton
   const handleFollowClick = async () => {
@@ -87,6 +85,11 @@ const FollowButton: React.FC<FollowButtonProps> = ({
       setIsProcessing(false);
     }
   };
+  
+  // Ne pas afficher le bouton pour son propre profil
+  if (isSelfProfile) {
+    return null;
+  }
   
   // Afficher un loader pendant le chargement initial
   if (isLoading) {

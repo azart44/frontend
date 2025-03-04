@@ -163,7 +163,7 @@ const FollowersList: React.FC<FollowersListProps> = ({
                   onClick={() => handleFollowToggle(follower.userId, follower.isFollowing)}
                   isLoading={processingIds.includes(follower.userId)}
                   loadingText={follower.isFollowing ? "Désabonnement..." : "Abonnement..."}
-                  variation={follower.isFollowing ? "default" : "primary"}
+                  variation={follower.isFollowing ? "link" : "primary"}
                 >
                   {follower.isFollowing ? (
                     <>
