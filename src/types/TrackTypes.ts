@@ -6,7 +6,8 @@ export interface Track {
   bpm?: number;
   file_path?: string;
   presigned_url?: string; // URL présignée pour la lecture
-  cover_image?: string;
+  cover_image?: string;    // URL de l'image de couverture
+  cover_image_path?: string; // Chemin S3 de l'image de couverture
   description?: string;
   tags?: string[];
   duration?: number;
@@ -33,15 +34,19 @@ export interface TrackFormData {
   tags?: string[];
   mood?: string;
   isPrivate?: boolean;
+  coverImageBase64?: string | null;  // Image de couverture en base64 (peut être null)
+  coverImageType?: string | null;    // Type MIME de l'image de couverture (peut être null)
 }
 
 export interface TrackUploadResponse {
   trackId: string;
   uploadUrl: string;
+  hasCoverImage?: boolean;  // Indique si une image a été uploadée
 }
 
 export interface TrackUpdateResponse {
   message: string;
+  coverImageUpdated?: boolean;  // Indique si l'image a été mise à jour
 }
 
 export interface AudioPlayerState {

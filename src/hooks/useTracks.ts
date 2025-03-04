@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as TrackAPI from '../api/track';
-import { Track, TrackFormData } from '../types/TrackTypes';
+import { Track, TrackFormData, TrackUploadResponse } from '../types/TrackTypes';
 import { uploadData } from 'aws-amplify/storage';
 
 // Clés de cache pour React Query
@@ -63,7 +63,9 @@ export const useCreateTrack = () => {
         fileType: file.type,
       });
       
-      const { trackId, uploadUrl } = createResponse.data;
+      // Extraire les données de la réponse avec typage sécurisé
+      const data = createResponse.data as TrackUploadResponse;
+      const { trackId, uploadUrl } = data;
       
       // 2. Upload du fichier audio directement vers S3 avec l'URL présignée
       await fetch(uploadUrl, {
@@ -74,7 +76,7 @@ export const useCreateTrack = () => {
         },
       });
       
-      return { trackId };
+      return { trackId, hasCoverImage: !!data.hasCoverImage };
     },
     onSuccess: (data, variables, context) => {
       // Invalider les requêtes de pistes
