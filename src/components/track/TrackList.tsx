@@ -9,7 +9,8 @@ import {
   Card,
   TextField,
   SelectField,
-  TextAreaField
+  TextAreaField,
+  Image
 } from '@aws-amplify/ui-react';
 import { useUserTracks, useDeleteTrack, useUpdateTrack } from '../../hooks/useTracks';
 import { useAuth } from '../../contexts/AuthContext';
@@ -24,6 +25,12 @@ interface TrackListProps {
   filters?: Record<string, string>;
 }
 
+// Interface d'édition de piste étendue (à utiliser uniquement dans ce composant)
+interface EditableTrack extends Partial<Track> {
+  coverImageBase64?: string | null;
+  coverImageType?: string | null;
+}
+
 /**
  * Composant pour afficher la liste des pistes audio d'un utilisateur
  * avec options de lecture, modification et suppression
@@ -32,6 +39,9 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {} }) => {
   const { userId: currentUserId } = useAuth();
   const { playTrack } = useAudioContext();
   const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
+  
+  // État pour l'aperçu de l'image de couverture
+  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
   
   // Utiliser les hooks personnalisés pour les données et les mutations
   const { 
@@ -44,16 +54,18 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {} }) => {
   const deleteTrackMutation = useDeleteTrack();
   const updateTrackMutation = useUpdateTrack();
   
-  // Formulaire pour l'édition d'une piste
+  // Formulaire pour l'édition d'une piste avec notre interface étendue
   const { 
     values: editValues, 
     handleChange: handleEditChange, 
     setValues: setEditValues
-  } = useForm<Partial<Track>>({
+  } = useForm<EditableTrack>({
     title: '',
     genre: '',
     bpm: 0,
-    description: ''
+    description: '',
+    coverImageBase64: null,
+    coverImageType: null
   });
   
   // Initialiser le formulaire d'édition
@@ -62,24 +74,86 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {} }) => {
       title: track.title,
       genre: track.genre,
       bpm: track.bpm,
-      description: track.description || ''
+      description: track.description || '',
+      coverImageBase64: null,
+      coverImageType: null
     });
+    setCoverImagePreview(track.cover_image || null);
     setEditingTrackId(track.track_id);
   };
   
   // Annuler l'édition
   const cancelEditing = () => {
     setEditingTrackId(null);
+    setCoverImagePreview(null);
+  };
+  
+  // Gérer l'upload d'une nouvelle image de couverture
+  const handleCoverImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      
+      // Vérifier la taille (max 5 Mo)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('L\'image ne doit pas dépasser 5 Mo');
+        return;
+      }
+      
+      // Vérifier le format
+      const acceptedFormats = ['image/jpeg', 'image/png', 'image/webp'];
+      if (!acceptedFormats.includes(file.type)) {
+        alert('Format non supporté. Utilisez JPG, PNG ou WEBP.');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        // Mettre à jour l'état
+        setEditValues(prev => ({ 
+          ...prev, 
+          coverImageBase64: base64String,
+          coverImageType: file.type
+        }));
+        setCoverImagePreview(base64String);
+      };
+      reader.readAsDataURL(file);
+    }
   };
   
   // Sauvegarder les modifications
   const saveTrackEdit = async (trackId: string) => {
     try {
+      // Préparation des données de base à envoyer à l'API
+      const trackData: Record<string, any> = {
+        title: editValues.title,
+        genre: editValues.genre,
+        bpm: editValues.bpm,
+        description: editValues.description
+      };
+      
+      // Ajouter l'image de couverture seulement si elle a été changée
+      if (editValues.coverImageBase64) {
+        trackData.coverImageBase64 = editValues.coverImageBase64;
+        
+        // Utiliser le type déjà stocké ou l'extraire du base64
+        if (editValues.coverImageType) {
+          trackData.coverImageType = editValues.coverImageType;
+        } else if (editValues.coverImageBase64.includes(';base64,')) {
+          // Extraire le type MIME du format data:image/type;base64,...
+          const mimeType = editValues.coverImageBase64.split(';')[0].split(':')[1];
+          trackData.coverImageType = mimeType;
+        }
+      }
+      
       await updateTrackMutation.mutateAsync({
         trackId,
-        data: editValues
+        data: trackData
       });
+      
       setEditingTrackId(null);
+      setCoverImagePreview(null);
+      
       // Rafraîchir les données
       refetch();
     } catch (error) {
@@ -179,7 +253,37 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {} }) => {
                   onChange={handleEditChange}
                   rows={3}
                 />
-                <Flex gap="1rem">
+                
+                {/* Section pour l'image de couverture */}
+                <Flex direction="column" gap="1rem" marginTop="1rem">
+                  <Text fontWeight="bold">Image de couverture</Text>
+                  
+                  {/* Aperçu de l'image actuelle ou nouvelle */}
+                  {coverImagePreview && (
+                    <Flex direction="column" alignItems="center" marginBottom="1rem">
+                      <Image
+                        src={coverImagePreview}
+                        alt="Aperçu de la couverture"
+                        width="200px"
+                        height="200px"
+                        objectFit="cover"
+                        borderRadius="8px"
+                      />
+                    </Flex>
+                  )}
+                  
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleCoverImageChange}
+                    style={{ marginTop: '0.5rem' }}
+                  />
+                  <Text fontSize="small" color="gray">
+                    Formats acceptés: JPG, PNG, WEBP. Max: 5Mo
+                  </Text>
+                </Flex>
+                
+                <Flex gap="1rem" marginTop="1.5rem">
                   <Button 
                     onClick={() => saveTrackEdit(track.track_id)}
                     variation="primary"
