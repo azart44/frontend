@@ -211,7 +211,7 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {} }) => {
                     justifyContent="flex-end"
                     padding="0.75rem 1rem"
                     backgroundColor="rgba(0,0,0,0.03)"
-                    borderTop="1px solid rgba(0,0,0,0.1)"
+                    style={{ borderTop: "1px solid rgba(0,0,0,0.1)" }}
                   >
                     <Button 
                       onClick={() => startEditing(track)} 
