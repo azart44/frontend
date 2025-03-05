@@ -20,6 +20,10 @@ const TrackUpload = lazy(() => import('./components/track/TrackUpload'));
 const AccountSettings = lazy(() => import('./components/account/AccountSettings'));
 // Ajouter le composant Favorites
 const Favorites = lazy(() => import('./components/favorites/Favorites'));
+// Ajouter les composants pour les playlists
+const PlaylistList = lazy(() => import('./components/playlist/PlaylistList'));
+const PlaylistDetail = lazy(() => import('./components/playlist/PlaylistDetail'));
+const PlaylistForm = lazy(() => import('./components/playlist/PlaylistForm'));
 
 // Composant de chargement réutilisable avec spinner
 const Loading = () => (
@@ -127,6 +131,27 @@ function App() {
                         </ProfileCompletionRoute>
                       } 
                     />
+                    
+                    {/* Routes pour les playlists */}
+                    <Route path="/playlists">
+                      <Route 
+                        index
+                        element={
+                          <ProfileCompletionRoute>
+                            <PlaylistList />
+                          </ProfileCompletionRoute>
+                        } 
+                      />
+                      <Route 
+                        path="new" 
+                        element={
+                          <ProfileCompletionRoute>
+                            <PlaylistForm />
+                          </ProfileCompletionRoute>
+                        } 
+                      />
+                      <Route path=":playlistId" element={<PlaylistDetail />} />
+                    </Route>
                     
                     {/* Fallback pour les routes inconnues */}
                     <Route path="*" element={<Navigate to="/" replace />} />

@@ -15,7 +15,7 @@ import {
 } from '@aws-amplify/ui-react';
 import { useUserProfile } from '../../hooks/useProfile';
 import EditProfileForm from './EditProfileForm';
-import TrackList from '../track/TrackList';
+import ProfilePlaylists from './ProfilePlaylists';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
   FaEdit, 
@@ -446,11 +446,11 @@ const Profile: React.FC = () => {
           )}
         </Card>
         
-        {/* Pistes audio de l'utilisateur */}
-        <View>
-          <Heading level={3} marginBottom="1rem">Pistes</Heading>
-          {targetUserId && <TrackList userId={targetUserId} />}
-        </View>
+        {/* Bibliothèque musicale (playlists et pistes) */}
+        <ProfilePlaylists 
+          userId={targetUserId!} 
+          isOwnProfile={isOwnProfile} 
+        />
         
         {/* Information de débogage (uniquement en développement) */}
         {process.env.NODE_ENV === 'development' && (
