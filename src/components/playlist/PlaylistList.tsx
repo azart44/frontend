@@ -21,6 +21,7 @@ interface PlaylistListProps {
   userId?: string;
   showAddButton?: boolean;
   onPlaylistClick?: (playlist: Playlist) => void;
+  isOwnProfile?: boolean; // Ajout de la propriété pour compatibilité avec ProfilePlaylists
 }
 
 /**
@@ -32,7 +33,7 @@ const PlaylistList: React.FC<PlaylistListProps> = ({
   onPlaylistClick
 }) => {
   const navigate = useNavigate();
-  const { isAuthenticated, userId: authUserId } = useAuth();
+  const { userId: authUserId } = useAuth();
   const { playTrack } = useAudioContext();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);

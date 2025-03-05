@@ -14,7 +14,14 @@ import { PlaylistFormData, Playlist } from '../../types/PlaylistTypes';
 import { useCreatePlaylist, useUpdatePlaylist } from '../../hooks/usePlaylists';
 
 interface PlaylistFormProps {
-  initialData?: Partial<Playlist>;
+  initialData?: {
+    playlist_id?: string;
+    title?: string;
+    description?: string;
+    is_public?: boolean;
+    cover_image_url?: string;
+    tracks?: { track_id: string; position?: number }[];
+  };
   onSuccess?: (playlist: Playlist) => void;
   onCancel?: () => void;
 }
@@ -41,11 +48,7 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
     description: initialData?.description || '',
     is_public: initialData?.is_public !== false, // Par défaut public
     cover_image_url: initialData?.cover_image_url || '',
-    tracks: initialData?.tracks ? 
-      initialData.tracks.map(track => ({ 
-        track_id: track.track_id,
-        position: 0
-      })) : []
+    tracks: initialData?.tracks || []
   });
   
   // Gestion de la soumission du formulaire

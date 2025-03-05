@@ -177,7 +177,7 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
               title: '',
               description: '',
               is_public: true,
-              tracks: [{ track_id: track.track_id }]
+              tracks: [{ track_id: track.track_id, position: 0 }]
             }}
             onSuccess={handleNewPlaylistSuccess}
             onCancel={() => setShowNewPlaylistForm(false)}
@@ -196,9 +196,9 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
                   </Text>
                   
                   <RadioGroupField
-                    label="Playlists"
                     name="playlist"
-                    labelHidden
+                    legend="Playlists"
+                    legendHidden={true}
                     value={selectedPlaylistId}
                     onChange={(e) => setSelectedPlaylistId(e.target.value)}
                   >
