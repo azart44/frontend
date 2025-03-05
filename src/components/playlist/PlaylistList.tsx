@@ -7,8 +7,7 @@ import {
   Flex, 
   Loader, 
   Card,
-  Badge,
-  Image
+  Badge
 } from '@aws-amplify/ui-react';
 import { useNavigate } from 'react-router-dom';
 import { FaPlay, FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
@@ -211,22 +210,22 @@ const PlaylistList: React.FC<PlaylistListProps> = ({
               )}
               
               {/* Overlay avec bouton de lecture */}
-              <Flex 
-                position="absolute"
-                top="0"
-                left="0"
-                right="0"
-                bottom="0"
-                alignItems="center"
-                justifyContent="center"
-                backgroundColor="rgba(0,0,0,0.2)"
+              <div 
                 style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: 'rgba(0,0,0,0.2)',
                   opacity: 0,
-                  transition: 'opacity 0.2s ease',
-                  ':hover': {
-                    opacity: 1
-                  }
+                  transition: 'opacity 0.2s ease'
                 }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '0'}
               >
                 <Button
                   onClick={(e) => {
@@ -250,7 +249,7 @@ const PlaylistList: React.FC<PlaylistListProps> = ({
                 >
                   <FaPlay />
                 </Button>
-              </Flex>
+              </div>
             </div>
             
             {/* Informations de la playlist */}

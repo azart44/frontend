@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from 'react';
 import { 
-  View, 
   Heading, 
   TextField, 
   TextAreaField, 
@@ -36,7 +35,7 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
   const updatePlaylistMutation = useUpdatePlaylist();
   
   // Initialisation du formulaire
-  const { values, handleChange, errors, validate } = useForm<PlaylistFormData>({
+  const { values, handleChange, errors, validate, setValues } = useForm<PlaylistFormData>({
     playlist_id: initialData?.playlist_id || '',
     title: initialData?.title || '',
     description: initialData?.description || '',
@@ -45,7 +44,7 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
     tracks: initialData?.tracks ? 
       initialData.tracks.map(track => ({ 
         track_id: track.track_id,
-        position: initialData.track_positions?.[track.track_id] || 0
+        position: 0
       })) : []
   });
   
@@ -78,6 +77,11 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
       setError(err.message || 'Une erreur est survenue');
     }
   }, [values, validate, isEditing, updatePlaylistMutation, createPlaylistMutation, onSuccess]);
+  
+  // Gérer le changement de l'option "is_public"
+  const handlePublicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setValues(prev => ({ ...prev, is_public: e.target.checked }));
+  };
   
   return (
     <Card padding="1.5rem">
@@ -122,14 +126,7 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
             label="Playlist publique"
             name="is_public"
             checked={values.is_public}
-            onChange={(e) => handleChange({
-              ...e,
-              target: {
-                ...e.target,
-                name: 'is_public',
-                value: e.target.checked
-              }
-            })}
+            onChange={handlePublicChange}
             labelPosition="end"
           />
           

@@ -16,8 +16,6 @@ import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautif
 import { usePlaylist, useUpdatePlaylist, useDeletePlaylist } from '../../hooks/usePlaylists';
 import { useAudioContext } from '../../contexts/AudioContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { Playlist } from '../../types/PlaylistTypes';
-import { Track } from '../../types/TrackTypes';
 import PlaylistForm from './PlaylistForm';
 
 /**
@@ -329,19 +327,19 @@ const PlaylistDetail: React.FC = () => {
       {playlist.tracks && playlist.tracks.length > 0 && (
         <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="playlist-tracks">
-            {(provided) => (
+            {(provided: any) => (
               <div
                 {...provided.droppableProps}
                 ref={provided.innerRef}
               >
-                {playlist.tracks.map((track, index) => (
+                {playlist.tracks?.map((track, index) => (
                   <Draggable 
                     key={track.track_id} 
                     draggableId={track.track_id} 
                     index={index}
                     isDragDisabled={!isOwner}
                   >
-                    {(provided, snapshot) => (
+                    {(provided: any, snapshot: any) => (
                       <div
                         ref={provided.innerRef}
                         {...provided.draggableProps}

@@ -29,7 +29,6 @@ export const createPlaylist = (playlistData: PlaylistFormData) =>
 
 /**
  * Met à jour une playlist existante
- * @param playlistId ID de la playlist
  * @param playlistData Données à mettre à jour
  * @returns Promise avec la playlist mise à jour
  */
