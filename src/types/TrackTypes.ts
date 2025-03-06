@@ -23,6 +23,7 @@ export interface Track {
   updated_at?: string | number;
   mood?: string;
   isLiked?: boolean; // Indique si l'utilisateur courant a liké cette piste
+  position?: number; // Position dans une playlist ou un ordre de tri
 }
 
 export interface TrackFormData {

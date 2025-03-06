@@ -1,13 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
-  View, 
-  Flex, 
   Text, 
   Button, 
   Image,
-  useAuthenticator,
-  Badge
+  useAuthenticator
 } from '@aws-amplify/ui-react';
 import { 
   FaHome, 

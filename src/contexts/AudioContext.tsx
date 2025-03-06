@@ -14,6 +14,9 @@ interface AudioContextType {
   previousTrack: () => void;
   addToQueue: (track: Track) => void;
   clearQueue: () => void;
+  currentTime: number; // Propriété ajoutée
+  duration: number;    // Propriété ajoutée
+  seek: (time: number) => void; // Propriété ajoutée
 }
 
 // Créer le contexte avec une valeur par défaut
@@ -171,7 +174,10 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     nextTrack,
     previousTrack,
     addToQueue,
-    clearQueue
+    clearQueue,
+    currentTime,  // Propriété ajoutée
+    duration,     // Propriété ajoutée
+    seek          // Propriété ajoutée
   };
   
   return (

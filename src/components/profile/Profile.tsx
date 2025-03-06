@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { 
   Heading, 
@@ -30,7 +30,8 @@ import {
   FaSoundcloud,
   FaTwitter,
   FaEllipsisH,
-  FaHeart
+  FaHeart,
+  FaPlus
 } from 'react-icons/fa';
 import { 
   useFollowStatus, 
@@ -419,7 +420,11 @@ const Profile: React.FC = () => {
       </div>
       
       {/* Onglets du profil */}
-      <Flex borderBottom="1px solid var(--chordora-divider)" marginTop="2rem" marginBottom="2rem">
+      <Flex 
+        style={{ borderBottom: "1px solid var(--chordora-divider)" }} 
+        marginTop="2rem" 
+        marginBottom="2rem"
+      >
         <button
           className={`tab-button ${activeTab === 'tracks' ? 'active' : ''}`}
           onClick={() => setActiveTab('tracks')}
@@ -540,8 +545,7 @@ const Profile: React.FC = () => {
                 <Flex alignItems="center" gap="0.5rem" marginBottom="0.5rem">
                   <FaTag size={16} color="var(--chordora-text-secondary)" />
                   <Heading level={5}>Tags</Heading>
-                </Flex>
-                <Flex gap="0.5rem" wrap="wrap">
+                  <Flex gap="0.5rem" wrap="wrap">
                   {profile.tags.map(tag => (
                     <Badge key={tag} variation="warning">{tag}</Badge>
                   ))}

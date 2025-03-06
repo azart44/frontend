@@ -15,7 +15,7 @@ import { Track } from '../types/TrackTypes';
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const { playTrack, currentTrack, isPlaying, togglePlay } = useAudioContext();
+  const { playTrack, currentTrack, isPlaying } = useAudioContext();
   const [trendingTracks, setTrendingTracks] = useState<Track[]>([]);
   const [recentlyPlayed, setRecentlyPlayed] = useState<Track[]>([]);
   const [topArtists, setTopArtists] = useState<any[]>([]);
@@ -183,9 +183,14 @@ const HomePage: React.FC = () => {
       <section style={{ marginBottom: '2rem' }}>
         <div className="section-title">
           <h2>Joués récemment</h2>
-          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/tracks'); }}>
+          <Button 
+            variation="link" 
+            padding="0"
+            onClick={() => navigate('/tracks')}
+            style={{ color: 'var(--chordora-text-secondary)', textDecoration: 'none' }}
+          >
             Voir tous
-          </a>
+          </Button>
         </div>
         
         <div className="playlist-grid">
@@ -238,9 +243,14 @@ const HomePage: React.FC = () => {
       <section style={{ marginBottom: '2rem' }}>
         <div className="section-title">
           <h2>Cette semaine, le top billboard #25</h2>
-          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/tracks'); }}>
+          <Button 
+            variation="link" 
+            padding="0"
+            onClick={() => navigate('/tracks')}
+            style={{ color: 'var(--chordora-text-secondary)', textDecoration: 'none' }}
+          >
             Voir tous
-          </a>
+          </Button>
         </div>
         
         <table className="tracks-table">
@@ -328,9 +338,14 @@ const HomePage: React.FC = () => {
       <section style={{ marginBottom: '2rem' }}>
         <div className="section-title">
           <h2>Artistes populaires</h2>
-          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/users'); }}>
+          <Button 
+            variation="link" 
+            padding="0"
+            onClick={() => navigate('/users')}
+            style={{ color: 'var(--chordora-text-secondary)', textDecoration: 'none' }}
+          >
             Voir tous
-          </a>
+          </Button>
         </div>
         
         <div className="playlist-grid">

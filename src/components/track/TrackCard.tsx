@@ -4,8 +4,7 @@ import {
   Flex, 
   Badge, 
   Button, 
-  Image,
-  View
+  Image
 } from '@aws-amplify/ui-react';
 import { 
   FaPlay, 
@@ -98,7 +97,7 @@ const TrackCard: React.FC<TrackCardProps> = ({
                 {isCurrentTrack && isPlaying ? <FaPause size={16} /> : <FaPlay size={16} />}
               </button>
             ) : (
-              <span>{track.position || '-'}</span>
+              <span>{track.position !== undefined ? track.position : '-'}</span>
             )}
           </div>
         </td>
@@ -266,7 +265,7 @@ const TrackCard: React.FC<TrackCardProps> = ({
             style={{ padding: 0 }}
             onClick={(e) => {
               e.stopPropagation();
-              // Like action
+              // Like track action
             }}
           >
             {track.isLiked ? <FaHeart color="#ff4081" /> : <FaRegHeart color="#a0a0a0" />}
