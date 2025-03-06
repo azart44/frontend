@@ -142,10 +142,9 @@ const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
             <FaHome className="sidebar-item-icon" />
             {sidebarExpanded && <span className="sidebar-item-text">Accueil</span>}
           </div>
-          
           <div 
-            className={`sidebar-item ${isActive('/users') ? 'active' : ''}`}
-            onClick={() => navigateTo('/users')}
+            className={`sidebar-item ${isActive('/tracks') ? 'active' : ''}`}
+            onClick={() => navigateTo('/tracks')}
           >
             <FaSearch className="sidebar-item-icon" />
             {sidebarExpanded && <span className="sidebar-item-text">Explorer</span>}
@@ -154,35 +153,11 @@ const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
           {isAuthenticated && (
             <>
               <div 
-                className={`sidebar-item ${isActive('/profile') ? 'active' : ''}`}
-                onClick={() => navigateTo('/profile')}
-              >
-                <FaUser className="sidebar-item-icon" />
-                {sidebarExpanded && <span className="sidebar-item-text">Mon Profil</span>}
-              </div>
-              
-              <div 
-                className={`sidebar-item ${isActive('/add-track') ? 'active' : ''}`}
-                onClick={() => navigateTo('/add-track')}
-              >
-                <FaMusic className="sidebar-item-icon" />
-                {sidebarExpanded && <span className="sidebar-item-text">Ajouter une piste</span>}
-              </div>
-              
-              <div 
                 className={`sidebar-item ${isActive('/favorites') ? 'active' : ''}`}
                 onClick={() => navigateTo('/favorites')}
               >
                 <FaHeart className="sidebar-item-icon" />
                 {sidebarExpanded && <span className="sidebar-item-text">Favoris</span>}
-              </div>
-              
-              <div 
-                className={`sidebar-item ${isActive('/account-settings') ? 'active' : ''}`}
-                onClick={() => navigateTo('/account-settings')}
-              >
-                <FaCog className="sidebar-item-icon" />
-                {sidebarExpanded && <span className="sidebar-item-text">Paramètres</span>}
               </div>
               
               <div 
