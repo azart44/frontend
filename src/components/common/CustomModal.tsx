@@ -106,9 +106,16 @@ const CustomModal: React.FC<CustomModalProps> & {
       }
     };
     
+    // Empêcher le scroll du body quand le modal est ouvert
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    }
+    
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
+      // Rétablir le scroll quand le composant est démonté
+      document.body.style.overflow = '';
     };
   }, [isOpen, onClose]);
   
@@ -116,7 +123,7 @@ const CustomModal: React.FC<CustomModalProps> & {
   
   return (
     <>
-      {/* Overlay sombre avec position fixe */}
+      {/* Overlay sombre avec position fixe et z-index très élevé */}
       <View
         position="fixed"
         top="0"
@@ -125,7 +132,7 @@ const CustomModal: React.FC<CustomModalProps> & {
         bottom="0"
         backgroundColor="rgba(0, 0, 0, 0.7)"
         style={{ 
-          zIndex: 1000, 
+          zIndex: 9999, 
           backdropFilter: 'blur(2px)',
           animationName: 'fadeIn',
           animationDuration: '0.2s'
@@ -133,7 +140,7 @@ const CustomModal: React.FC<CustomModalProps> & {
         onClick={onClose}
       />
       
-      {/* Contenu de la modal avec position fixe */}
+      {/* Contenu de la modal avec position fixe et z-index encore plus élevé */}
       <View
         ref={modalRef}
         position="fixed"
@@ -144,7 +151,7 @@ const CustomModal: React.FC<CustomModalProps> & {
           width,
           maxWidth: '95%',
           maxHeight,
-          zIndex: 1001,
+          zIndex: 10000,
           animationName: 'modalIn',
           animationDuration: '0.3s',
           animationTimingFunction: 'cubic-bezier(0.215, 0.610, 0.355, 1.000)'

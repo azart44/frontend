@@ -135,15 +135,24 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
     }
   };
   
+  // Nettoyer le state lors de la fermeture
+  const handleClose = () => {
+    setSuccessMessage(null);
+    setErrorMessage(null);
+    setSelectedPlaylistId('');
+    setShowNewPlaylistForm(false);
+    onClose();
+  };
+  
   return (
     <CustomModal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title={showNewPlaylistForm ? "Créer une nouvelle playlist" : "Ajouter à une playlist"}
       footer={
         !showNewPlaylistForm && (
           <Flex gap="1rem">
-            <Button onClick={onClose} variation="link">
+            <Button onClick={handleClose} variation="link">
               Annuler
             </Button>
             <Button 

@@ -45,7 +45,7 @@ const TrackCard: React.FC<TrackCardProps> = ({
   const [imageError, setImageError] = useState(false);
   // État pour gérer le survol
   const [isHovered, setIsHovered] = useState(false);
-  // Nouvel état pour gérer l'ouverture du modal AddToPlaylist
+  // État pour gérer l'ouverture du modal AddToPlaylist
   const [showAddToPlaylist, setShowAddToPlaylist] = useState(false);
   
   const handlePlayClick = (e: React.MouseEvent) => {
@@ -64,6 +64,7 @@ const TrackCard: React.FC<TrackCardProps> = ({
   // Gérer l'ajout à une playlist
   const handleAddToPlaylist = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault(); // Empêcher tout comportement par défaut
     
     if (!isAuthenticated) {
       navigate('/auth');
@@ -96,7 +97,7 @@ const TrackCard: React.FC<TrackCardProps> = ({
           onClick={handleCardClick}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
-          style={{ cursor: 'pointer' }}
+          style={{ cursor: 'pointer', position: 'relative' }}
         >
           <div style={{ position: 'relative', width: '40px', textAlign: 'center' }}>
             {isHovered ? (
@@ -195,13 +196,12 @@ const TrackCard: React.FC<TrackCardProps> = ({
           </Flex>
         </Flex>
 
-        {showAddToPlaylist && (
-          <AddToPlaylist 
-            track={track} 
-            isOpen={showAddToPlaylist} 
-            onClose={() => setShowAddToPlaylist(false)} 
-          />
-        )}
+        {/* Toujours inclure le modal, mais contrôlé par isOpen */}
+        <AddToPlaylist 
+          track={track} 
+          isOpen={showAddToPlaylist} 
+          onClose={() => setShowAddToPlaylist(false)} 
+        />
       </>
     );
   }
@@ -218,7 +218,8 @@ const TrackCard: React.FC<TrackCardProps> = ({
             gap: '0.75rem',
             padding: '0.5rem',
             borderRadius: '4px',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            position: 'relative'
           }}
           onClick={handleCardClick}
           onMouseEnter={() => setIsHovered(true)}
@@ -304,13 +305,12 @@ const TrackCard: React.FC<TrackCardProps> = ({
           )}
         </div>
 
-        {showAddToPlaylist && (
-          <AddToPlaylist 
-            track={track} 
-            isOpen={showAddToPlaylist} 
-            onClose={() => setShowAddToPlaylist(false)} 
-          />
-        )}
+        {/* Toujours inclure le modal, mais contrôlé par isOpen */}
+        <AddToPlaylist 
+          track={track} 
+          isOpen={showAddToPlaylist} 
+          onClose={() => setShowAddToPlaylist(false)} 
+        />
       </>
     );
   }
@@ -324,7 +324,8 @@ const TrackCard: React.FC<TrackCardProps> = ({
           borderRadius: '8px',
           overflow: 'hidden',
           transition: 'background-color 0.3s ease',
-          cursor: 'pointer'
+          cursor: 'pointer',
+          position: 'relative'
         }}
         onClick={handleCardClick}
         onMouseEnter={() => setIsHovered(true)}
@@ -436,7 +437,7 @@ const TrackCard: React.FC<TrackCardProps> = ({
               <Button
                 variation="link"
                 size="small"
-                style={{ padding: 0 }}
+                style={{ padding: 0, zIndex: 5 }}
                 onClick={handleAddToPlaylist}
               >
                 <FaPlus color="#a0a0a0" />
@@ -446,13 +447,12 @@ const TrackCard: React.FC<TrackCardProps> = ({
         </div>
       </div>
 
-      {showAddToPlaylist && (
-        <AddToPlaylist 
-          track={track} 
-          isOpen={showAddToPlaylist} 
-          onClose={() => setShowAddToPlaylist(false)} 
-        />
-      )}
+      {/* Toujours inclure le modal, mais contrôlé par isOpen */}
+      <AddToPlaylist 
+        track={track} 
+        isOpen={showAddToPlaylist} 
+        onClose={() => setShowAddToPlaylist(false)} 
+      />
     </>
   );
 };

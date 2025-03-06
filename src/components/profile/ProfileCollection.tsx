@@ -128,46 +128,48 @@ const ProfileCollection: React.FC<ProfileCollectionProps> = ({ userId, isOwnProf
         </Flex>
       )}
       
-      {/* Contenu des onglets */}
-      {activeTab === 'tracks' && (
-        <>
-          {isLoadingTracks ? (
-            <Flex justifyContent="center" padding="2rem">
-              <Loader size="large" />
-            </Flex>
-          ) : tracksError ? (
-            <Alert variation="error" heading="Erreur">
-              Une erreur est survenue lors du chargement des pistes.
-            </Alert>
-          ) : (
-            <TrackList 
-              userId={userId} 
-              onRefresh={refetchTracks} 
-            />
-          )}
-        </>
-      )}
-      
-      {activeTab === 'playlists' && (
-        <>
-          {isLoadingPlaylists ? (
-            <Flex justifyContent="center" padding="2rem">
-              <Loader size="large" />
-            </Flex>
-          ) : playlistsError ? (
-            <Alert variation="error" heading="Erreur">
-              Une erreur est survenue lors du chargement des playlists.
-            </Alert>
-          ) : (
-            <PlaylistList 
-              userId={userId}
-              showAddButton={isOwnProfile} 
-              hideAddButton={true} // Ajout de cette prop pour cacher le bouton "Nouvelle playlist"
-              onAddPlaylist={handleCreatePlaylist}
-            />
-          )}
-        </>
-      )}
+      {/* Contenu des onglets avec z-index élevé pour assurer la visibilité des modals */}
+      <View style={{ position: 'relative', zIndex: 1 }}>
+        {activeTab === 'tracks' && (
+          <>
+            {isLoadingTracks ? (
+              <Flex justifyContent="center" padding="2rem">
+                <Loader size="large" />
+              </Flex>
+            ) : tracksError ? (
+              <Alert variation="error" heading="Erreur">
+                Une erreur est survenue lors du chargement des pistes.
+              </Alert>
+            ) : (
+              <TrackList 
+                userId={userId} 
+                onRefresh={refetchTracks} 
+              />
+            )}
+          </>
+        )}
+        
+        {activeTab === 'playlists' && (
+          <>
+            {isLoadingPlaylists ? (
+              <Flex justifyContent="center" padding="2rem">
+                <Loader size="large" />
+              </Flex>
+            ) : playlistsError ? (
+              <Alert variation="error" heading="Erreur">
+                Une erreur est survenue lors du chargement des playlists.
+              </Alert>
+            ) : (
+              <PlaylistList 
+                userId={userId}
+                showAddButton={isOwnProfile} 
+                hideAddButton={true} // Ajout de cette prop pour cacher le bouton "Nouvelle playlist"
+                onAddPlaylist={handleCreatePlaylist}
+              />
+            )}
+          </>
+        )}
+      </View>
     </Card>
   );
 };
