@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { 
-  View, 
-  Heading, 
+  Text, 
   Button,
-  Tabs,
-  Flex
+  Flex,
+  Image,
+  Badge
 } from '@aws-amplify/ui-react';
 import FollowersList from './FollowersList';
 import FollowingList from './FollowingList';
@@ -20,6 +20,7 @@ interface FollowModalProps {
 
 /**
  * Modal pour afficher les followers et abonnements d'un utilisateur
+ * Redesign avec un style cohérent et des animations fluides
  */
 const FollowModal: React.FC<FollowModalProps> = ({
   userId,
@@ -30,53 +31,91 @@ const FollowModal: React.FC<FollowModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'followers' | 'following'>(initialTab);
   
-  if (!isOpen) return null;
-  
   return (
     <CustomModal
       isOpen={isOpen}
       onClose={onClose}
-      title={activeTab === 'followers' ? `Abonnés de ${username}` : `Abonnements de ${username}`}
-      footer={
-        <Button onClick={onClose} variation="primary">
-          Fermer
-        </Button>
+      title={
+        <Flex alignItems="center" gap="0.5rem">
+          <Text>{activeTab === 'followers' ? `Abonnés de ${username}` : `Abonnements de ${username}`}</Text>
+          <Badge variation="info" style={{ backgroundColor: 'var(--chordora-primary)', color: 'white' }}>
+            {activeTab === 'followers' ? '3' : '3'}
+          </Badge>
+        </Flex>
       }
+      width="550px"
     >
       <CustomModal.Body>
-        <Flex marginBottom="1rem">
-          <Button 
+        {/* Tabs améliorés */}
+        <Flex 
+          marginBottom="1.5rem" 
+          style={{ 
+            borderBottom: '1px solid var(--chordora-divider)',
+            position: 'sticky',
+            top: 0,
+            backgroundColor: 'var(--chordora-card-bg)',
+            zIndex: 2
+          }}
+        >
+          <TabButton 
+            label="Abonnés" 
+            isActive={activeTab === 'followers'} 
             onClick={() => setActiveTab('followers')}
-            variation={activeTab === 'followers' ? 'primary' : 'link'}
-            flex={1}
-          >
-            Abonnés
-          </Button>
-          <Button 
+          />
+          <TabButton 
+            label="Abonnements" 
+            isActive={activeTab === 'following'} 
             onClick={() => setActiveTab('following')}
-            variation={activeTab === 'following' ? 'primary' : 'link'}
-            flex={1}
-          >
-            Abonnements
-          </Button>
+          />
         </Flex>
         
-        {activeTab === 'followers' && userId && (
-          <FollowersList 
-            userId={userId} 
-            title={`Abonnés de ${username}`} 
-          />
-        )}
-        
-        {activeTab === 'following' && userId && (
-          <FollowingList 
-            userId={userId} 
-            title={`Abonnements de ${username}`} 
-          />
-        )}
+        {/* Contenu des tabs avec transition */}
+        <div style={{ 
+          opacity: 1,
+          transition: 'opacity 0.2s ease',
+        }}>
+          {activeTab === 'followers' && userId && (
+            <FollowersList 
+              userId={userId} 
+              title={`Abonnés de ${username}`} 
+            />
+          )}
+          
+          {activeTab === 'following' && userId && (
+            <FollowingList 
+              userId={userId} 
+              title={`Abonnements de ${username}`} 
+            />
+          )}
+        </div>
       </CustomModal.Body>
     </CustomModal>
   );
 };
+
+// Composant de bouton d'onglet personnalisé pour une meilleure consistance visuelle
+const TabButton: React.FC<{ 
+  label: string; 
+  isActive: boolean; 
+  onClick: () => void;
+}> = ({ label, isActive, onClick }) => (
+  <button
+    onClick={onClick}
+    style={{
+      background: 'transparent',
+      border: 'none',
+      borderBottom: isActive ? '2px solid var(--chordora-primary)' : '2px solid transparent',
+      padding: '0.75rem 1.5rem',
+      cursor: 'pointer',
+      color: isActive ? 'var(--chordora-primary)' : 'var(--chordora-text-secondary)',
+      fontWeight: isActive ? 'bold' : 'normal',
+      transition: 'all 0.2s ease',
+      outline: 'none',
+      position: 'relative'
+    }}
+  >
+    {label}
+  </button>
+);
 
 export default FollowModal;

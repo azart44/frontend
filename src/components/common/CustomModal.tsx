@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useRef, useEffect } from 'react';
 import { 
   Card, 
   Heading, 
@@ -16,6 +16,8 @@ interface CustomModalProps {
   title: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
+  width?: string;
+  maxHeight?: string;
 }
 
 // Composant Header
@@ -25,16 +27,33 @@ const Header: React.FC<{ children: ReactNode, onClose: () => void }> = ({
 }) => (
   <>
     <Flex justifyContent="space-between" alignItems="center" padding="1rem">
-      <Heading level={4}>{children}</Heading>
+      <Heading level={4} style={{ color: 'var(--chordora-text-primary)' }}>{children}</Heading>
       <Button 
         onClick={onClose} 
         variation="link"
-        padding="0"
+        padding="0.5rem"
+        style={{
+          borderRadius: '50%',
+          color: 'var(--chordora-text-secondary)',
+          transition: 'background-color 0.2s ease',
+          width: '32px',
+          height: '32px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minWidth: 'unset'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = 'var(--chordora-hover-bg)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'transparent';
+        }}
       >
-        <FaTimes size={20} />
+        <FaTimes size={16} />
       </Button>
     </Flex>
-    <Divider />
+    <Divider style={{ backgroundColor: 'var(--chordora-divider)', margin: 0 }} />
   </>
 );
 
@@ -48,8 +67,8 @@ const Body: React.FC<{ children: ReactNode }> = ({ children }) => (
 // Composant Footer
 const Footer: React.FC<{ children: ReactNode }> = ({ children }) => (
   <>
-    <Divider />
-    <Flex padding="1rem" justifyContent="center">
+    <Divider style={{ backgroundColor: 'var(--chordora-divider)', margin: 0 }} />
+    <Flex padding="1rem" justifyContent="flex-end" gap="0.5rem">
       {children}
     </Flex>
   </>
@@ -57,6 +76,7 @@ const Footer: React.FC<{ children: ReactNode }> = ({ children }) => (
 
 /**
  * Composant modal personnalisé pour remplacer le Modal d'Amplify UI
+ * Version améliorée avec position fixe et un design cohérent avec Chordora
  */
 const CustomModal: React.FC<CustomModalProps> & {
   Header: typeof Header;
@@ -67,43 +87,134 @@ const CustomModal: React.FC<CustomModalProps> & {
   onClose, 
   title,
   children,
-  footer 
+  footer,
+  width = '500px',
+  maxHeight = '85vh'
 }) => {
+  const modalRef = useRef<HTMLDivElement>(null);
+  
+  // Empêcher la propagation des clics dans le modal
+  const handleModalClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+  
+  // Gestionnaire pour la touche Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+  
   if (!isOpen) return null;
   
   return (
     <>
-      {/* Overlay sombre */}
+      {/* Overlay sombre avec position fixe */}
       <View
         position="fixed"
         top="0"
         left="0"
         right="0"
         bottom="0"
-        backgroundColor="rgba(0, 0, 0, 0.5)"
-        style={{ zIndex: 999 }}
+        backgroundColor="rgba(0, 0, 0, 0.7)"
+        style={{ 
+          zIndex: 1000, 
+          backdropFilter: 'blur(2px)',
+          animationName: 'fadeIn',
+          animationDuration: '0.2s'
+        }}
         onClick={onClose}
       />
       
-      {/* Contenu de la modal */}
-      <Card 
+      {/* Contenu de la modal avec position fixe */}
+      <View
+        ref={modalRef}
         position="fixed"
         left="50%"
         top="50%"
         style={{
           transform: 'translate(-50%, -50%)',
-          maxWidth: '600px',
-          width: '90%',
-          maxHeight: '80vh',
-          zIndex: 1000,
-          overflowY: 'auto',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+          width,
+          maxWidth: '95%',
+          maxHeight,
+          zIndex: 1001,
+          animationName: 'modalIn',
+          animationDuration: '0.3s',
+          animationTimingFunction: 'cubic-bezier(0.215, 0.610, 0.355, 1.000)'
         }}
+        onClick={handleModalClick}
       >
-        <Header onClose={onClose}>{title}</Header>
-        {children}
-        {footer && <Footer>{footer}</Footer>}
-      </Card>
+        <Card 
+          width="100%"
+          height="100%"
+          padding="0"
+          backgroundColor="var(--chordora-card-bg)"
+          borderRadius="8px"
+          variation="elevated"
+          boxShadow="0 4px 30px rgba(0,0,0,0.5)"
+          style={{ 
+            overflow: 'hidden',
+            display: 'flex', 
+            flexDirection: 'column'
+          }}
+        >
+          <Header onClose={onClose}>{title}</Header>
+          
+          {/* Corps avec scrolling si nécessaire */}
+          <View 
+            style={{ 
+              flexGrow: 1, 
+              overflow: 'auto',
+              scrollbarWidth: 'thin',
+              scrollbarColor: 'var(--chordora-scrollbar-thumb) var(--chordora-scrollbar-track)'
+            }}
+          >
+            {children}
+          </View>
+          
+          {footer && <Footer>{footer}</Footer>}
+        </Card>
+      </View>
+      
+      {/* Styles pour les animations */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes modalIn {
+          from { 
+            opacity: 0; 
+            transform: translate(-50%, -55%);
+          }
+          to { 
+            opacity: 1; 
+            transform: translate(-50%, -50%);
+          }
+        }
+        
+        /* Style personnalisé pour la scrollbar dans le modal */
+        ::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: var(--chordora-scrollbar-track);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: var(--chordora-scrollbar-thumb);
+          border-radius: 4px;
+        }
+      `}</style>
     </>
   );
 };

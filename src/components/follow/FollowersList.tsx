@@ -1,35 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, 
-  Heading, 
-  Text, 
-  Image, 
   Flex, 
   Loader, 
-  Card, 
+  Text,
+  Divider,
   Alert
 } from '@aws-amplify/ui-react';
-import { useNavigate } from 'react-router-dom';
-import { getFollowers } from '../../api/follow';
-import FollowButton from './FollowButton';
+import { getFollowing } from '../../api/follow';
+import UserItem from './UserItem';
 
-interface FollowersListProps {
+interface FollowingListProps {
   userId: string;
   title?: string;
 }
 
-const FollowersList: React.FC<FollowersListProps> = ({
+/**
+ * Liste des abonnements améliorée avec un design cohérent et une meilleure UX
+ */
+const FollowingList: React.FC<FollowingListProps> = ({
   userId,
-  title = 'Abonnés'
+  title
 }) => {
-  const navigate = useNavigate();
-  const [followers, setFollowers] = useState<any[]>([]);
+  const [following, setFollowing] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Charger les followers au montage et quand userId change
+  // Charger les abonnements au montage et quand userId change
   useEffect(() => {
-    const loadFollowers = async () => {
+    const loadFollowing = async () => {
       if (!userId) {
         setIsLoading(false);
         return;
@@ -38,111 +37,110 @@ const FollowersList: React.FC<FollowersListProps> = ({
       try {
         setIsLoading(true);
         setError(null);
-        const response = await getFollowers(userId);
+        const response = await getFollowing(userId);
         
         // Vérification sécurisée des données reçues
-        if (response && response.data && Array.isArray(response.data.followers)) {
-          setFollowers(response.data.followers);
+        if (response && response.data && Array.isArray(response.data.following)) {
+          setFollowing(response.data.following);
         } else {
-          // Si response.data.followers n'est pas un tableau, initialiser avec un tableau vide
-          console.warn('Données de followers invalides reçues:', response.data);
-          setFollowers([]);
+          // Si response.data.following n'est pas un tableau, initialiser avec un tableau vide
+          console.warn('Données de following invalides reçues:', response.data);
+          setFollowing([]);
         }
       } catch (error) {
-        console.error('Erreur lors du chargement des followers:', error);
-        setError('Impossible de charger les abonnés');
-        setFollowers([]);
+        console.error('Erreur lors du chargement des abonnements:', error);
+        setError('Impossible de charger les abonnements');
+        setFollowing([]);
       } finally {
         setIsLoading(false);
       }
     };
     
-    loadFollowers();
+    loadFollowing();
   }, [userId]);
   
-  // Gérer le clic sur un utilisateur
-  const handleUserClick = (userId: string) => {
-    navigate(`/profile/${userId}`);
+  // Gérer le toggle du bouton suivre/abonné
+  const handleFollowToggle = (followingId: string, isFollowing: boolean) => {
+    // Simuler le changement d'état localement pour une UX instantanée
+    if (!isFollowing) {
+      // Si on vient de cliquer pour suivre
+      setFollowing(prevFollowing => 
+        prevFollowing.map(user => 
+          user.userId === followingId 
+            ? { ...user, isFollowing: true }
+            : user
+        )
+      );
+    } else {
+      // Si on vient de cliquer pour ne plus suivre
+      setFollowing(prevFollowing => 
+        prevFollowing.filter(user => user.userId !== followingId)
+      );
+    }
+    
+    // Dans une implémentation réelle, vous appelleriez ici votre API
+    // pour mettre à jour le statut de suivi
   };
   
   // Afficher un loader pendant le chargement
   if (isLoading) {
     return (
-      <Flex justifyContent="center" padding="2rem">
+      <Flex direction="column" alignItems="center" padding="2rem">
         <Loader size="large" />
+        <Text marginTop="1rem" color="var(--chordora-text-secondary)">
+          Chargement des abonnements...
+        </Text>
       </Flex>
     );
   }
   
-  // Afficher un message si aucun follower
-  if (!followers || followers.length === 0) {
+  // Afficher un message d'erreur si nécessaire
+  if (error) {
     return (
-      <View padding="1rem">
-        <Heading level={4} marginBottom="1rem">{title}</Heading>
-        <Card padding="2rem" textAlign="center">
-          <Text>Aucun abonné pour le moment</Text>
-        </Card>
+      <Alert 
+        variation="error" 
+        heading="Erreur" 
+        marginBottom="1rem"
+        isDismissible={true}
+      >
+        {error}
+      </Alert>
+    );
+  }
+  
+  // Afficher un message si aucun abonnement
+  if (!following || following.length === 0) {
+    return (
+      <View padding="2rem" textAlign="center">
+        <Text color="var(--chordora-text-secondary)">
+          Aucun abonnement pour le moment
+        </Text>
       </View>
     );
   }
   
   return (
-    <View padding="1rem">
-      <Heading level={4} marginBottom="1rem">{title}</Heading>
-      
-      {error && (
-        <Alert variation="error" marginBottom="1rem">
-          {error}
-        </Alert>
-      )}
-      
-      <Flex direction="column" gap="0.75rem">
-        {followers.map(follower => (
-          <Card key={follower.userId} padding="1rem">
-            <Flex alignItems="center" gap="1rem">
-              <Image
-                src={follower.profileImageUrl || '/default-profile.jpg'}
-                alt={follower.username || 'Utilisateur'}
-                height="50px"
-                width="50px"
-                style={{ 
-                  objectFit: 'cover',
-                  borderRadius: '50%',
-                  cursor: 'pointer'
-                }}
-                onClick={() => handleUserClick(follower.userId)}
-                onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                  const target = e.currentTarget;
-                  target.src = '/default-profile.jpg';
-                }}
-              />
-              
-              <Flex direction="column" flex="1">
-                <Text 
-                  fontWeight="bold" 
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => handleUserClick(follower.userId)}
-                >
-                  {follower.username || `Utilisateur_${follower.userId.substring(0, 6)}`}
-                </Text>
-                {follower.userType && (
-                  <Text fontSize="0.8rem" color="gray">
-                    {follower.userType}
-                  </Text>
-                )}
-              </Flex>
-              
-              <FollowButton 
-                targetUserId={follower.userId}
-                size="small"
-                variant="link"
-              />
-            </Flex>
-          </Card>
-        ))}
-      </Flex>
+    <View>
+      {following.map((user, index) => (
+        <React.Fragment key={user.userId}>
+          <UserItem 
+            user={{...user, isFollowing: true}} // Par défaut, on suit toujours les gens dans cette liste
+            onFollowToggle={handleFollowToggle}
+          />
+          {index < following.length - 1 && (
+            <Divider 
+              orientation="horizontal" 
+              style={{ 
+                backgroundColor: 'var(--chordora-divider)',
+                opacity: 0.3,
+                margin: '0 0.5rem'
+              }} 
+            />
+          )}
+        </React.Fragment>
+      ))}
     </View>
   );
 };
 
-export default FollowersList;
+export default FollowingList;

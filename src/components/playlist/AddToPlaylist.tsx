@@ -4,12 +4,14 @@ import {
   Button, 
   Flex, 
   Loader, 
-  RadioGroupField,
-  Alert
+  Alert,
+  Image,
+  View,
+  Divider
 } from '@aws-amplify/ui-react';
 import { Track } from '../../types/TrackTypes';
 import { useUserPlaylists, useUpdatePlaylist } from '../../hooks/usePlaylists';
-import { FaPlus } from 'react-icons/fa';
+import { FaPlus, FaCheck, FaMusic, FaList } from 'react-icons/fa';
 import CustomModal from '../common/CustomModal';
 import PlaylistForm from './PlaylistForm';
 import { Playlist } from '../../types/PlaylistTypes';
@@ -25,6 +27,7 @@ interface AddToPlaylistProps {
 /**
  * Composant pour ajouter une piste à une playlist existante
  * ou pour créer une nouvelle playlist avec cette piste
+ * Version améliorée avec un design cohérent et sans problème de décalage
  */
 const AddToPlaylist: React.FC<AddToPlaylistProps> = ({ 
   track, 
@@ -47,6 +50,20 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
   
   // Mutation pour mettre à jour une playlist
   const updatePlaylistMutation = useUpdatePlaylist();
+  
+  // Gérer le succès de la création d'une nouvelle playlist
+  const handleNewPlaylistSuccess = (playlist: Playlist) => {
+    setShowNewPlaylistForm(false);
+    setSuccessMessage(`Piste "${track.title}" ajoutée à la nouvelle playlist "${playlist.title}"`);
+    
+    // Rafraîchir la liste des playlists
+    refetchPlaylists();
+    
+    // Fermer le modal après un court délai
+    setTimeout(() => {
+      onClose();
+    }, 1500);
+  };
   
   // Gérer l'ajout à une playlist existante
   const handleAddToExistingPlaylist = async () => {
@@ -118,20 +135,6 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
     }
   };
   
-  // Gérer le succès de la création d'une nouvelle playlist
-  const handleNewPlaylistSuccess = (playlist: Playlist) => {
-    setShowNewPlaylistForm(false);
-    setSuccessMessage(`Piste "${track.title}" ajoutée à la nouvelle playlist "${playlist.title}"`);
-    
-    // Rafraîchir la liste des playlists
-    refetchPlaylists();
-    
-    // Fermer le modal après un court délai
-    setTimeout(() => {
-      onClose();
-    }, 1500);
-  };
-  
   return (
     <CustomModal
       isOpen={isOpen}
@@ -148,12 +151,17 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
               variation="primary"
               isDisabled={!selectedPlaylistId || updatePlaylistMutation.isPending}
               isLoading={updatePlaylistMutation.isPending}
+              style={{
+                backgroundColor: 'var(--chordora-primary)',
+                borderRadius: '4px'
+              }}
             >
               Ajouter
             </Button>
           </Flex>
         )
       }
+      width="550px"
     >
       <CustomModal.Body>
         {successMessage && (
@@ -192,6 +200,26 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
           />
         ) : (
           <>
+            {/* Informations sur la piste à ajouter */}
+            <Flex alignItems="center" gap="1rem" marginBottom="1.5rem">
+              <Image
+                src={track.cover_image || '/default-cover.jpg'}
+                alt={track.title}
+                width="60px"
+                height="60px"
+                borderRadius="4px"
+                style={{ objectFit: 'cover' }}
+              />
+              <Flex direction="column" flex="1">
+                <Text fontWeight="bold">{track.title}</Text>
+                <Text fontSize="0.9rem" color="var(--chordora-text-secondary)">
+                  {track.artist || 'Artiste'} • {track.genre}
+                </Text>
+              </Flex>
+            </Flex>
+            
+            <Divider style={{ margin: '0 0 1.5rem 0', backgroundColor: 'var(--chordora-divider)' }} />
+            
             <Flex gap="1rem" direction="column">
               {isLoadingPlaylists ? (
                 <Flex justifyContent="center" padding="2rem">
@@ -199,45 +227,105 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
                 </Flex>
               ) : playlistsData?.playlists && playlistsData.playlists.length > 0 ? (
                 <>
-                  <Text fontWeight="bold">
-                    Sélectionnez une playlist existante :
-                  </Text>
+                  <Flex alignItems="center" gap="0.5rem" marginBottom="0.5rem">
+                    <FaList color="var(--chordora-text-secondary)" />
+                    <Text fontWeight="bold">
+                      Sélectionnez une playlist existante :
+                    </Text>
+                  </Flex>
                   
-                  <RadioGroupField
-                    name="playlist"
-                    legend="Playlists"
-                    legendHidden={true}
-                    value={selectedPlaylistId}
-                    onChange={(e) => setSelectedPlaylistId(e.target.value)}
+                  <View 
+                    backgroundColor="var(--chordora-bg-secondary)"
+                    padding="0.5rem"
+                    borderRadius="8px"
+                    maxHeight="250px"
+                    overflow="auto"
                   >
-                    <Flex direction="column" gap="0.5rem">
-                      {playlistsData.playlists.map((playlist) => (
-                        <div key={playlist.playlist_id}>
-                          <input
-                            type="radio"
-                            name="playlist"
-                            value={playlist.playlist_id}
-                            checked={selectedPlaylistId === playlist.playlist_id}
-                            onChange={(e) => setSelectedPlaylistId(e.target.value)}
-                            id={`playlist-${playlist.playlist_id}`}
-                            style={{ marginRight: '8px' }}
-                          />
-                          <label htmlFor={`playlist-${playlist.playlist_id}`}>
-                            {playlist.title} ({playlist.track_count || 0} pistes)
-                          </label>
+                    {playlistsData.playlists.map((playlist) => (
+                      <Flex
+                        key={playlist.playlist_id}
+                        alignItems="center"
+                        padding="0.75rem"
+                        gap="1rem"
+                        borderRadius="4px"
+                        backgroundColor={selectedPlaylistId === playlist.playlist_id 
+                          ? 'var(--chordora-active-bg)' 
+                          : 'transparent'
+                        }
+                        style={{
+                          cursor: 'pointer',
+                          transition: 'background-color 0.2s ease'
+                        }}
+                        onClick={() => setSelectedPlaylistId(playlist.playlist_id)}
+                        onMouseEnter={(e) => {
+                          if (selectedPlaylistId !== playlist.playlist_id) {
+                            e.currentTarget.style.backgroundColor = 'var(--chordora-hover-bg)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (selectedPlaylistId !== playlist.playlist_id) {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '4px',
+                            backgroundColor: '#3e1dfc',
+                            backgroundImage: playlist.cover_image_url ? `url(${playlist.cover_image_url})` : 'linear-gradient(135deg, #3e1dfc, #87e54c)',
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          {!playlist.cover_image_url && <FaMusic color="white" />}
                         </div>
-                      ))}
-                    </Flex>
-                  </RadioGroupField>
+                        
+                        <Flex direction="column" flex="1">
+                          <Text fontWeight="bold" color="var(--chordora-text-primary)">
+                            {playlist.title}
+                          </Text>
+                          <Text fontSize="0.8rem" color="var(--chordora-text-secondary)">
+                            {playlist.track_count || 0} pistes
+                          </Text>
+                        </Flex>
+                        
+                        {selectedPlaylistId === playlist.playlist_id && (
+                          <FaCheck color="var(--chordora-primary)" size={18} />
+                        )}
+                      </Flex>
+                    ))}
+                  </View>
                 </>
               ) : (
-                <Text>Vous n'avez pas encore de playlist.</Text>
+                <Flex 
+                  direction="column" 
+                  alignItems="center" 
+                  gap="1rem" 
+                  padding="2rem"
+                  backgroundColor="var(--chordora-bg-secondary)"
+                  borderRadius="8px"
+                >
+                  <FaMusic size={40} color="var(--chordora-text-secondary)" />
+                  <Text>Vous n'avez pas encore de playlist.</Text>
+                </Flex>
               )}
               
               <Button 
                 onClick={() => setShowNewPlaylistForm(true)}
                 variation="link"
-                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.5rem',
+                  alignSelf: 'center',
+                  marginTop: '1rem',
+                  color: 'var(--chordora-primary)'
+                }}
               >
                 <FaPlus /> Créer une nouvelle playlist
               </Button>
@@ -249,4 +337,4 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
   );
 };
 
-export default React.memo(AddToPlaylist);
+export default AddToPlaylist;
