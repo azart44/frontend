@@ -76,100 +76,114 @@ const TrackCard: React.FC<TrackCardProps> = ({
   // Style Row (pour les listes de lecture, tableaux)
   if (displayStyle === 'row') {
     return (
-      <tr 
-        className="track-row"
+      <Flex 
+        alignItems="center" 
+        padding="0.75rem" 
+        gap="1rem"
         onClick={handleCardClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
+        style={{ cursor: 'pointer' }}
       >
-        <td>
-          <div style={{ position: 'relative', width: '40px', textAlign: 'center' }}>
-            {isHovered ? (
-              <button 
-                onClick={handlePlayClick}
-                style={{ 
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: isCurrentTrack && isPlaying ? 'var(--chordora-secondary)' : 'white'
-                }}
-              >
-                {isCurrentTrack && isPlaying ? <FaPause size={16} /> : <FaPlay size={16} />}
-              </button>
-            ) : (
-              <span>{track.position !== undefined ? track.position : '-'}</span>
-            )}
-          </div>
-        </td>
-        <td>
-          <Flex alignItems="center" gap="1rem">
-            <Image
-              src={coverImageSrc}
-              alt={track.title}
-              width="40px"
-              height="40px"
+        <div style={{ position: 'relative', width: '40px', textAlign: 'center' }}>
+          {isHovered ? (
+            <button 
+              onClick={handlePlayClick}
               style={{ 
-                objectFit: 'cover',
-                borderRadius: '4px'
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: isCurrentTrack && isPlaying ? 'var(--chordora-secondary)' : 'white'
               }}
-              onError={() => setImageError(true)}
-            />
-            <Flex direction="column">
-              <Text 
-                fontWeight={isCurrentTrack ? 'bold' : 'normal'}
-                color={isCurrentTrack ? 'var(--chordora-secondary)' : 'var(--chordora-text-primary)'}
-              >
-                {track.title}
-              </Text>
+            >
+              {isCurrentTrack && isPlaying ? <FaPause size={16} /> : <FaPlay size={16} />}
+            </button>
+          ) : (
+            <span>{track.position !== undefined ? track.position : ''}</span>
+          )}
+        </div>
+        
+        <Flex alignItems="center" gap="1rem" flex="1">
+          <Image
+            src={coverImageSrc}
+            alt={track.title}
+            width="50px"
+            height="50px"
+            style={{ 
+              objectFit: 'cover',
+              borderRadius: '4px'
+            }}
+            onError={() => setImageError(true)}
+          />
+          <Flex direction="column">
+            <Text 
+              fontWeight={isCurrentTrack ? 'bold' : 'normal'}
+              color={isCurrentTrack ? 'var(--chordora-secondary)' : 'var(--chordora-text-primary)'}
+            >
+              {track.title}
+            </Text>
+            <Flex gap="0.5rem" alignItems="center">
               {track.bpm && (
                 <Text fontSize="0.8rem" color="var(--chordora-text-secondary)">
                   {track.bpm} BPM
                 </Text>
               )}
+              <Badge size="small" variation="info">{track.genre}</Badge>
             </Flex>
           </Flex>
-        </td>
-        <td>
-          <Text 
+        </Flex>
+        
+        <Text 
+          onClick={(e) => {
+            e.stopPropagation();
+            if (track.user_id) {
+              navigate(`/profile/${track.user_id}`);
+            }
+          }}
+          style={{ cursor: 'pointer' }}
+          color="var(--chordora-text-secondary)"
+          width="150px"
+        >
+          {track.artist || 'Artiste'}
+        </Text>
+        
+        <Text color="var(--chordora-text-secondary)" width="80px">
+          {formatTime(track.duration || 0)}
+        </Text>
+        
+        <Flex gap="0.5rem" justifyContent="flex-end">
+          {showLikeButton && (
+            <LikeButton
+              trackId={track.track_id}
+              likesCount={track.likes || 0}
+              size="small"
+              isCompact
+            />
+          )}
+          <Button
+            variation="link"
+            size="small"
+            style={{ padding: 0 }}
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/profile/${track.user_id}`);
+              // Add to playlist action
             }}
-            style={{ cursor: 'pointer' }}
-            color="var(--chordora-text-secondary)"
           >
-            {track.artist || 'Artiste'}
-          </Text>
-        </td>
-        <td>{track.genre}</td>
-        <td>{formatTime(track.duration || 0)}</td>
-        <td>
-          <Flex gap="0.5rem" justifyContent="flex-end">
-            {showLikeButton && (
-              <LikeButton
-                trackId={track.track_id}
-                likesCount={track.likes || 0}
-                size="small"
-                isCompact
-              />
-            )}
-            <Button
-              variation="link"
-              size="small"
-              style={{ padding: 0 }}
-            >
-              <FaPlus color="#a0a0a0" />
-            </Button>
-            <Button
-              variation="link"
-              size="small"
-              style={{ padding: 0 }}
-            >
-              <FaEllipsisH color="#a0a0a0" />
-            </Button>
-          </Flex>
-        </td>
-      </tr>
+            <FaPlus color="#a0a0a0" />
+          </Button>
+          <Button
+            variation="link"
+            size="small"
+            style={{ padding: 0 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              // Show options
+            }}
+          >
+            <FaEllipsisH color="#a0a0a0" />
+          </Button>
+        </Flex>
+      </Flex>
     );
   }
   
@@ -370,7 +384,9 @@ const TrackCard: React.FC<TrackCardProps> = ({
           style={{ marginBottom: '0.5rem' }}
           onClick={(e) => {
             e.stopPropagation();
-            navigate(`/profile/${track.user_id}`);
+            if (track.user_id) {
+              navigate(`/profile/${track.user_id}`);
+            }
           }}
         >
           {track.artist || 'Artiste'}

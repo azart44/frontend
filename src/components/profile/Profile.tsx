@@ -542,16 +542,18 @@ const Profile: React.FC = () => {
             {/* Tags */}
             {profile.tags && profile.tags.length > 0 && (
               <div>
-                <Flex alignItems="center" gap="0.5rem" marginBottom="0.5rem">
-                  <FaTag size={16} color="var(--chordora-text-secondary)" />
-                  <Heading level={5}>Tags</Heading>
-                  <Flex gap="0.5rem" wrap="wrap">
-                  {profile.tags.map(tag => (
-                    <Badge key={tag} variation="warning">{tag}</Badge>
-                  ))}
-                </Flex>
-              </div>
-            )}
+              <Flex alignItems="center" gap="0.5rem" marginBottom="0.5rem">
+                <FaTag size={16} color="var(--chordora-text-secondary)" />
+                <Heading level={5}>Tags</Heading>
+              </Flex>
+              <Flex gap="0.5rem" wrap="wrap">
+                {profile.tags.map(tag => (
+                  <Badge key={tag} variation="warning">{tag}</Badge>
+                ))}
+              </Flex>
+            </div>
+          )}
+
             
             {/* Équipement */}
             {profile.equipment && profile.equipment.length > 0 && (

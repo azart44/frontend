@@ -7,7 +7,8 @@ import {
   Loader, 
   Alert,
   Button,
-  Badge
+  Badge,
+  Card
 } from '@aws-amplify/ui-react';
 import { useNavigate } from 'react-router-dom';
 import { useUserLikes } from '../../hooks/useTrackLikes';
@@ -128,17 +129,28 @@ const Favorites: React.FC = () => {
         </Flex>
       </Heading>
       
-      <Flex direction="column" gap="1rem">
-        {likedTracks.map((track: Track) => (
-          <TrackCard 
-            key={track.track_id} 
-            track={track}
-            onPlay={() => playTrack(track)}
-            showLikeButton
-            isInFavorites
-          />
+      <Card padding="0" backgroundColor="var(--chordora-card-bg)" borderRadius="8px">
+        {likedTracks.map((track: Track, index: number) => (
+          <React.Fragment key={track.track_id}>
+            {/* Utiliser le style "row" pour cohérence avec les autres vues */}
+            <TrackCard 
+              track={{...track, position: index + 1}}
+              onPlay={() => playTrack(track)}
+              showLikeButton
+              isInFavorites
+              displayStyle="row"
+            />
+            {/* Ajouter un séparateur entre les pistes sauf pour la dernière */}
+            {index < likedTracks.length - 1 && (
+              <div style={{ 
+                height: '1px', 
+                backgroundColor: 'var(--chordora-divider)',
+                margin: '0 1rem'
+              }} />
+            )}
+          </React.Fragment>
         ))}
-      </Flex>
+      </Card>
     </View>
   );
 };

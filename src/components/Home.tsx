@@ -4,13 +4,15 @@ import {
   Text, 
   Button, 
   Image,
-  View
+  View,
+  Card
 } from '@aws-amplify/ui-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAudioContext } from '../contexts/AudioContext';
 import { FaPlay, FaPause, FaHeart, FaRandom } from 'react-icons/fa';
 import { Track } from '../types/TrackTypes';
+import TrackCard from './track/TrackCard';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -145,13 +147,6 @@ const HomePage: React.FC = () => {
     playTrack(track);
   };
   
-  // Format time helper
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
-  
   return (
     <View>
       {/* Bannière d'accueil */}
@@ -253,85 +248,26 @@ const HomePage: React.FC = () => {
           </Button>
         </div>
         
-        <table className="tracks-table">
-          <thead>
-            <tr>
-              <th style={{ width: '40px' }}>#</th>
-              <th>Titre</th>
-              <th>Artiste</th>
-              <th>Genre</th>
-              <th style={{ width: '80px' }}>Durée</th>
-              <th style={{ width: '60px' }}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {trendingTracks.slice(0, 5).map((track, index) => (
-              <tr key={track.track_id} 
-                onClick={() => handlePlayTrack(track)}
-                style={{ cursor: 'pointer' }}
-              >
-                <td>{index + 1}</td>
-                <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <Image
-                      src={track.cover_image || '/default-cover.jpg'}
-                      alt={track.title}
-                      width="40px"
-                      height="40px"
-                      style={{ 
-                        objectFit: 'cover',
-                        borderRadius: '4px'
-                      }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: 500 }}>{track.title}</div>
-                      {track.bpm && (
-                        <div style={{ fontSize: '0.8rem', color: 'var(--chordora-text-secondary)' }}>
-                          {track.bpm} BPM
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </td>
-                <td>{track.artist}</td>
-                <td>{track.genre}</td>
-                <td>{formatTime(track.duration || 0)}</td>
-                <td>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button 
-                      style={{ 
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        color: 'var(--chordora-text-secondary)'
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Like track action
-                      }}
-                    >
-                      <FaHeart />
-                    </button>
-                    <button 
-                      style={{ 
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        color: 'var(--chordora-text-secondary)'
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Add to playlist action
-                      }}
-                    >
-                      <FaRandom />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <Card padding="0" backgroundColor="var(--chordora-card-bg)" borderRadius="8px">
+          {trendingTracks.slice(0, 5).map((track, index) => (
+            <React.Fragment key={track.track_id}>
+              <TrackCard
+                track={{...track, position: index + 1}}
+                onPlay={() => handlePlayTrack(track)}
+                showLikeButton={true}
+                displayStyle="row"
+              />
+              {/* Ajouter un séparateur entre les pistes sauf pour la dernière */}
+              {index < trendingTracks.slice(0, 5).length - 1 && (
+                <div style={{ 
+                  height: '1px', 
+                  backgroundColor: 'var(--chordora-divider)',
+                  margin: '0 1rem'
+                }} />
+              )}
+            </React.Fragment>
+          ))}
+        </Card>
       </section>
       
       {/* Section "Artistes populaires" */}

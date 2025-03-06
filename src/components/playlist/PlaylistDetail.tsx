@@ -17,6 +17,7 @@ import { usePlaylist, useUpdatePlaylist, useDeletePlaylist } from '../../hooks/u
 import { useAudioContext } from '../../contexts/AudioContext';
 import { useAuth } from '../../contexts/AuthContext';
 import PlaylistForm from './PlaylistForm';
+import TrackCard from '../track/TrackCard';
 
 /**
  * Composant pour afficher les détails d'une playlist avec drag-and-drop
@@ -325,130 +326,80 @@ const PlaylistDetail: React.FC = () => {
       )}
       
       {playlist.tracks && playlist.tracks.length > 0 && (
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <Droppable droppableId="playlist-tracks">
-            {(provided: any) => (
-              <div
-                {...provided.droppableProps}
-                ref={provided.innerRef}
-              >
-                {playlist.tracks?.map((track, index) => (
-                  <Draggable 
-                    key={track.track_id} 
-                    draggableId={track.track_id} 
-                    index={index}
-                    isDragDisabled={!isOwner}
-                  >
-                    {(provided: any, snapshot: any) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
-                        style={{
-                          ...provided.draggableProps.style,
-                          marginBottom: '0.75rem',
-                          borderRadius: '8px',
-                          backgroundColor: snapshot.isDragging ? '#f0f0f0' : 'transparent',
-                          boxShadow: snapshot.isDragging ? '0 5px 10px rgba(0,0,0,0.1)' : 'none'
-                        }}
-                      >
-                        <Card
-                          padding="1rem"
-                          variation="outlined"
+        <Card padding="0" backgroundColor="var(--chordora-card-bg)" borderRadius="8px">
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <Droppable droppableId="playlist-tracks">
+              {(provided: any) => (
+                <div
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                >
+                  {playlist.tracks?.map((track, index) => (
+                    <Draggable 
+                      key={track.track_id} 
+                      draggableId={track.track_id} 
+                      index={index}
+                      isDragDisabled={!isOwner}
+                    >
+                      {(provided: any, snapshot: any) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                          style={{
+                            ...provided.draggableProps.style,
+                            backgroundColor: snapshot.isDragging ? 'var(--chordora-hover-bg)' : 'transparent',
+                          }}
                         >
-                          <Flex gap="1rem" alignItems="center">
-                            {/* Numéro de piste */}
-                            <Text 
-                              fontWeight="bold" 
-                              fontSize="1.2rem"
-                              width="1.5rem"
-                              textAlign="center"
-                            >
-                              {index + 1}
-                            </Text>
-                            
-                            {/* Image de couverture */}
-                            <Image 
-                              src={track.cover_image || '/default-cover.jpg'}
-                              alt={track.title}
-                              width="50px"
-                              height="50px"
-                              style={{ 
-                                objectFit: 'cover',
-                                borderRadius: '4px' 
-                              }}
-                            />
-                            
-                            {/* Informations de la piste */}
+                          {/* Utiliser le TrackCard avec style "row" */}
+                          <TrackCard
+                            track={{...track, position: index + 1}}
+                            onPlay={() => {
+                              if (currentTrack?.track_id === track.track_id) {
+                                togglePlay();
+                              } else {
+                                playTrack(track);
+                              }
+                            }}
+                            showLikeButton
+                            displayStyle="row"
+                          />
+                          
+                          {/* Bouton de suppression pour le propriétaire */}
+                          {isOwner && (
                             <Flex 
-                              direction="column" 
-                              flex="1"
-                              gap="0.25rem"
+                              justifyContent="flex-end" 
+                              padding="0 1rem 0.5rem"
                             >
-                              <Text fontWeight="bold">{track.title}</Text>
-                              <Text fontSize="0.8rem" color="#808080">
-                                {track.artist || 'Artiste inconnu'} • {track.genre}
-                              </Text>
-                            </Flex>
-                            
-                            {/* Durée de la piste */}
-                            {track.duration && (
-                              <Text color="#808080">
-                                {Math.floor(track.duration / 60)}:{String(Math.floor(track.duration % 60)).padStart(2, '0')}
-                              </Text>
-                            )}
-                            
-                            {/* Boutons d'action */}
-                            <Flex gap="0.5rem">
                               <Button
-                                onClick={() => {
-                                  if (currentTrack?.track_id === track.track_id) {
-                                    togglePlay();
-                                  } else {
-                                    playTrack(track);
-                                  }
-                                }}
-                                variation="primary"
+                                onClick={() => handleRemoveTrack(track.track_id)}
+                                variation="link"
                                 size="small"
-                                style={{
-                                  borderRadius: '50%',
-                                  width: '2rem',
-                                  height: '2rem',
-                                  padding: 0,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center'
-                                }}
+                                style={{ color: 'red' }}
                               >
-                                {currentTrack?.track_id === track.track_id && isPlaying ? (
-                                  <FaPause size={14} />
-                                ) : (
-                                  <FaPlay size={14} />
-                                )}
+                                <FaTrash size={14} />
                               </Button>
-                              
-                              {isOwner && (
-                                <Button
-                                  onClick={() => handleRemoveTrack(track.track_id)}
-                                  variation="link"
-                                  size="small"
-                                  style={{ color: 'red' }}
-                                >
-                                  <FaTrash size={14} />
-                                </Button>
-                              )}
                             </Flex>
-                          </Flex>
-                        </Card>
-                      </div>
-                    )}
-                  </Draggable>
-                ))}
-                {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
-        </DragDropContext>
+                          )}
+                          
+                          {/* Ajouter un séparateur entre les pistes sauf pour la dernière */}
+                          {index < playlist.tracks.length - 1 && !snapshot.isDragging && (
+                            <div style={{ 
+                              height: '1px', 
+                              backgroundColor: 'var(--chordora-divider)',
+                              margin: '0 1rem'
+                            }} />
+                          )}
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
+        </Card>
       )}
     </View>
   );

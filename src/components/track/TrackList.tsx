@@ -300,11 +300,11 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {} }) => {
           ) : (
             <Card style={{ overflow: 'hidden', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
               <div className="track-card-container">
-                {/* Utiliser TrackCard pour l'affichage cohérent */}
+                {/* Utiliser TrackCard pour l'affichage cohérent avec un style compact */}
                 <TrackCard 
                   track={track}
                   showLikeButton={true}
-                  displayStyle="full"
+                  displayStyle="row"
                   onPlay={() => handlePlayTrack(track)}
                 />
                 
