@@ -162,6 +162,7 @@ const ProfileCollection: React.FC<ProfileCollectionProps> = ({ userId, isOwnProf
             <PlaylistList 
               userId={userId}
               showAddButton={isOwnProfile} 
+              hideAddButton={true} // Ajout de cette prop pour cacher le bouton "Nouvelle playlist"
               onAddPlaylist={handleCreatePlaylist}
             />
           )}

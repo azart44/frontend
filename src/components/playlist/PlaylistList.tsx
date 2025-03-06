@@ -20,6 +20,7 @@ import { Playlist } from '../../types/PlaylistTypes';
 interface PlaylistListProps {
   userId?: string;
   showAddButton?: boolean;
+  hideAddButton?: boolean; // Nouvelle prop pour cacher explicitement le bouton
   onAddPlaylist?: () => void;
   onPlaylistClick?: (playlist: Playlist) => void;
 }
@@ -30,6 +31,7 @@ interface PlaylistListProps {
 const PlaylistList: React.FC<PlaylistListProps> = ({ 
   userId, 
   showAddButton = true,
+  hideAddButton = false, // Valeur par défaut à false
   onAddPlaylist,
   onPlaylistClick
 }) => {
@@ -152,7 +154,7 @@ const PlaylistList: React.FC<PlaylistListProps> = ({
       <View padding="2rem" textAlign="center">
         <Text marginBottom="1rem">Aucune playlist pour le moment</Text>
         
-        {showAddButton && canEdit && (
+        {showAddButton && canEdit && !hideAddButton && (
           <Button 
             onClick={handleCreatePlaylist}
             variation="primary"
@@ -171,7 +173,7 @@ const PlaylistList: React.FC<PlaylistListProps> = ({
       <Flex justifyContent="space-between" alignItems="center" marginBottom="1rem">
         <Heading level={3}>Playlists {data?.count ? `(${data.count})` : ''}</Heading>
         
-        {showAddButton && canEdit && (
+        {showAddButton && canEdit && !hideAddButton && (
           <Button 
             onClick={handleCreatePlaylist}
             variation="primary"
