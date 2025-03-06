@@ -8,19 +8,35 @@ import {
   Loader, 
   Card,
   Badge,
-  Image
+  Image,
+  TextField
 } from '@aws-amplify/ui-react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { FaPlay, FaPause, FaEdit, FaTrash, FaLock, FaGlobe, FaArrowLeft } from 'react-icons/fa';
+import { 
+  FaPlay, 
+  FaPause, 
+  FaEdit, 
+  FaTrash, 
+  FaLock, 
+  FaGlobe, 
+  FaArrowLeft, 
+  FaPlus,
+  FaSearch,
+  FaTimes
+} from 'react-icons/fa';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { usePlaylist, useUpdatePlaylist, useDeletePlaylist } from '../../hooks/usePlaylists';
 import { useAudioContext } from '../../contexts/AudioContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSearchTracks } from '../../hooks/useTracks';
 import PlaylistForm from './PlaylistForm';
+import CustomModal from '../common/CustomModal';
 import TrackCard from '../track/TrackCard';
+import { Track } from '../../types/TrackTypes';
 
 /**
  * Composant pour afficher les détails d'une playlist avec drag-and-drop
+ * Amélioré avec la possibilité d'ajouter des pistes
  */
 const PlaylistDetail: React.FC = () => {
   const { playlistId } = useParams<{ playlistId: string }>();
@@ -28,6 +44,8 @@ const PlaylistDetail: React.FC = () => {
   const { userId } = useAuth();
   const { currentTrack, isPlaying, playTrack, togglePlay } = useAudioContext();
   const [isEditing, setIsEditing] = useState(false);
+  const [showAddTracksModal, setShowAddTracksModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   
   // Récupération de la playlist
   const { 
@@ -37,12 +55,23 @@ const PlaylistDetail: React.FC = () => {
     refetch 
   } = usePlaylist(playlistId);
   
+  // Recherche de pistes pour l'ajout
+  const { 
+    data: searchResults, 
+    isLoading: isSearching 
+  } = useSearchTracks(
+    searchTerm ? { query: searchTerm } : {}
+  );
+  
   // Hooks de mutation
   const updatePlaylistMutation = useUpdatePlaylist();
   const deletePlaylistMutation = useDeletePlaylist();
   
   // Vérifier si l'utilisateur est propriétaire de la playlist
   const isOwner = playlist?.user_id === userId;
+  
+  // Récupérer les pistes déjà dans la playlist pour éviter les doublons
+  const existingTrackIds = playlist?.tracks?.map(track => track.track_id) || [];
   
   // Gérer le glisser-déposer des pistes
   const handleDragEnd = useCallback(async (result: DropResult) => {
@@ -70,12 +99,6 @@ const PlaylistDetail: React.FC = () => {
     // Créer le nouvel ordre des pistes
     const updatedTrackIds = newTracks.map(track => track.track_id);
     
-    // Mettre à jour les positions
-    const updatedPositions: Record<string, number> = {};
-    newTracks.forEach((track, index) => {
-      updatedPositions[track.track_id] = index;
-    });
-    
     try {
       // Mise à jour de la playlist avec le nouvel ordre
       await updatePlaylistMutation.mutateAsync({
@@ -96,6 +119,43 @@ const PlaylistDetail: React.FC = () => {
       console.error('Erreur lors de la mise à jour de l\'ordre des pistes:', error);
     }
   }, [playlist, updatePlaylistMutation, refetch]);
+  
+  // Ajouter une piste à la playlist
+  const handleAddTrack = useCallback(async (track: Track) => {
+    if (!playlist) return;
+    
+    // Vérifier si la piste n'est pas déjà dans la playlist
+    if (existingTrackIds.includes(track.track_id)) {
+      console.warn('Cette piste est déjà dans la playlist');
+      return;
+    }
+    
+    try {
+      // Créer la nouvelle liste de pistes
+      const updatedTracks = [...(playlist.tracks || []), track];
+      const updatedTrackIds = updatedTracks.map(t => t.track_id);
+      
+      // Mise à jour de la playlist
+      await updatePlaylistMutation.mutateAsync({
+        playlist_id: playlist.playlist_id,
+        title: playlist.title,
+        description: playlist.description,
+        is_public: playlist.is_public,
+        cover_image_url: playlist.cover_image_url,
+        tracks: updatedTrackIds.map((id, index) => ({
+          track_id: id,
+          position: index
+        }))
+      });
+      
+      // Fermer le modal et rafraîchir les données
+      setShowAddTracksModal(false);
+      setSearchTerm('');
+      refetch();
+    } catch (error) {
+      console.error('Erreur lors de l\'ajout de la piste:', error);
+    }
+  }, [playlist, existingTrackIds, updatePlaylistMutation, refetch]);
   
   // Supprimer une piste de la playlist
   const handleRemoveTrack = useCallback(async (trackId: string) => {
@@ -308,14 +368,30 @@ const PlaylistDetail: React.FC = () => {
       </Card>
       
       {/* Liste des pistes avec drag-and-drop */}
-      <Heading level={3} marginBottom="1rem">Pistes</Heading>
+      <Flex 
+        justifyContent="space-between" 
+        alignItems="center" 
+        marginBottom="1rem"
+      >
+        <Heading level={3}>Pistes</Heading>
+        
+        {isOwner && (
+          <Button 
+            onClick={() => setShowAddTracksModal(true)}
+            variation="primary"
+          >
+            <FaPlus style={{ marginRight: '0.5rem' }} />
+            Ajouter des pistes
+          </Button>
+        )}
+      </Flex>
       
       {(!playlist.tracks || playlist.tracks.length === 0) && (
         <Card padding="2rem" textAlign="center">
           <Text>Aucune piste dans cette playlist.</Text>
           {isOwner && (
             <Button 
-              onClick={() => navigate('/tracks')} 
+              onClick={() => setShowAddTracksModal(true)} 
               variation="primary"
               marginTop="1rem"
             >
@@ -377,20 +453,21 @@ const PlaylistDetail: React.FC = () => {
                                 size="small"
                                 style={{ color: 'red' }}
                               >
-                                <FaTrash size={14} />
+                                <FaTrash size={14} style={{ marginRight: '0.5rem' }} />
+                                Retirer de la playlist
                               </Button>
                             </Flex>
                           )}
                           
                           {/* Ajouter un séparateur entre les pistes sauf pour la dernière */}
                           {playlist.tracks && index < playlist.tracks.length - 1 && !snapshot.isDragging && (
-                        <div style={{ 
-                            height: '1px', 
-                            backgroundColor: 'var(--chordora-divider)',
-                            margin: '0 1rem'
-                        }} />
-                    )}
-                    </div>
+                            <div style={{ 
+                              height: '1px', 
+                              backgroundColor: 'var(--chordora-divider)',
+                              margin: '0 1rem'
+                            }} />
+                          )}
+                        </div>
                       )}
                     </Draggable>
                   ))}
@@ -401,6 +478,112 @@ const PlaylistDetail: React.FC = () => {
           </DragDropContext>
         </Card>
       )}
+      
+      {/* Modal pour ajouter des pistes */}
+      <CustomModal
+        isOpen={showAddTracksModal}
+        onClose={() => {
+          setShowAddTracksModal(false);
+          setSearchTerm('');
+        }}
+        title="Ajouter des pistes à la playlist"
+        footer={
+          <Button 
+            onClick={() => {
+              setShowAddTracksModal(false);
+              setSearchTerm('');
+            }}
+            variation="primary"
+          >
+            Fermer
+          </Button>
+        }
+      >
+        <CustomModal.Body>
+          <Flex direction="column" gap="1rem">
+            <TextField
+              placeholder="Rechercher des pistes..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              size="large"
+              variation="quiet"
+              innerStartComponent={<FaSearch style={{ marginLeft: '0.5rem', color: 'gray' }} />}
+              innerEndComponent={
+                searchTerm ? (
+                  <Button 
+                    variation="link" 
+                    onClick={() => setSearchTerm('')}
+                    size="small"
+                    padding="0 0.5rem"
+                  >
+                    <FaTimes />
+                  </Button>
+                ) : null
+              }
+            />
+            
+            {isSearching ? (
+              <Flex justifyContent="center" padding="2rem">
+                <Loader size="medium" />
+              </Flex>
+            ) : searchResults?.tracks && searchResults.tracks.length > 0 ? (
+              <View 
+                maxHeight="400px" 
+                overflow="auto"
+                padding="0.5rem"
+              >
+                <Flex direction="column" gap="0.5rem">
+                  {searchResults.tracks.map(track => (
+                    <Flex 
+                      key={track.track_id}
+                      justifyContent="space-between" 
+                      alignItems="center"
+                      backgroundColor="rgba(255,255,255,0.05)"
+                      padding="0.75rem"
+                      borderRadius="4px"
+                    >
+                      <Flex alignItems="center" gap="0.75rem">
+                        <Image
+                          src={track.cover_image || '/default-cover.jpg'}
+                          alt={track.title}
+                          width="40px"
+                          height="40px"
+                          style={{ objectFit: 'cover', borderRadius: '4px' }}
+                        />
+                        <Flex direction="column">
+                          <Text fontWeight="bold">{track.title}</Text>
+                          <Flex alignItems="center" gap="0.5rem">
+                            <Text fontSize="0.8rem" color="gray">{track.artist || 'Artiste'}</Text>
+                            <Badge size="small">{track.genre}</Badge>
+                          </Flex>
+                        </Flex>
+                      </Flex>
+                      
+                      <Button 
+                        onClick={() => handleAddTrack(track)}
+                        variation="primary"
+                        size="small"
+                        isDisabled={existingTrackIds.includes(track.track_id)}
+                      >
+                        {existingTrackIds.includes(track.track_id) ? 'Déjà ajoutée' : 'Ajouter'}
+                      </Button>
+                    </Flex>
+                  ))}
+                </Flex>
+              </View>
+            ) : (
+              <Card padding="2rem" textAlign="center">
+                <Text color="gray">
+                  {searchTerm 
+                    ? 'Aucune piste trouvée. Essayez d\'autres termes de recherche.'
+                    : 'Recherchez des pistes à ajouter à votre playlist.'
+                  }
+                </Text>
+              </Card>
+            )}
+          </Flex>
+        </CustomModal.Body>
+      </CustomModal>
     </View>
   );
 };
