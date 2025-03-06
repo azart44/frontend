@@ -14,7 +14,7 @@ import {
 } from '@aws-amplify/ui-react';
 import { useUserProfile } from '../../hooks/useProfile';
 import EditProfileForm from './EditProfileForm';
-import TrackList from '../track/TrackList';
+import ProfileCollection from './ProfileCollection'; // Importation du nouveau composant
 import { useAuth } from '../../contexts/AuthContext';
 import { 
   FaEdit, 
@@ -29,9 +29,7 @@ import {
   FaYoutube,
   FaSoundcloud,
   FaTwitter,
-  FaEllipsisH,
-  FaHeart,
-  FaPlus
+  FaEllipsisH
 } from 'react-icons/fa';
 import { 
   useFollowStatus, 
@@ -50,7 +48,7 @@ const Profile: React.FC = () => {
   const { isAuthenticated, userId: authUserId } = useAuth();
   
   const [isEditing, setIsEditing] = useState(false);
-  const [activeTab, setActiveTab] = useState('tracks');
+  const [activeTab, setActiveTab] = useState('collection'); // Changement de l'onglet par défaut à 'collection'
   const [imageError, setImageError] = useState(false);
   const [showFollowModal, setShowFollowModal] = useState(false);
   const [modalTab, setModalTab] = useState<'followers' | 'following'>('followers');
@@ -426,39 +424,21 @@ const Profile: React.FC = () => {
         marginBottom="2rem"
       >
         <button
-          className={`tab-button ${activeTab === 'tracks' ? 'active' : ''}`}
-          onClick={() => setActiveTab('tracks')}
+          className={`tab-button ${activeTab === 'collection' ? 'active' : ''}`}
+          onClick={() => setActiveTab('collection')}
           style={{
             background: 'transparent',
             border: 'none',
             padding: '1rem 1.5rem',
             cursor: 'pointer',
-            color: activeTab === 'tracks' ? 'var(--chordora-primary)' : 'var(--chordora-text-secondary)',
-            fontWeight: activeTab === 'tracks' ? 'bold' : 'normal',
-            borderBottom: activeTab === 'tracks' ? '2px solid var(--chordora-primary)' : 'none',
+            color: activeTab === 'collection' ? 'var(--chordora-primary)' : 'var(--chordora-text-secondary)',
+            fontWeight: activeTab === 'collection' ? 'bold' : 'normal',
+            borderBottom: activeTab === 'collection' ? '2px solid var(--chordora-primary)' : 'none',
             transition: 'all 0.3s ease'
           }}
         >
           <FaMusic style={{ marginRight: '0.5rem' }} />
-          Pistes
-        </button>
-        
-        <button
-          className={`tab-button ${activeTab === 'playlists' ? 'active' : ''}`}
-          onClick={() => setActiveTab('playlists')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            padding: '1rem 1.5rem',
-            cursor: 'pointer',
-            color: activeTab === 'playlists' ? 'var(--chordora-primary)' : 'var(--chordora-text-secondary)',
-            fontWeight: activeTab === 'playlists' ? 'bold' : 'normal',
-            borderBottom: activeTab === 'playlists' ? '2px solid var(--chordora-primary)' : 'none',
-            transition: 'all 0.3s ease'
-          }}
-        >
-          <FaHeart style={{ marginRight: '0.5rem' }} />
-          Playlists
+          Ma Collection
         </button>
         
         <button
@@ -480,32 +460,11 @@ const Profile: React.FC = () => {
       </Flex>
       
       {/* Contenu des onglets */}
-      {activeTab === 'tracks' && (
-        <div>
-          {isOwnProfile && (
-            <Button 
-              onClick={() => navigate('/add-track')} 
-              variation="primary"
-              style={{
-                marginBottom: '1.5rem',
-                backgroundColor: 'var(--chordora-primary)',
-                borderRadius: '20px'
-              }}
-            >
-              <FaPlus style={{ marginRight: '0.5rem' }} />
-              Ajouter une piste
-            </Button>
-          )}
-          
-          <TrackList userId={targetUserId!} />
-        </div>
-      )}
-      
-      {activeTab === 'playlists' && (
-        <div>
-          {/* Contenu des playlists */}
-          <Text>Playlists de l'utilisateur (aucune playlist pour le moment)</Text>
-        </div>
+      {activeTab === 'collection' && (
+        <ProfileCollection 
+          userId={targetUserId!} 
+          isOwnProfile={isOwnProfile} 
+        />
       )}
       
       {activeTab === 'about' && (
@@ -542,18 +501,17 @@ const Profile: React.FC = () => {
             {/* Tags */}
             {profile.tags && profile.tags.length > 0 && (
               <div>
-              <Flex alignItems="center" gap="0.5rem" marginBottom="0.5rem">
-                <FaTag size={16} color="var(--chordora-text-secondary)" />
-                <Heading level={5}>Tags</Heading>
-              </Flex>
-              <Flex gap="0.5rem" wrap="wrap">
-                {profile.tags.map(tag => (
-                  <Badge key={tag} variation="warning">{tag}</Badge>
-                ))}
-              </Flex>
-            </div>
-          )}
-
+                <Flex alignItems="center" gap="0.5rem" marginBottom="0.5rem">
+                  <FaTag size={16} color="var(--chordora-text-secondary)" />
+                  <Heading level={5}>Tags</Heading>
+                </Flex>
+                <Flex gap="0.5rem" wrap="wrap">
+                  {profile.tags.map(tag => (
+                    <Badge key={tag} variation="warning">{tag}</Badge>
+                  ))}
+                </Flex>
+              </div>
+            )}
             
             {/* Équipement */}
             {profile.equipment && profile.equipment.length > 0 && (

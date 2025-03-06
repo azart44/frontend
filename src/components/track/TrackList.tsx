@@ -23,6 +23,7 @@ import { FaEdit, FaTrash } from 'react-icons/fa';
 interface TrackListProps {
   userId: string;
   filters?: Record<string, string>;
+  onRefresh?: () => void; // Nouvelle prop pour notifier du rafraîchissement
 }
 
 // Interface d'édition de piste étendue (à utiliser uniquement dans ce composant)
@@ -35,7 +36,7 @@ interface EditableTrack extends Partial<Track> {
  * Composant pour afficher la liste des pistes audio d'un utilisateur
  * avec options de lecture, modification et suppression
  */
-const TrackList: React.FC<TrackListProps> = ({ userId, filters = {} }) => {
+const TrackList: React.FC<TrackListProps> = ({ userId, filters = {}, onRefresh }) => {
   const { userId: currentUserId } = useAuth();
   const { playTrack } = useAudioContext();
   const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
@@ -155,7 +156,12 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {} }) => {
       setCoverImagePreview(null);
       
       // Rafraîchir les données
-      refetch();
+      await refetch();
+      
+      // Notifier le parent du rafraîchissement si la fonction est fournie
+      if (onRefresh) {
+        onRefresh();
+      }
     } catch (error) {
       console.error('Erreur lors de la mise à jour:', error);
     }
@@ -166,8 +172,14 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {} }) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer cette piste ?')) {
       try {
         await deleteTrackMutation.mutateAsync(trackId);
+        
         // Rafraîchir les données
-        refetch();
+        await refetch();
+        
+        // Notifier le parent du rafraîchissement si la fonction est fournie
+        if (onRefresh) {
+          onRefresh();
+        }
       } catch (error) {
         console.error('Erreur lors de la suppression:', error);
       }
