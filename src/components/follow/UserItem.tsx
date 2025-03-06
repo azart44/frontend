@@ -1,166 +1,136 @@
 import React, { useState } from 'react';
 import { 
-  Text, 
   Flex, 
-  Button, 
+  Text, 
   Image, 
-  Badge 
+  Badge, 
+  Button 
 } from '@aws-amplify/ui-react';
 import { useNavigate } from 'react-router-dom';
 import { FaUserPlus, FaUserCheck } from 'react-icons/fa';
-import { useAuth } from '../../contexts/AuthContext';
-
-interface User {
-  userId: string;
-  username?: string;
-  name?: string;
-  profileImageUrl?: string;
-  profileImage?: string; // Alternative field name
-  userType?: string;
-  followDate?: number;
-  isFollowing?: boolean;
-}
+import { useFollowUser, useUnfollowUser } from '../../hooks/useFollow';
 
 interface UserItemProps {
-  user: User;
+  user: {
+    userId: string;
+    username?: string;
+    profileImageUrl?: string;
+    userType?: string;
+    isFollowing?: boolean;
+  };
   onFollowToggle?: (userId: string, isFollowing: boolean) => void;
-  hideFollowButton?: boolean;
+  onFollowStateChange?: () => void;
 }
 
-/**
- * Composant pour afficher un utilisateur dans les listes de followers/following
- * avec gestion du bouton de suivi/désabonnement
- */
 const UserItem: React.FC<UserItemProps> = ({ 
   user, 
-  onFollowToggle,
-  hideFollowButton = false
+  onFollowToggle, 
+  onFollowStateChange 
 }) => {
   const navigate = useNavigate();
-  const { userId: authUserId, isAuthenticated } = useAuth();
-  const [isHovered, setIsHovered] = useState(false);
-  const [isFollowHovered, setIsFollowHovered] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(user.isFollowing || false);
+  const [isLoading, setIsLoading] = useState(false);
   
-  // Déterminer si c'est le propre profil de l'utilisateur authentifié
-  const isSelf = user.userId === authUserId;
+  // Utiliser les hooks de mutation pour follow/unfollow
+  const followMutation = useFollowUser();
+  const unfollowMutation = useUnfollowUser();
   
-  // Déterminer l'état de suivi
-  const isFollowing = user.isFollowing || false;
-  
-  // URL de l'image de profil (avec fallback)
-  const profileImageUrl = user.profileImageUrl || user.profileImage || '/default-profile.jpg';
-  
-  // Gérer le clic sur le profil
-  const handleProfileClick = () => {
+  // Rediriger vers le profil de l'utilisateur
+  const handleUserClick = () => {
     navigate(`/profile/${user.userId}`);
   };
   
-  // Gérer le clic sur le bouton suivre/ne plus suivre
-  const handleFollowClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!isAuthenticated) {
-      navigate('/auth');
-      return;
-    }
+  // Gérer le clic sur le bouton Suivre/Ne plus suivre
+  const handleFollowClick = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Éviter la propagation vers le parent
     
-    if (onFollowToggle) {
-      onFollowToggle(user.userId, isFollowing);
-    }
-  };
-  
-  // Formatter la date de suivi
-  const formatFollowDate = (timestamp?: number): string => {
-    if (!timestamp) return '';
+    setIsLoading(true);
     
-    const date = new Date(timestamp);
-    return date.toLocaleDateString();
+    try {
+      if (isFollowing) {
+        // Appeler l'API pour unfollow
+        await unfollowMutation.mutateAsync(user.userId);
+        setIsFollowing(false);
+        
+        // Notifier le parent si nécessaire
+        if (onFollowToggle) {
+          onFollowToggle(user.userId, false);
+        }
+      } else {
+        // Appeler l'API pour follow
+        await followMutation.mutateAsync(user.userId);
+        setIsFollowing(true);
+        
+        // Notifier le parent si nécessaire
+        if (onFollowToggle) {
+          onFollowToggle(user.userId, true);
+        }
+      }
+      
+      // Notifier que l'état de suivi a changé
+      if (onFollowStateChange) {
+        onFollowStateChange();
+      }
+    } catch (error) {
+      console.error("Erreur lors du suivi/désabonnement:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   return (
     <Flex 
+      padding="0.75rem" 
       alignItems="center" 
-      gap="1rem" 
-      padding="1rem"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      style={{ 
-        cursor: 'pointer',
-        transition: 'background-color 0.2s ease',
-        backgroundColor: isHovered ? 'var(--chordora-hover-bg)' : 'transparent',
-        borderRadius: '8px'
-      }}
-      onClick={handleProfileClick}
+      justifyContent="space-between"
+      style={{ cursor: 'pointer' }}
+      onClick={handleUserClick}
     >
-      {/* Photo de profil */}
-      <Image
-        src={profileImageUrl}
-        alt={user.username || user.name || 'Utilisateur'}
-        width="50px"
-        height="50px"
-        style={{ 
-          objectFit: 'cover',
-          borderRadius: '50%'
-        }}
-        onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-          const target = e.currentTarget;
-          target.src = '/default-profile.jpg';
-        }}
-      />
-      
-      {/* Informations utilisateur */}
-      <Flex direction="column" flex="1">
-        <Text fontWeight="bold">
-          {user.username || user.name || `Utilisateur_${user.userId.substring(0, 6)}`}
-        </Text>
+      <Flex alignItems="center" gap="1rem">
+        <Image
+          src={user.profileImageUrl || '/default-profile.jpg'}
+          alt={user.username || 'Utilisateur'}
+          width="50px"
+          height="50px"
+          style={{ 
+            objectFit: 'cover',
+            borderRadius: '50%' 
+          }}
+          onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+            e.currentTarget.src = '/default-profile.jpg';
+          }}
+        />
         
-        <Flex gap="0.5rem" alignItems="center">
+        <Flex direction="column">
+          <Text fontWeight="bold">{user.username || `User_${user.userId.substring(0, 6)}`}</Text>
           {user.userType && (
-            <Badge variation="info" size="small">
-              {user.userType}
-            </Badge>
-          )}
-          
-          {user.followDate && (
-            <Text fontSize="0.8rem" color="var(--chordora-text-secondary)">
-              Depuis {formatFollowDate(user.followDate)}
-            </Text>
+            <Badge variation="info" size="small">{user.userType}</Badge>
           )}
         </Flex>
       </Flex>
       
-      {/* Bouton suivre/ne plus suivre */}
-      {!hideFollowButton && !isSelf && (
-        <Button
-          onMouseEnter={() => setIsFollowHovered(true)}
-          onMouseLeave={() => setIsFollowHovered(false)}
-          onClick={handleFollowClick}
-          variation={isFollowing ? "menu" : "primary"}
-          size="small"
-          style={{ 
-            borderRadius: '20px',
-            backgroundColor: isFollowing 
-              ? 'rgba(255, 255, 255, 0.1)' 
-              : 'var(--chordora-primary)',
-            minWidth: isFollowHovered && isFollowing ? '110px' : 'auto'
-          }}
-        >
-          {isFollowing ? (
-            isFollowHovered ? (
-              'Ne plus suivre'
-            ) : (
-              <>
-                <FaUserCheck style={{ marginRight: '0.5rem' }} />
-                Abonné
-              </>
-            )
-          ) : (
-            <>
-              <FaUserPlus style={{ marginRight: '0.5rem' }} />
-              Suivre
-            </>
-          )}
-        </Button>
-      )}
+      <Button
+        onClick={handleFollowClick}
+        isLoading={isLoading}
+        variation={isFollowing ? "menu" : "primary"}
+        size="small"
+        style={{ 
+          borderRadius: '20px',
+          backgroundColor: isFollowing ? 'rgba(255, 255, 255, 0.1)' : 'var(--chordora-primary)'
+        }}
+      >
+        {isFollowing ? (
+          <>
+            <FaUserCheck style={{ marginRight: '0.5rem' }} />
+            Abonné
+          </>
+        ) : (
+          <>
+            <FaUserPlus style={{ marginRight: '0.5rem' }} />
+            Suivre
+          </>
+        )}
+      </Button>
     </Flex>
   );
 };

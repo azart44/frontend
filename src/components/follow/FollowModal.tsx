@@ -16,6 +16,7 @@ interface FollowModalProps {
   onClose: () => void;
   initialTab?: 'followers' | 'following';
   username?: string;
+  onFollowStateChange?: () => void;
 }
 
 /**
@@ -27,9 +28,17 @@ const FollowModal: React.FC<FollowModalProps> = ({
   isOpen,
   onClose,
   initialTab = 'followers',
-  username = 'Utilisateur'
+  username = 'Utilisateur',
+  onFollowStateChange
 }) => {
   const [activeTab, setActiveTab] = useState<'followers' | 'following'>(initialTab);
+  
+  // Gérer les changements d'état de suivi
+  const handleFollowChange = () => {
+    if (onFollowStateChange) {
+      onFollowStateChange();
+    }
+  };
   
   return (
     <CustomModal
@@ -77,14 +86,16 @@ const FollowModal: React.FC<FollowModalProps> = ({
           {activeTab === 'followers' && userId && (
             <FollowersList 
               userId={userId} 
-              title={`Abonnés de ${username}`} 
+              title={`Abonnés de ${username}`}
+              onFollowStateChange={handleFollowChange}
             />
           )}
           
           {activeTab === 'following' && userId && (
             <FollowingList 
               userId={userId} 
-              title={`Abonnements de ${username}`} 
+              title={`Abonnements de ${username}`}
+              onFollowStateChange={handleFollowChange}
             />
           )}
         </div>

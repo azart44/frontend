@@ -7,28 +7,30 @@ import {
   Divider,
   Alert
 } from '@aws-amplify/ui-react';
-import { getFollowing } from '../../api/follow';
+import { getFollowers } from '../../api/follow';
 import UserItem from './UserItem';
 
-interface FollowingListProps {
+interface FollowersListProps {
   userId: string;
   title?: string;
+  onFollowStateChange?: () => void;
 }
 
 /**
- * Liste des abonnements améliorée avec un design cohérent et une meilleure UX
+ * Liste des abonnés améliorée avec un design cohérent et une meilleure UX
  */
-const FollowingList: React.FC<FollowingListProps> = ({
+const FollowersList: React.FC<FollowersListProps> = ({
   userId,
-  title
+  title,
+  onFollowStateChange
 }) => {
-  const [following, setFollowing] = useState<any[]>([]);
+  const [followers, setFollowers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Charger les abonnements au montage et quand userId change
+  // Charger les abonnés au montage et quand userId change
   useEffect(() => {
-    const loadFollowing = async () => {
+    const loadFollowers = async () => {
       if (!userId) {
         setIsLoading(false);
         return;
@@ -37,49 +39,39 @@ const FollowingList: React.FC<FollowingListProps> = ({
       try {
         setIsLoading(true);
         setError(null);
-        const response = await getFollowing(userId);
+        const response = await getFollowers(userId);
         
         // Vérification sécurisée des données reçues
-        if (response && response.data && Array.isArray(response.data.following)) {
-          setFollowing(response.data.following);
+        if (response && response.data && Array.isArray(response.data.followers)) {
+          setFollowers(response.data.followers);
         } else {
-          // Si response.data.following n'est pas un tableau, initialiser avec un tableau vide
-          console.warn('Données de following invalides reçues:', response.data);
-          setFollowing([]);
+          // Si response.data.followers n'est pas un tableau, initialiser avec un tableau vide
+          console.warn('Données de followers invalides reçues:', response.data);
+          setFollowers([]);
         }
       } catch (error) {
-        console.error('Erreur lors du chargement des abonnements:', error);
-        setError('Impossible de charger les abonnements');
-        setFollowing([]);
+        console.error('Erreur lors du chargement des abonnés:', error);
+        setError('Impossible de charger les abonnés');
+        setFollowers([]);
       } finally {
         setIsLoading(false);
       }
     };
     
-    loadFollowing();
+    loadFollowers();
   }, [userId]);
   
   // Gérer le toggle du bouton suivre/abonné
-  const handleFollowToggle = (followingId: string, isFollowing: boolean) => {
-    // Simuler le changement d'état localement pour une UX instantanée
-    if (!isFollowing) {
-      // Si on vient de cliquer pour suivre
-      setFollowing(prevFollowing => 
-        prevFollowing.map(user => 
-          user.userId === followingId 
-            ? { ...user, isFollowing: true }
-            : user
-        )
-      );
-    } else {
-      // Si on vient de cliquer pour ne plus suivre
-      setFollowing(prevFollowing => 
-        prevFollowing.filter(user => user.userId !== followingId)
-      );
-    }
-    
-    // Dans une implémentation réelle, vous appelleriez ici votre API
-    // pour mettre à jour le statut de suivi
+  const handleFollowToggle = (followerId: string, isFollowing: boolean) => {
+    // Mettre à jour l'état "isFollowing" de l'utilisateur dans la liste
+    // SANS le supprimer de la liste
+    setFollowers(prevFollowers => 
+      prevFollowers.map(user => 
+        user.userId === followerId 
+          ? { ...user, isFollowing: isFollowing } 
+          : user
+      )
+    );
   };
   
   // Afficher un loader pendant le chargement
@@ -88,7 +80,7 @@ const FollowingList: React.FC<FollowingListProps> = ({
       <Flex direction="column" alignItems="center" padding="2rem">
         <Loader size="large" />
         <Text marginTop="1rem" color="var(--chordora-text-secondary)">
-          Chargement des abonnements...
+          Chargement des abonnés...
         </Text>
       </Flex>
     );
@@ -108,12 +100,12 @@ const FollowingList: React.FC<FollowingListProps> = ({
     );
   }
   
-  // Afficher un message si aucun abonnement
-  if (!following || following.length === 0) {
+  // Afficher un message si aucun abonné
+  if (!followers || followers.length === 0) {
     return (
       <View padding="2rem" textAlign="center">
         <Text color="var(--chordora-text-secondary)">
-          Aucun abonnement pour le moment
+          Aucun abonné pour le moment
         </Text>
       </View>
     );
@@ -121,13 +113,14 @@ const FollowingList: React.FC<FollowingListProps> = ({
   
   return (
     <View>
-      {following.map((user, index) => (
+      {followers.map((user, index) => (
         <React.Fragment key={user.userId}>
           <UserItem 
-            user={{...user, isFollowing: true}} // Par défaut, on suit toujours les gens dans cette liste
+            user={{...user, isFollowing: user.isFollowing || false}}
             onFollowToggle={handleFollowToggle}
+            onFollowStateChange={onFollowStateChange}
           />
-          {index < following.length - 1 && (
+          {index < followers.length - 1 && (
             <Divider 
               orientation="horizontal" 
               style={{ 
@@ -143,4 +136,4 @@ const FollowingList: React.FC<FollowingListProps> = ({
   );
 };
 
-export default FollowingList;
+export default FollowersList;

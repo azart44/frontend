@@ -72,7 +72,8 @@ const Profile: React.FC = () => {
   
   const { 
     data: followCounts, 
-    isLoading: isFollowCountsLoading 
+    isLoading: isFollowCountsLoading,
+    refetch: refetchFollowCounts // Ajouter cette référence
   } = useFollowCounts(targetUserId);
   
   const followMutation = useFollowUser();
@@ -552,14 +553,15 @@ const Profile: React.FC = () => {
       
       {/* Modal pour afficher les followers/following */}
       {showFollowModal && targetUserId && (
-        <FollowModal
-          userId={targetUserId}
-          isOpen={showFollowModal}
-          onClose={() => setShowFollowModal(false)}
-          initialTab={modalTab}
-          username={profile?.username || 'Utilisateur'}
-        />
-      )}
+  <FollowModal
+    userId={targetUserId}
+    isOpen={showFollowModal}
+    onClose={() => setShowFollowModal(false)}
+    initialTab={modalTab}
+    username={profile?.username || 'Utilisateur'}
+    onFollowStateChange={() => refetchFollowCounts()} // Ajouter cette prop
+  />
+)}
     </View>
   );
 };
