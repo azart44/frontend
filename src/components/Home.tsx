@@ -37,7 +37,7 @@ const HomePage: React.FC = () => {
           duration: 183,
           likes: 124,
           downloads: 45,
-          cover_image: 'https://chordora-users.s3.us-east-1.amazonaws.com/public/default-profile'
+          cover_image: '/default-cover.jpg'
         },
         {
           track_id: '2',
@@ -49,7 +49,7 @@ const HomePage: React.FC = () => {
           duration: 201,
           likes: 87,
           downloads: 32,
-          cover_image: 'https://via.placeholder.com/64'
+          cover_image: 'https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/327644549/original/6f53e0dfe49add0ed8c29b4b665603d251e1acca/create-a-music-rap-cover-art-album-cover-1185.png'
         },
         {
           track_id: '3',
@@ -61,7 +61,7 @@ const HomePage: React.FC = () => {
           duration: 175,
           likes: 156,
           downloads: 67,
-          cover_image: 'https://via.placeholder.com/64'
+          cover_image: 'https://res.cloudinary.com/zenbusiness/image/upload/v1670445040/logaster/logaster-2021-02-music-album-h.jpg'
         },
         {
           track_id: '4',
@@ -73,7 +73,7 @@ const HomePage: React.FC = () => {
           duration: 195,
           likes: 203,
           downloads: 89,
-          cover_image: 'https://via.placeholder.com/64'
+          cover_image: 'https://mir-s3-cdn-cf.behance.net/project_modules/1400/c5186e38292485.57697f49c9e71.jpg'
         },
         {
           track_id: '5',
@@ -85,7 +85,7 @@ const HomePage: React.FC = () => {
           duration: 220,
           likes: 178,
           downloads: 72,
-          cover_image: 'https://via.placeholder.com/64'
+          cover_image: 'https://static.vecteezy.com/system/resources/thumbnails/026/475/473/small_2x/abstract-bright-geometric-background-blue-orange-pattern-music-album-cover-design-perfume-magazine-cover-design-ai-generated-photo.jpg'
         },
         {
           track_id: '6',
@@ -97,7 +97,7 @@ const HomePage: React.FC = () => {
           duration: 190,
           likes: 134,
           downloads: 55,
-          cover_image: 'https://via.placeholder.com/64'
+          cover_image: 'https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/327644549/original/6f53e0dfe49add0ed8c29b4b665603d251e1acca/create-a-music-rap-cover-art-album-cover-1185.png'
         }
       ];
       
@@ -106,31 +106,31 @@ const HomePage: React.FC = () => {
           userId: '14a874d8-a001-7079-ae6e-45fab155068c',
           username: 'Keiji',
           userType: 'producer',
-          profileImageUrl: 'https://chordora-users.s3.us-east-1.amazonaws.com/public/default-profile'
+          profileImageUrl: 'https://imgv3.fotor.com/images/blog-richtext-image/musci-album-of-Blue-Neighbourhood-from-Troye-Sivan.webp'
         },
         {
           userId: 'user2',
           username: 'Project Blvck',
           userType: 'beatmaker',
-          profileImageUrl: 'https://via.placeholder.com/50'
+          profileImageUrl: 'https://abduzeedo.com/sites/default/files/styles/square_1x1/public/originals/0ec5c569226647.5b79b483096c1.jpg?itok=e3ASF2Y-'
         },
         {
           userId: 'user3',
           username: 'SeaSky',
           userType: 'artist',
-          profileImageUrl: 'https://via.placeholder.com/50'
+          profileImageUrl: 'https://static.vecteezy.com/system/resources/previews/013/682/532/non_2x/retro-wave-music-album-cover-template-with-girl-in-headphones-retro-futuristic-background-vector.jpg'
         },
         {
           userId: 'user4',
           username: 'Neon Wave',
           userType: 'producer',
-          profileImageUrl: 'https://via.placeholder.com/50'
+          profileImageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ3kDfO9HDaJGZlyWnfCgv8khbrnTSk3G_aaw&s'
         },
         {
           userId: 'user5',
           username: 'Soul Searcher',
           userType: 'artist',
-          profileImageUrl: 'https://via.placeholder.com/50'
+          profileImageUrl: 'https://d1csarkz8obe9u.cloudfront.net/posterpreviews/cool-music-album-cover-design-template-3324b2b5c69bb9a3cfaed14c71f24ca8_screen.jpg?ts=1572456482'
         }
       ];
       
