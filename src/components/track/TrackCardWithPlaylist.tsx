@@ -60,6 +60,7 @@ const TrackCardWithPlaylist: React.FC<TrackCardProps> = ({
     navigate(`/tracks/${track.track_id}`);
   };
   
+  // Gérer l'ajout à une playlist
   const handleAddToPlaylist = (e: React.MouseEvent) => {
     e.stopPropagation();
     
@@ -291,36 +292,6 @@ const TrackCardWithPlaylist: React.FC<TrackCardProps> = ({
                 {track.description}
               </Text>
             )}
-            
-            {/* Visualisation audio (forme d'onde) */}
-            {isCurrentTrack && isPlaying && (
-              <Flex 
-                style={{ 
-                  height: '24px', 
-                  backgroundColor: '#121416', 
-                  marginTop: '0.5rem', 
-                  borderRadius: '4px',
-                  overflow: 'hidden'
-                }}
-              >
-                <View className="audio-waveform" padding="0 10px" style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                  {[...Array(10)].map((_, i) => (
-                    <View 
-                      key={i} 
-                      className="bar" 
-                      style={{ 
-                        width: '2px',
-                        margin: '0 2px',
-                        backgroundColor: '#87e54c',
-                        height: `${6 + Math.sin(i * 0.8) * 6}px`,
-                        animation: 'waveform 1s infinite',
-                        animationDelay: `${i * 0.1}s`
-                      }} 
-                    />
-                  ))}
-                </View>
-              </Flex>
-            )}
           </Flex>
           
           {/* Actions */}
@@ -335,14 +306,6 @@ const TrackCardWithPlaylist: React.FC<TrackCardProps> = ({
               style={{
                 transition: 'transform 0.2s ease, backgroundColor 0.2s ease',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
               }}
             >
               {isCurrentTrack && isPlaying ? <FaPause /> : <FaPlay />}
@@ -403,4 +366,4 @@ const TrackCardWithPlaylist: React.FC<TrackCardProps> = ({
   );
 };
 
-export default TrackCardWithPlaylist;
+export default React.memo(TrackCardWithPlaylist);
