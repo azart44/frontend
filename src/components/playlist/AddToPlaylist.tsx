@@ -27,7 +27,7 @@ interface AddToPlaylistProps {
 /**
  * Composant pour ajouter une piste à une playlist existante
  * ou pour créer une nouvelle playlist avec cette piste
- * Version améliorée avec un design cohérent et sans problème de décalage
+ * Version améliorée avec un design cohérent et sans problème de positionnement
  */
 const AddToPlaylist: React.FC<AddToPlaylistProps> = ({ 
   track, 
@@ -66,7 +66,11 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
   };
   
   // Gérer l'ajout à une playlist existante
-  const handleAddToExistingPlaylist = async () => {
+  const handleAddToExistingPlaylist = async (e: React.MouseEvent) => {
+    // Empêcher toute propagation d'événement
+    e.stopPropagation();
+    e.preventDefault();
+    
     if (!isAuthenticated) {
       navigate('/auth');
       return;
@@ -144,205 +148,235 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
     onClose();
   };
   
+  // Empêcher la propagation des clics
+  const handleModalClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+  };
+  
+  // Gérer le clic sur une playlist
+  const handlePlaylistClick = (playlistId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setSelectedPlaylistId(playlistId);
+  };
+  
+  // Style global pour s'assurer que le modal est affiché correctement
+  const modalStyle = {
+    position: 'fixed' as 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 10000, // Valeur très élevée
+    display: isOpen ? 'block' : 'none'
+  };
+  
   return (
-    <CustomModal
-      isOpen={isOpen}
-      onClose={handleClose}
-      title={showNewPlaylistForm ? "Créer une nouvelle playlist" : "Ajouter à une playlist"}
-      footer={
-        !showNewPlaylistForm && (
-          <Flex gap="1rem">
-            <Button onClick={handleClose} variation="link">
-              Annuler
-            </Button>
-            <Button 
-              onClick={handleAddToExistingPlaylist} 
-              variation="primary"
-              isDisabled={!selectedPlaylistId || updatePlaylistMutation.isPending}
-              isLoading={updatePlaylistMutation.isPending}
-              style={{
-                backgroundColor: 'var(--chordora-primary)',
-                borderRadius: '4px'
-              }}
-            >
-              Ajouter
-            </Button>
-          </Flex>
-        )
-      }
-      width="550px"
-    >
-      <CustomModal.Body>
-        {successMessage && (
-          <Alert 
-            variation="success"
-            isDismissible={true}
-            heading="Succès"
-            marginBottom="1rem"
-          >
-            {successMessage}
-          </Alert>
-        )}
-        
-        {errorMessage && (
-          <Alert 
-            variation="error"
-            isDismissible={true}
-            heading="Erreur"
-            marginBottom="1rem"
-            onDismiss={() => setErrorMessage(null)}
-          >
-            {errorMessage}
-          </Alert>
-        )}
-        
-        {showNewPlaylistForm ? (
-          <PlaylistForm 
-            initialData={{
-              title: '',
-              description: '',
-              is_public: true,
-              tracks: [{ track_id: track.track_id, position: 0 }]
-            }}
-            onSuccess={handleNewPlaylistSuccess}
-            onCancel={() => setShowNewPlaylistForm(false)}
-          />
-        ) : (
-          <>
-            {/* Informations sur la piste à ajouter */}
-            <Flex alignItems="center" gap="1rem" marginBottom="1.5rem">
-              <Image
-                src={track.cover_image || '/default-cover.jpg'}
-                alt={track.title}
-                width="60px"
-                height="60px"
-                borderRadius="4px"
-                style={{ objectFit: 'cover' }}
-              />
-              <Flex direction="column" flex="1">
-                <Text fontWeight="bold">{track.title}</Text>
-                <Text fontSize="0.9rem" color="var(--chordora-text-secondary)">
-                  {track.artist || 'Artiste'} • {track.genre}
-                </Text>
-              </Flex>
-            </Flex>
-            
-            <Divider style={{ margin: '0 0 1.5rem 0', backgroundColor: 'var(--chordora-divider)' }} />
-            
-            <Flex gap="1rem" direction="column">
-              {isLoadingPlaylists ? (
-                <Flex justifyContent="center" padding="2rem">
-                  <Loader size="large" />
-                </Flex>
-              ) : playlistsData?.playlists && playlistsData.playlists.length > 0 ? (
-                <>
-                  <Flex alignItems="center" gap="0.5rem" marginBottom="0.5rem">
-                    <FaList color="var(--chordora-text-secondary)" />
-                    <Text fontWeight="bold">
-                      Sélectionnez une playlist existante :
-                    </Text>
-                  </Flex>
-                  
-                  <View 
-                    backgroundColor="var(--chordora-bg-secondary)"
-                    padding="0.5rem"
-                    borderRadius="8px"
-                    maxHeight="250px"
-                    overflow="auto"
-                  >
-                    {playlistsData.playlists.map((playlist) => (
-                      <Flex
-                        key={playlist.playlist_id}
-                        alignItems="center"
-                        padding="0.75rem"
-                        gap="1rem"
-                        borderRadius="4px"
-                        backgroundColor={selectedPlaylistId === playlist.playlist_id 
-                          ? 'var(--chordora-active-bg)' 
-                          : 'transparent'
-                        }
-                        style={{
-                          cursor: 'pointer',
-                          transition: 'background-color 0.2s ease'
-                        }}
-                        onClick={() => setSelectedPlaylistId(playlist.playlist_id)}
-                        onMouseEnter={(e) => {
-                          if (selectedPlaylistId !== playlist.playlist_id) {
-                            e.currentTarget.style.backgroundColor = 'var(--chordora-hover-bg)';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (selectedPlaylistId !== playlist.playlist_id) {
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                          }
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '4px',
-                            backgroundColor: '#3e1dfc',
-                            backgroundImage: playlist.cover_image_url ? `url(${playlist.cover_image_url})` : 'linear-gradient(135deg, #3e1dfc, #87e54c)',
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          {!playlist.cover_image_url && <FaMusic color="white" />}
-                        </div>
-                        
-                        <Flex direction="column" flex="1">
-                          <Text fontWeight="bold" color="var(--chordora-text-primary)">
-                            {playlist.title}
-                          </Text>
-                          <Text fontSize="0.8rem" color="var(--chordora-text-secondary)">
-                            {playlist.track_count || 0} pistes
-                          </Text>
-                        </Flex>
-                        
-                        {selectedPlaylistId === playlist.playlist_id && (
-                          <FaCheck color="var(--chordora-primary)" size={18} />
-                        )}
-                      </Flex>
-                    ))}
-                  </View>
-                </>
-              ) : (
-                <Flex 
-                  direction="column" 
-                  alignItems="center" 
-                  gap="1rem" 
-                  padding="2rem"
-                  backgroundColor="var(--chordora-bg-secondary)"
-                  borderRadius="8px"
-                >
-                  <FaMusic size={40} color="var(--chordora-text-secondary)" />
-                  <Text>Vous n'avez pas encore de playlist.</Text>
-                </Flex>
-              )}
-              
+    <div style={modalStyle} onClick={handleModalClick}>
+      <CustomModal
+        isOpen={isOpen}
+        onClose={handleClose}
+        title={showNewPlaylistForm ? "Créer une nouvelle playlist" : "Ajouter à une playlist"}
+        footer={
+          !showNewPlaylistForm && (
+            <Flex gap="1rem">
+              <Button onClick={handleClose} variation="link">
+                Annuler
+              </Button>
               <Button 
-                onClick={() => setShowNewPlaylistForm(true)}
-                variation="link"
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '0.5rem',
-                  alignSelf: 'center',
-                  marginTop: '1rem',
-                  color: 'var(--chordora-primary)'
+                onClick={handleAddToExistingPlaylist} 
+                variation="primary"
+                isDisabled={!selectedPlaylistId || updatePlaylistMutation.isPending}
+                isLoading={updatePlaylistMutation.isPending}
+                style={{
+                  backgroundColor: 'var(--chordora-primary)',
+                  borderRadius: '4px'
                 }}
               >
-                <FaPlus /> Créer une nouvelle playlist
+                Ajouter
               </Button>
             </Flex>
-          </>
-        )}
-      </CustomModal.Body>
-    </CustomModal>
+          )
+        }
+        width="550px"
+      >
+        <CustomModal.Body>
+          {successMessage && (
+            <Alert 
+              variation="success"
+              isDismissible={true}
+              heading="Succès"
+              marginBottom="1rem"
+            >
+              {successMessage}
+            </Alert>
+          )}
+          
+          {errorMessage && (
+            <Alert 
+              variation="error"
+              isDismissible={true}
+              heading="Erreur"
+              marginBottom="1rem"
+              onDismiss={() => setErrorMessage(null)}
+            >
+              {errorMessage}
+            </Alert>
+          )}
+          
+          {showNewPlaylistForm ? (
+            <PlaylistForm 
+              initialData={{
+                title: '',
+                description: '',
+                is_public: true,
+                tracks: [{ track_id: track.track_id, position: 0 }]
+              }}
+              onSuccess={handleNewPlaylistSuccess}
+              onCancel={() => setShowNewPlaylistForm(false)}
+            />
+          ) : (
+            <>
+              {/* Informations sur la piste à ajouter */}
+              <Flex alignItems="center" gap="1rem" marginBottom="1.5rem">
+                <Image
+                  src={track.cover_image || '/default-cover.jpg'}
+                  alt={track.title}
+                  width="60px"
+                  height="60px"
+                  borderRadius="4px"
+                  style={{ objectFit: 'cover' }}
+                />
+                <Flex direction="column" flex="1">
+                  <Text fontWeight="bold">{track.title}</Text>
+                  <Text fontSize="0.9rem" color="var(--chordora-text-secondary)">
+                    {track.artist || 'Artiste'} • {track.genre}
+                  </Text>
+                </Flex>
+              </Flex>
+              
+              <Divider style={{ margin: '0 0 1.5rem 0', backgroundColor: 'var(--chordora-divider)' }} />
+              
+              <Flex gap="1rem" direction="column">
+                {isLoadingPlaylists ? (
+                  <Flex justifyContent="center" padding="2rem">
+                    <Loader size="large" />
+                  </Flex>
+                ) : playlistsData?.playlists && playlistsData.playlists.length > 0 ? (
+                  <>
+                    <Flex alignItems="center" gap="0.5rem" marginBottom="0.5rem">
+                      <FaList color="var(--chordora-text-secondary)" />
+                      <Text fontWeight="bold">
+                        Sélectionnez une playlist existante :
+                      </Text>
+                    </Flex>
+                    
+                    <View 
+                      backgroundColor="var(--chordora-bg-secondary)"
+                      padding="0.5rem"
+                      borderRadius="8px"
+                      maxHeight="250px"
+                      overflow="auto"
+                    >
+                      {playlistsData.playlists.map((playlist) => (
+                        <Flex
+                          key={playlist.playlist_id}
+                          alignItems="center"
+                          padding="0.75rem"
+                          gap="1rem"
+                          borderRadius="4px"
+                          backgroundColor={selectedPlaylistId === playlist.playlist_id 
+                            ? 'var(--chordora-active-bg)' 
+                            : 'transparent'
+                          }
+                          style={{
+                            cursor: 'pointer',
+                            transition: 'background-color 0.2s ease'
+                          }}
+                          onClick={(e) => handlePlaylistClick(playlist.playlist_id, e)}
+                          onMouseEnter={(e) => {
+                            if (selectedPlaylistId !== playlist.playlist_id) {
+                              e.currentTarget.style.backgroundColor = 'var(--chordora-hover-bg)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (selectedPlaylistId !== playlist.playlist_id) {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: '40px',
+                              height: '40px',
+                              borderRadius: '4px',
+                              backgroundColor: '#3e1dfc',
+                              backgroundImage: playlist.cover_image_url ? `url(${playlist.cover_image_url})` : 'linear-gradient(135deg, #3e1dfc, #87e54c)',
+                              backgroundSize: 'cover',
+                              backgroundPosition: 'center',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            {!playlist.cover_image_url && <FaMusic color="white" />}
+                          </div>
+                          
+                          <Flex direction="column" flex="1">
+                            <Text fontWeight="bold" color="var(--chordora-text-primary)">
+                              {playlist.title}
+                            </Text>
+                            <Text fontSize="0.8rem" color="var(--chordora-text-secondary)">
+                              {playlist.track_count || 0} pistes
+                            </Text>
+                          </Flex>
+                          
+                          {selectedPlaylistId === playlist.playlist_id && (
+                            <FaCheck color="var(--chordora-primary)" size={18} />
+                          )}
+                        </Flex>
+                      ))}
+                    </View>
+                  </>
+                ) : (
+                  <Flex 
+                    direction="column" 
+                    alignItems="center" 
+                    gap="1rem" 
+                    padding="2rem"
+                    backgroundColor="var(--chordora-bg-secondary)"
+                    borderRadius="8px"
+                  >
+                    <FaMusic size={40} color="var(--chordora-text-secondary)" />
+                    <Text>Vous n'avez pas encore de playlist.</Text>
+                  </Flex>
+                )}
+                
+                <Button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setShowNewPlaylistForm(true);
+                  }}
+                  variation="link"
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.5rem',
+                    alignSelf: 'center',
+                    marginTop: '1rem',
+                    color: 'var(--chordora-primary)'
+                  }}
+                >
+                  <FaPlus /> Créer une nouvelle playlist
+                </Button>
+              </Flex>
+            </>
+          )}
+        </CustomModal.Body>
+      </CustomModal>
+    </div>
   );
 };
 
