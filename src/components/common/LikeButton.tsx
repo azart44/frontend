@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Button, Text, Flex, Loader } from '@aws-amplify/ui-react';
+import { Button, Loader } from '@aws-amplify/ui-react';
 import { FaHeart, FaRegHeart } from 'react-icons/fa';
-import { useLikeStatus, useToggleLike } from '../../hooks/useTrackLikes';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useLikeStatus, useToggleLike } from '../../hooks/useTrackLikes';
 
 interface LikeButtonProps {
   trackId: string;
@@ -14,7 +14,7 @@ interface LikeButtonProps {
 }
 
 /**
- * Composant bouton pour liker/unliker une piste
+ * Bouton de like stylisé pour le thème sombre
  */
 const LikeButton: React.FC<LikeButtonProps> = ({ 
   trackId, 
@@ -72,11 +72,21 @@ const LikeButton: React.FC<LikeButtonProps> = ({
     return (
       <Button
         onClick={handleLikeClick}
-        backgroundColor="transparent"
-        padding="0.5rem"
-        color={isLiked ? "#ff4081" : "#a0a0a0"}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          padding: '0.25rem',
+          color: isLiked ? '#ff4081' : 'var(--chordora-text-secondary)',
+          cursor: 'pointer',
+          transition: 'transform 0.2s ease'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'scale(1.1)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'scale(1)';
+        }}
         isLoading={toggleLikeMutation.isPending}
-        ariaLabel={isLiked ? "Retirer des favoris" : "Ajouter aux favoris"}
       >
         {isLiked ? <FaHeart size={iconSize} /> : <FaRegHeart size={iconSize} />}
       </Button>
@@ -85,26 +95,39 @@ const LikeButton: React.FC<LikeButtonProps> = ({
   
   // Rendu normal avec compteur (si showCount est true)
   return (
-    <Flex alignItems="center" gap="0.3rem">
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
       <Button
         onClick={handleLikeClick}
-        backgroundColor="transparent"
-        padding="0.5rem"
-        color={isLiked ? "#ff4081" : "#a0a0a0"}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          padding: '0.5rem',
+          color: isLiked ? '#ff4081' : 'var(--chordora-text-secondary)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.3rem',
+          transition: 'transform 0.2s ease'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'scale(1.1)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'scale(1)';
+        }}
         isLoading={toggleLikeMutation.isPending}
-        ariaLabel={isLiked ? "Retirer des favoris" : "Ajouter aux favoris"}
-        display="flex"
-        alignItems="center"
-        gap="0.3rem"
       >
         {isLiked ? <FaHeart size={iconSize} /> : <FaRegHeart size={iconSize} />}
         {showCount && (
-          <Text fontSize={size === 'small' ? '0.8rem' : '0.9rem'} color="#a0a0a0">
+          <span style={{ 
+            fontSize: size === 'small' ? '0.8rem' : '0.9rem',
+            color: 'var(--chordora-text-secondary)'
+          }}>
             {optimisticLikesCount}
-          </Text>
+          </span>
         )}
       </Button>
-    </Flex>
+    </div>
   );
 };
 

@@ -1,31 +1,37 @@
 /* 
-   Chordora Theme CSS
+   Chordora Theme CSS - Dark Mode
    Palette de couleurs:
-   - Fond principal: #1e2024
-   - Fond secondaire: #121416
-   - Bleu: #3e1dfc
-   - Vert: #87e54c
-   - Texte principal: #ffffff
-   - Texte secondaire: #a0a0a0
+   - Fond principal: #000000 (noir)
+   - Fond secondaire: #121212
+   - Fond de carte: #181818
+   - Accent primaire: #6C44FC (violet)
+   - Accent secondaire: #87e54c (vert)
+   - Texte primaire: #FFFFFF
+   - Texte secondaire: #A0A0A0
 */
 
 :root {
-  --chordora-bg-primary: #1e2024;
-  --chordora-bg-secondary: #121416;
-  --chordora-blue: #3e1dfc;
-  --chordora-green: #87e54c;
-  --chordora-text-primary: #ffffff;
-  --chordora-text-secondary: #a0a0a0;
-  --chordora-border: #2a2d36;
-  --chordora-hover-bg: rgba(135, 229, 76, 0.2);
-  --chordora-card-bg: #2a2d36;
+  --chordora-bg-primary: #000000;
+  --chordora-bg-secondary: #121212;
+  --chordora-card-bg: #181818;
+  --chordora-sidebar-bg: #000000;
+  --chordora-primary: #6C44FC;
+  --chordora-secondary: #87e54c;
+  --chordora-text-primary: #FFFFFF;
+  --chordora-text-secondary: #A0A0A0;
+  --chordora-divider: #2a2d36;
+  --chordora-hover-bg: rgba(255, 255, 255, 0.1);
+  --chordora-active-bg: rgba(255, 255, 255, 0.2);
+  --chordora-player-bg: #181818;
+  --chordora-scrollbar-thumb: #535353;
+  --chordora-scrollbar-track: #121212;
 }
 
 /* Styles globaux */
 body {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -33,141 +39,466 @@ body {
   color: var(--chordora-text-primary);
 }
 
-/* Override des styles Amplify UI par défaut */
-.amplify-button {
-  transition: all 0.2s ease;
-}
-
-.amplify-button:hover {
-  transform: translateY(-2px);
-}
-
-.amplify-card {
-  background-color: var(--chordora-card-bg);
-  border: none;
-  border-radius: 12px;
-  overflow: hidden;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.amplify-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-}
-
-.amplify-heading {
-  color: var(--chordora-text-primary);
-}
-
-.amplify-text {
-  color: var(--chordora-text-secondary);
-}
-
-/* Personnalisation du player audio */
-.audio-player {
-  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.audio-player input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  cursor: pointer;
-  border-radius: 2px;
-}
-
-.audio-player input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
+/* Personnalisation de la barre de défilement */
+::-webkit-scrollbar {
   width: 12px;
-  height: 12px;
-  background: var(--chordora-green);
-  border-radius: 50%;
-  cursor: pointer;
 }
 
-/* Styles de la sidebar */
-.sidebar {
-  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.2);
-  display: flex;
-  flex-direction: column;
+::-webkit-scrollbar-track {
+  background: var(--chordora-scrollbar-track);
 }
 
-.sidebar button {
-  transition: all 0.2s ease;
+::-webkit-scrollbar-thumb {
+  background: var(--chordora-scrollbar-thumb);
+  border-radius: 6px;
 }
 
-.sidebar button:hover {
-  background-color: var(--chordora-hover-bg) !important;
-  color: var(--chordora-green) !important;
+::-webkit-scrollbar-thumb:hover {
+  background: #727272;
 }
 
 /* Layout principal */
 .chordora-layout {
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
 }
 
-.main-content {
-  padding: 2rem;
+.chordora-main-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
 }
 
-/* Styles des cartes de contenu */
-.content-card {
-  background-color: var(--chordora-card-bg);
-  border-radius: 12px;
+/* Sidebar */
+.chordora-sidebar {
+  width: 80px;
+  background-color: var(--chordora-sidebar-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem 0;
+  overflow-y: auto;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+  transition: width 0.3s ease;
+  flex-shrink: 0;
+}
+
+.chordora-sidebar.expanded {
+  width: 240px;
+  align-items: flex-start;
   padding: 1rem;
-  margin-bottom: 1.5rem;
-  transition: transform 0.3s ease;
 }
 
-.content-card:hover {
-  transform: translateY(-5px);
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  padding: 0.8rem 1rem;
+  margin-bottom: 0.5rem;
+  border-radius: 8px;
+  width: calc(100% - 2rem);
+  color: var(--chordora-text-secondary);
+  transition: all 0.2s ease;
 }
 
-/* Styles pour les badges et étiquettes */
-.chordora-badge {
-  background-color: var(--chordora-blue);
-  color: white;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  font-weight: bold;
+.sidebar-item:hover {
+  background-color: var(--chordora-hover-bg);
+  color: var(--chordora-text-primary);
 }
 
-.chordora-badge.green {
-  background-color: var(--chordora-green);
-  color: var(--chordora-bg-primary);
+.sidebar-item.active {
+  background-color: var(--chordora-active-bg);
+  color: var(--chordora-text-primary);
+  font-weight: 600;
 }
 
-/* Styles pour les formulaires */
-input, select, textarea {
-  background-color: var(--chordora-bg-secondary) !important;
-  border: 1px solid var(--chordora-border) !important;
-  color: var(--chordora-text-primary) !important;
+.sidebar-item-icon {
+  font-size: 1.4rem;
+  margin-right: 1rem;
+}
+
+.sidebar-item-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Main content */
+.chordora-main-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  background-color: var(--chordora-bg-secondary);
+  position: relative;
+}
+
+.main-content-inner {
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background-color: var(--chordora-bg-secondary);
+}
+
+/* Changer les styles d'Amplify UI */
+.amplify-card {
+  background-color: var(--chordora-card-bg) !important;
+  border: none !important;
   border-radius: 8px !important;
+  transition: all 0.3s ease !important;
 }
 
-input:focus, select:focus, textarea:focus {
-  border-color: var(--chordora-green) !important;
-  box-shadow: 0 0 0 2px rgba(135, 229, 76, 0.2) !important;
+.amplify-card:hover {
+  transform: translateY(-5px) !important;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3) !important;
 }
 
-/* Animation pour le waveform audio */
+.amplify-heading {
+  color: var(--chordora-text-primary) !important;
+}
+
+.amplify-text {
+  color: var(--chordora-text-secondary) !important;
+}
+
+.amplify-button {
+  transition: all 0.2s ease !important;
+}
+
+.amplify-button:hover {
+  transform: translateY(-2px) !important;
+}
+
+.amplify-button[data-variation='primary'] {
+  background-color: var(--chordora-primary) !important;
+}
+
+.amplify-input, .amplify-select, .amplify-textarea {
+  background-color: #2a2a2a !important;
+  border: 1px solid var(--chordora-divider) !important;
+  color: var(--chordora-text-primary) !important;
+}
+
+.amplify-input:focus, .amplify-select:focus, .amplify-textarea:focus {
+  border-color: var(--chordora-primary) !important;
+  box-shadow: 0 0 0 2px rgba(108, 68, 252, 0.2) !important;
+}
+
+/* Player */
+.chordora-player {
+  width: 100%;
+  height: 80px;
+  background-color: var(--chordora-player-bg);
+  border-top: 1px solid var(--chordora-divider);
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+.player-track-info {
+  display: flex;
+  align-items: center;
+  width: 30%;
+}
+
+.player-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 40%;
+}
+
+.player-buttons {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.player-progress {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.player-progress-bar {
+  flex: 1;
+  height: 4px;
+  background-color: #535353;
+  border-radius: 2px;
+  position: relative;
+  cursor: pointer;
+}
+
+.player-progress-current {
+  position: absolute;
+  height: 100%;
+  background-color: var(--chordora-secondary);
+  border-radius: 2px;
+}
+
+.player-progress-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: white;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  display: none;
+}
+
+.player-progress-bar:hover .player-progress-thumb {
+  display: block;
+}
+
+.player-volume {
+  display: flex;
+  align-items: center;
+  width: 30%;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.player-control-button {
+  background: transparent;
+  border: none;
+  color: var(--chordora-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.player-control-button:hover {
+  color: var(--chordora-text-primary);
+  transform: scale(1.1);
+}
+
+.player-control-button.play-pause {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: white;
+  color: black;
+}
+
+/* Cartes de contenu (tracks, playlists) */
+.track-card {
+  background-color: var(--chordora-card-bg);
+  padding: 1rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.track-card:hover {
+  background-color: #282828;
+}
+
+.playlist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.playlist-card {
+  padding: 1rem;
+  background-color: var(--chordora-card-bg);
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.playlist-card:hover {
+  background-color: #282828;
+}
+
+.playlist-card-image {
+  width: 100%;
+  aspect-ratio: 1/1;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.playlist-card-title {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--chordora-text-primary);
+  margin-bottom: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playlist-card-subtitle {
+  font-size: 0.8rem;
+  color: var(--chordora-text-secondary);
+}
+
+/* Bannière d'accueil */
+.home-banner {
+  position: relative;
+  padding: 2rem;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 2rem;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.home-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, var(--chordora-primary), var(--chordora-secondary));
+  opacity: 0.8;
+  z-index: -1;
+}
+
+.home-banner-content {
+  position: relative;
+  z-index: 1;
+  max-width: 600px;
+}
+
+.home-banner-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+  color: white;
+}
+
+.home-banner-text {
+  font-size: 1.1rem;
+  margin-bottom: 1.5rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Sections */
+.section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.section-title h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--chordora-text-primary);
+}
+
+.section-title a {
+  font-size: 0.9rem;
+  color: var(--chordora-text-secondary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.section-title a:hover {
+  color: var(--chordora-text-primary);
+}
+
+/* Tableaux */
+.tracks-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 2rem;
+}
+
+.tracks-table th {
+  text-align: left;
+  padding: 0.75rem;
+  color: var(--chordora-text-secondary);
+  font-weight: 500;
+  border-bottom: 1px solid var(--chordora-divider);
+}
+
+.tracks-table td {
+  padding: 0.75rem;
+  border-top: 1px solid transparent;
+  border-bottom: 1px solid transparent;
+}
+
+.tracks-table tr:hover td {
+  background-color: var(--chordora-hover-bg);
+  border-top: 1px solid var(--chordora-divider);
+  border-bottom: 1px solid var(--chordora-divider);
+}
+
+/* Barre de recherche */
+.search-bar {
+  position: relative;
+  max-width: 500px;
+  width: 100%;
+}
+
+.search-bar input {
+  width: 100%;
+  background-color: #2a2a2a;
+  border: none;
+  border-radius: 20px;
+  padding: 0.75rem 1rem 0.75rem 2.5rem;
+  color: var(--chordora-text-primary);
+  font-size: 0.9rem;
+}
+
+.search-bar input:focus {
+  outline: none;
+  background-color: #333;
+}
+
+.search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--chordora-text-secondary);
+}
+
+/* Audio Waveform */
 @keyframes waveform {
-  0% { height: 10px; }
+  0% { height: 5px; }
   50% { height: 20px; }
-  100% { height: 10px; }
+  100% { height: 5px; }
 }
 
 .audio-waveform {
   display: flex;
   align-items: center;
   gap: 2px;
-  height: 20px;
+  height: 30px;
 }
 
 .audio-waveform .bar {
   width: 2px;
-  background: linear-gradient(to bottom, var(--chordora-green), var(--chordora-blue));
+  background: linear-gradient(to bottom, var(--chordora-secondary), var(--chordora-primary));
   height: 10px;
   border-radius: 1px;
   animation: waveform 1s infinite;
@@ -183,34 +514,62 @@ input:focus, select:focus, textarea:focus {
 .audio-waveform .bar:nth-child(9) { animation-delay: 0.2s; }
 .audio-waveform .bar:nth-child(10) { animation-delay: 0.1s; }
 
-/* Styles pour les pages d'authentification */
-.auth-container {
-  background-color: var(--chordora-bg-secondary);
-  border-radius: 12px;
-  padding: 2rem;
-  max-width: 400px;
-  margin: 2rem auto;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-}
-
-.auth-container input {
-  margin-bottom: 1rem;
-}
-
-/* Responsive design */
+/* Responsive */
 @media (max-width: 768px) {
-  .sidebar {
-    width: 60px !important;
-    padding: 1rem 0.5rem !important;
+  .chordora-sidebar {
+    width: 60px;
   }
   
-  .sidebar span {
+  .chordora-sidebar.expanded {
+    position: fixed;
+    height: 100vh;
+    z-index: 100;
+  }
+  
+  .player-track-info {
+    width: 40%;
+  }
+  
+  .player-controls {
+    width: 60%;
+  }
+  
+  .player-volume {
     display: none;
   }
   
-  .main-content {
-    margin-left: 60px !important;
-    width: calc(100% - 60px) !important;
-    padding: 1rem;
+  .playlist-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }
+  
+  .home-banner-title {
+    font-size: 1.8rem;
+  }
+  
+  .home-banner-text {
+    font-size: 1rem;
+  }
+}
+
+/* Utilitaires */
+.text-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sponsored-badge {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--chordora-text-secondary);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }

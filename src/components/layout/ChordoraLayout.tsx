@@ -6,7 +6,8 @@ import {
   Text, 
   Button, 
   Image,
-  useAuthenticator
+  useAuthenticator,
+  Badge
 } from '@aws-amplify/ui-react';
 import { 
   FaHome, 
@@ -16,23 +17,61 @@ import {
   FaHeart,
   FaSignOutAlt,
   FaSignInAlt,
-  FaCog
+  FaCog,
+  FaVolumeMute,
+  FaVolumeUp,
+  FaRandom,
+  FaStepBackward,
+  FaStepForward,
+  FaPlay,
+  FaPause,
+  FaRedo,
+  FaEllipsisH,
+  FaBars
 } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAudioContext } from '../../contexts/AudioContext';
 
 interface ChordoraLayoutProps {
   children: React.ReactNode;
 }
 
 /**
- * Layout principal de l'application avec menu latéral et zones de contenu
+ * Layout principal de l'application avec menu latéral et lecteur audio
  */
 const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated } = useAuth();
   const { signOut } = useAuthenticator(context => [context.signOut]);
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  const [volume, setVolume] = useState(0.8);
+  const [isMuted, setIsMuted] = useState(false);
+  
+  // Contexte audio pour le lecteur
+  const { 
+    currentTrack, 
+    isPlaying, 
+    togglePlay, 
+    nextTrack, 
+    previousTrack,
+    currentTime,
+    duration,
+    seek
+  } = useAudioContext();
+
+  // Gérer le déplacement dans la barre de progression
+  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!duration) return;
+    
+    const progressBar = e.currentTarget;
+    const rect = progressBar.getBoundingClientRect();
+    const clickPosition = e.clientX - rect.left;
+    const percentage = clickPosition / rect.width;
+    const newTime = percentage * duration;
+    
+    seek(newTime);
+  };
 
   // Déterminer si le menu est actif
   const isActive = (path: string) => {
@@ -42,7 +81,10 @@ const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
   // Navigation vers un chemin
   const navigateTo = useCallback((path: string) => {
     navigate(path);
-    setShowMobileMenu(false);
+    // Si en mobile, fermer le sidebar après navigation
+    if (window.innerWidth <= 768) {
+      setSidebarExpanded(false);
+    }
   }, [navigate]);
 
   // Déconnexion
@@ -55,197 +97,309 @@ const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
     }
   };
 
-  // Toggle du menu mobile
-  const toggleMobileMenu = () => {
-    setShowMobileMenu(prev => !prev);
+  // Formater le temps (secondes vers MM:SS)
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  return (
-    <Flex className="chordora-layout">
-      {/* Menu latéral */}
-      <View 
-        className="sidebar"
-        backgroundColor="#1e2024"
-        color="white"
-        width={{ base: showMobileMenu ? '100%' : '0', medium: '240px' }}
-        height="100vh"
-        position={{ base: 'fixed', medium: 'sticky' }}
-        left="0"
-        top="0"
-        padding={{ base: showMobileMenu ? '1rem' : '0', medium: '1rem' }}
-        style={{ 
-          overflowY: 'auto',
-          zIndex: 100,
-          transition: 'width 0.3s ease, padding 0.3s ease',
-          display: showMobileMenu ? 'block' : 'none',
-          [window.matchMedia('(min-width: 768px)').matches ? 'display' : '']: 'block'
-        }}
-      >
-        {/* Logo */}
-        <Flex justifyContent="center" marginBottom="2rem">
-          <Image
-            src="/logo.svg"
-            alt="Chordora Logo"
-            height="60px"
-            onClick={() => navigateTo('/')}
-            style={{ cursor: 'pointer' }}
-          />
-        </Flex>
+  // Calculer le pourcentage de progression
+  const progressPercentage = duration ? (currentTime / duration) * 100 : 0;
 
-        {/* Menu principal */}
-        <Flex direction="column" gap="0.5rem">
-          <Text color="#87e54c" fontWeight="bold" marginBottom="0.5rem">MENU</Text>
+  return (
+    <div className="chordora-layout">
+      <div className="chordora-main-container">
+        {/* Sidebar */}
+        <div className={`chordora-sidebar ${sidebarExpanded ? 'expanded' : ''}`}>
+          {/* Logo */}
+          <div style={{ padding: '0.5rem', marginBottom: '2rem' }}>
+            <Image
+              src="/logo.svg"
+              alt="Chordora Logo"
+              height={sidebarExpanded ? "40px" : "30px"}
+              onClick={() => navigateTo('/')}
+              style={{ cursor: 'pointer' }}
+            />
+          </div>
           
+          {/* Mobile menu toggle */}
           <Button
+            onClick={() => setSidebarExpanded(!sidebarExpanded)}
+            className="sidebar-toggle"
+            style={{ 
+              display: sidebarExpanded ? 'none' : 'flex',
+              marginBottom: '1rem',
+              backgroundColor: 'transparent',
+              color: 'var(--chordora-text-secondary)'
+            }}
+          >
+            <FaBars />
+          </Button>
+
+          {/* Menu items */}
+          <div 
+            className={`sidebar-item ${isActive('/') ? 'active' : ''}`}
             onClick={() => navigateTo('/')}
-            backgroundColor={isActive('/') ? 'rgba(135, 229, 76, 0.2)' : 'transparent'}
-            color={isActive('/') ? '#87e54c' : 'white'}
-            justifyContent="flex-start"
-            fontWeight={isActive('/') ? 'bold' : 'normal'}
-            style={{ borderRadius: '8px', padding: '0.75rem 1rem' }}
           >
-            <FaHome style={{ marginRight: '12px' }} />
-            Accueil
-          </Button>
+            <FaHome className="sidebar-item-icon" />
+            {sidebarExpanded && <span className="sidebar-item-text">Accueil</span>}
+          </div>
           
-          <Button
+          <div 
+            className={`sidebar-item ${isActive('/users') ? 'active' : ''}`}
             onClick={() => navigateTo('/users')}
-            backgroundColor={isActive('/users') ? 'rgba(135, 229, 76, 0.2)' : 'transparent'}
-            color={isActive('/users') ? '#87e54c' : 'white'}
-            justifyContent="flex-start"
-            fontWeight={isActive('/users') ? 'bold' : 'normal'}
-            style={{ borderRadius: '8px', padding: '0.75rem 1rem' }}
           >
-            <FaSearch style={{ marginRight: '12px' }} />
-            Explorer
-          </Button>
+            <FaSearch className="sidebar-item-icon" />
+            {sidebarExpanded && <span className="sidebar-item-text">Explorer</span>}
+          </div>
           
           {isAuthenticated && (
             <>
-              <Text color="#87e54c" fontWeight="bold" marginTop="1.5rem" marginBottom="0.5rem">
-                MON COMPTE
-              </Text>
-              
-              <Button
+              <div 
+                className={`sidebar-item ${isActive('/profile') ? 'active' : ''}`}
                 onClick={() => navigateTo('/profile')}
-                backgroundColor={isActive('/profile') ? 'rgba(135, 229, 76, 0.2)' : 'transparent'}
-                color={isActive('/profile') ? '#87e54c' : 'white'}
-                justifyContent="flex-start"
-                fontWeight={isActive('/profile') ? 'bold' : 'normal'}
-                style={{ borderRadius: '8px', padding: '0.75rem 1rem' }}
               >
-                <FaUser style={{ marginRight: '12px' }} />
-                Mon Profil
-              </Button>
+                <FaUser className="sidebar-item-icon" />
+                {sidebarExpanded && <span className="sidebar-item-text">Mon Profil</span>}
+              </div>
               
-              <Button
+              <div 
+                className={`sidebar-item ${isActive('/add-track') ? 'active' : ''}`}
                 onClick={() => navigateTo('/add-track')}
-                backgroundColor={isActive('/add-track') ? 'rgba(135, 229, 76, 0.2)' : 'transparent'}
-                color={isActive('/add-track') ? '#87e54c' : 'white'}
-                justifyContent="flex-start"
-                fontWeight={isActive('/add-track') ? 'bold' : 'normal'}
-                style={{ borderRadius: '8px', padding: '0.75rem 1rem' }}
               >
-                <FaMusic style={{ marginRight: '12px' }} />
-                Ajouter une piste
-              </Button>
+                <FaMusic className="sidebar-item-icon" />
+                {sidebarExpanded && <span className="sidebar-item-text">Ajouter une piste</span>}
+              </div>
               
-              {/* Bouton pour les favoris */}
-              <Button
+              <div 
+                className={`sidebar-item ${isActive('/favorites') ? 'active' : ''}`}
                 onClick={() => navigateTo('/favorites')}
-                backgroundColor={isActive('/favorites') ? 'rgba(135, 229, 76, 0.2)' : 'transparent'}
-                color={isActive('/favorites') ? '#87e54c' : 'white'}
-                justifyContent="flex-start"
-                fontWeight={isActive('/favorites') ? 'bold' : 'normal'}
-                style={{ borderRadius: '8px', padding: '0.75rem 1rem' }}
               >
-                <FaHeart style={{ marginRight: '12px' }} />
-                Favoris
-              </Button>
+                <FaHeart className="sidebar-item-icon" />
+                {sidebarExpanded && <span className="sidebar-item-text">Favoris</span>}
+              </div>
               
-              <Button
+              <div 
+                className={`sidebar-item ${isActive('/account-settings') ? 'active' : ''}`}
                 onClick={() => navigateTo('/account-settings')}
-                backgroundColor={isActive('/account-settings') ? 'rgba(135, 229, 76, 0.2)' : 'transparent'}
-                color={isActive('/account-settings') ? '#87e54c' : 'white'}
-                justifyContent="flex-start"
-                fontWeight={isActive('/account-settings') ? 'bold' : 'normal'}
-                style={{ borderRadius: '8px', padding: '0.75rem 1rem' }}
               >
-                <FaCog style={{ marginRight: '12px' }} />
-                Paramètres du compte
-              </Button>
+                <FaCog className="sidebar-item-icon" />
+                {sidebarExpanded && <span className="sidebar-item-text">Paramètres</span>}
+              </div>
               
-              <Button
+              <div 
+                className="sidebar-item"
                 onClick={handleLogout}
-                backgroundColor="transparent"
-                color="white"
-                justifyContent="flex-start"
-                style={{ 
-                  borderRadius: '8px', 
-                  padding: '0.75rem 1rem',
-                  marginTop: 'auto',
-                  marginBottom: '2rem'
-                }}
+                style={{ marginTop: 'auto' }}
               >
-                <FaSignOutAlt style={{ marginRight: '12px' }} />
-                Déconnexion
-              </Button>
+                <FaSignOutAlt className="sidebar-item-icon" />
+                {sidebarExpanded && <span className="sidebar-item-text">Déconnexion</span>}
+              </div>
             </>
           )}
           
           {!isAuthenticated && (
-            <Button
+            <div 
+              className={`sidebar-item ${isActive('/auth') ? 'active' : ''}`}
               onClick={() => navigateTo('/auth')}
-              backgroundColor="#3e1dfc"
-              color="white"
+              style={{ marginTop: 'auto' }}
+            >
+              <FaSignInAlt className="sidebar-item-icon" />
+              {sidebarExpanded && <span className="sidebar-item-text">Connexion</span>}
+            </div>
+          )}
+        </div>
+
+        {/* Main content */}
+        <div className="chordora-main-content">
+          <div className="main-content-inner">
+            <div className="main-header">
+              {/* Search bar */}
+              <div className="search-bar">
+                <FaSearch className="search-icon" />
+                <input type="text" placeholder="Rechercher des artistes, pistes..." />
+              </div>
+              
+              {/* User profile */}
+              {isAuthenticated ? (
+                <Button
+                  onClick={() => navigateTo('/profile')}
+                  variation="menu"
+                  style={{ 
+                    borderRadius: '20px', 
+                    padding: '0.5rem 1rem',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                  }}
+                >
+                  <FaUser style={{ marginRight: '0.5rem' }} />
+                  Mon Compte
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => navigateTo('/auth')}
+                  variation="primary"
+                  style={{ 
+                    borderRadius: '20px', 
+                    padding: '0.5rem 1rem',
+                    backgroundColor: 'var(--chordora-primary)'
+                  }}
+                >
+                  <FaSignInAlt style={{ marginRight: '0.5rem' }} />
+                  Connexion
+                </Button>
+              )}
+            </div>
+            
+            {/* Main content children */}
+            {children}
+          </div>
+        </div>
+      </div>
+
+      {/* Player */}
+      {currentTrack && (
+        <div className="chordora-player">
+          {/* Track info */}
+          <div className="player-track-info">
+            <Image
+              src={currentTrack.cover_image || '/default-cover.jpg'}
+              alt={currentTrack.title}
+              width="60px"
+              height="60px"
               style={{ 
-                borderRadius: '8px', 
-                padding: '0.75rem 1rem', 
-                marginTop: '2rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
+                objectFit: 'cover',
+                borderRadius: '4px',
+                marginRight: '1rem'
+              }}
+            />
+            <div>
+              <Text 
+                fontWeight="bold"
+                className="text-truncate"
+                style={{ maxWidth: '200px' }}
+              >
+                {currentTrack.title}
+              </Text>
+              <Text 
+                fontSize="0.8rem" 
+                color="var(--chordora-text-secondary)"
+                className="text-truncate"
+                style={{ maxWidth: '200px' }}
+              >
+                {currentTrack.artist}
+              </Text>
+            </div>
+            <Button 
+              variation="link"
+              size="small"
+              style={{ marginLeft: '1rem' }}
+            >
+              <FaHeart color="#A0A0A0" />
+            </Button>
+            <Button 
+              variation="link"
+              size="small"
+            >
+              <FaEllipsisH color="#A0A0A0" />
+            </Button>
+          </div>
+          
+          {/* Player controls */}
+          <div className="player-controls">
+            <div className="player-buttons">
+              <button className="player-control-button">
+                <FaRandom />
+              </button>
+              <button 
+                className="player-control-button"
+                onClick={previousTrack}
+              >
+                <FaStepBackward />
+              </button>
+              <button 
+                className="player-control-button play-pause"
+                onClick={togglePlay}
+              >
+                {isPlaying ? <FaPause /> : <FaPlay />}
+              </button>
+              <button 
+                className="player-control-button"
+                onClick={nextTrack}
+              >
+                <FaStepForward />
+              </button>
+              <button className="player-control-button">
+                <FaRedo />
+              </button>
+            </div>
+            
+            <div className="player-progress">
+              <Text fontSize="0.8rem" style={{ minWidth: '40px' }}>
+                {formatTime(currentTime)}
+              </Text>
+              
+              <div 
+                className="player-progress-bar"
+                onClick={handleProgressClick}
+              >
+                <div 
+                  className="player-progress-current"
+                  style={{ width: `${progressPercentage}%` }}
+                ></div>
+                <div
+                  className="player-progress-thumb"
+                  style={{ left: `${progressPercentage}%` }}
+                ></div>
+              </div>
+              
+              <Text fontSize="0.8rem" style={{ minWidth: '40px' }}>
+                {formatTime(duration)}
+              </Text>
+            </div>
+          </div>
+          
+          {/* Volume */}
+          <div className="player-volume">
+            <button 
+              className="player-control-button"
+              onClick={() => setIsMuted(!isMuted)}
+            >
+              {isMuted ? <FaVolumeMute /> : <FaVolumeUp />}
+            </button>
+            
+            <div 
+              style={{
+                width: '80px',
+                height: '4px',
+                backgroundColor: '#535353',
+                borderRadius: '2px',
+                position: 'relative',
+                cursor: 'pointer'
+              }}
+              onClick={(e) => {
+                const volumeBar = e.currentTarget;
+                const rect = volumeBar.getBoundingClientRect();
+                const clickPosition = e.clientX - rect.left;
+                const percentage = clickPosition / rect.width;
+                setVolume(percentage);
+                setIsMuted(false);
               }}
             >
-              <FaSignInAlt />
-              Connexion / Inscription
-            </Button>
-          )}
-        </Flex>
-      </View>
-
-      {/* Contenu principal */}
-      <View
-        backgroundColor="#1e2024"
-        color="white"
-        padding={{ base: '1rem', medium: '2rem' }}
-        width="100%"
-        style={{ minHeight: '100vh' }}
-      >
-        {/* Bouton de menu hamburger sur mobile */}
-        <Button
-          onClick={toggleMobileMenu}
-          display={{ base: 'flex', medium: 'none' }}
-          position="fixed"
-          top="1rem"
-          left="1rem"
-          style={{ 
-            backdropFilter: 'blur(5px)',
-            backgroundColor: 'rgba(30, 32, 36, 0.8)',
-            zIndex: 10
-          }}
-          size="small"
-          variation="link"
-        >
-          {showMobileMenu ? '×' : '☰'}
-        </Button>
-        
-        {/* Contenu de la page */}
-        <View paddingTop={{ base: '3rem', medium: '0' }}>
-          {children}
-        </View>
-      </View>
-    </Flex>
+              <div
+                style={{
+                  position: 'absolute',
+                  height: '100%',
+                  width: `${isMuted ? 0 : volume * 100}%`,
+                  backgroundColor: 'white',
+                  borderRadius: '2px'
+                }}
+              ></div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

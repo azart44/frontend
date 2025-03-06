@@ -1,21 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { 
-  View, 
   Heading, 
   Text, 
   Button, 
-  Card,
   Flex,
   Loader,
   Alert,
   Image,
   Badge,
   Divider,
+  View
 } from '@aws-amplify/ui-react';
 import { useUserProfile } from '../../hooks/useProfile';
 import EditProfileForm from './EditProfileForm';
-import ProfilePlaylists from './ProfilePlaylists';
+import TrackList from '../track/TrackList';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
   FaEdit, 
@@ -26,6 +25,12 @@ import {
   FaCog,
   FaUserPlus,
   FaUserCheck,
+  FaInstagram,
+  FaYoutube,
+  FaSoundcloud,
+  FaTwitter,
+  FaEllipsisH,
+  FaHeart
 } from 'react-icons/fa';
 import { 
   useFollowStatus, 
@@ -36,8 +41,7 @@ import {
 import FollowModal from '../follow/FollowModal';
 
 /**
- * Composant d'affichage d'un profil utilisateur
- * Gère à la fois l'affichage du profil personnel et des profils d'autres utilisateurs
+ * Composant d'affichage d'un profil utilisateur (thème sombre)
  */
 const Profile: React.FC = () => {
   const navigate = useNavigate();
@@ -45,12 +49,12 @@ const Profile: React.FC = () => {
   const { isAuthenticated, userId: authUserId } = useAuth();
   
   const [isEditing, setIsEditing] = useState(false);
-  const [showDebugInfo, setShowDebugInfo] = useState(false);
+  const [activeTab, setActiveTab] = useState('tracks');
   const [imageError, setImageError] = useState(false);
   const [showFollowModal, setShowFollowModal] = useState(false);
   const [modalTab, setModalTab] = useState<'followers' | 'following'>('followers');
 
-  // ID de l'utilisateur ciblé (celui de l'URL ou l'utilisateur authentifié)
+  // ID de l'utilisateur ciblé
   const targetUserId = urlUserId || authUserId;
 
   // Récupération du profil utilisateur
@@ -61,7 +65,7 @@ const Profile: React.FC = () => {
     refetch: refetchProfile
   } = useUserProfile(targetUserId);
 
-  // Utiliser les hooks React Query pour les données de suivi
+  // Hooks de suivi
   const { 
     data: followStatus, 
     isLoading: isFollowStatusLoading 
@@ -105,25 +109,12 @@ const Profile: React.FC = () => {
     }
   };
 
-  // Logging à des fins de débogage
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Profile component - Auth state:', { isAuthenticated, authUserId });
-      console.log('Profile component - Target userId:', targetUserId);
-      console.log('Profile component - URL userId:', urlUserId);
-      console.log('Profile component - Is own profile:', isOwnProfile);
-      console.log('Profile component - Profile data:', profile);
-      console.log('Profile component - Follow status:', { isFollowing, followersCount, followingCount });
-    }
-  }, [isAuthenticated, authUserId, targetUserId, urlUserId, profile, isOwnProfile, isFollowing, followersCount, followingCount]);
-
   // Affichage du loader pendant le chargement
   if (isProfileLoading || isFollowStatusLoading || isFollowCountsLoading) {
     return (
-      <View padding="2rem" textAlign="center">
+      <Flex justifyContent="center" padding="2rem">
         <Loader size="large" />
-        <Text textAlign="center" marginTop="1rem">Chargement du profil...</Text>
-      </View>
+      </Flex>
     );
   }
 
@@ -182,162 +173,349 @@ const Profile: React.FC = () => {
     ? '/default-profile.jpg' 
     : profile.profileImageUrl;
 
-  // Affichage du profil
+  // Couleur d'arrière-plan générée en fonction du nom d'utilisateur
+  const generateBgColor = (username: string) => {
+    const colors = [
+      'linear-gradient(45deg, #8e2de2, #4a00e0)',
+      'linear-gradient(45deg, #1e3c72, #2a5298)',
+      'linear-gradient(45deg, #ff512f, #dd2476)',
+      'linear-gradient(45deg, #834d9b, #d04ed6)',
+      'linear-gradient(45deg, #11998e, #38ef7d)'
+    ];
+    
+    // Utiliser le username pour sélectionner une couleur
+    const hash = username?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) || 0;
+    return colors[hash % colors.length];
+  };
+
   return (
-    <View padding="2rem">
-      <Flex direction="column" gap="2rem">
-        {/* En-tête du profil */}
-        <Card padding="2rem">
-          <Flex direction={{ base: 'column', medium: 'row' }} gap="2rem" alignItems="center">
-            {/* Image de profil */}
-            <Image
-              src={profileImageSrc}
-              alt={`${profile.username || 'Utilisateur'} profile`}
-              width="150px"
-              height="150px"
-              style={{ 
-                objectFit: 'cover',
-                borderRadius: '50%' 
-              }}
-              onError={() => setImageError(true)}
-            />
-            
-            {/* Informations principales */}
-            <Flex direction="column" flex="1" gap="0.5rem">
+    <View>
+      {/* Bannière de profil */}
+      <div 
+        style={{ 
+          height: '180px', 
+          background: generateBgColor(profile.username || 'user'),
+          borderRadius: '8px 8px 0 0',
+          position: 'relative'
+        }}
+      ></div>
+      
+      {/* Informations du profil */}
+      <div style={{ 
+        backgroundColor: 'var(--chordora-card-bg)',
+        padding: '1.5rem',
+        borderRadius: '0 0 8px 8px',
+        marginTop: '-60px',
+        position: 'relative',
+        zIndex: 1
+      }}>
+        <Flex direction={{ base: 'column', medium: 'row' }} alignItems="flex-start" gap="2rem">
+          {/* Image de profil */}
+          <Image
+            src={profileImageSrc}
+            alt={`${profile.username || 'Utilisateur'} profile`}
+            width="120px"
+            height="120px"
+            style={{ 
+              objectFit: 'cover',
+              borderRadius: '50%',
+              border: '4px solid var(--chordora-card-bg)',
+              marginTop: '-60px'
+            }}
+            onError={() => setImageError(true)}
+          />
+          
+          {/* Informations principales */}
+          <Flex direction="column" gap="0.5rem" flex="1">
+            <Flex justifyContent="space-between" alignItems="flex-start">
               <Heading level={2}>
                 {profile.username || `User_${profile.userId?.substring(0, 6)}`}
               </Heading>
               
-              <Flex gap="0.5rem" wrap="wrap">
-                {profile.userType && (
-                  <Badge variation="info">{profile.userType}</Badge>
-                )}
-                {profile.experienceLevel && (
-                  <Badge variation="success">{profile.experienceLevel}</Badge>
+              {/* Boutons d'action */}
+              <Flex gap="1rem">
+                {isOwnProfile ? (
+                  <>
+                    <Button 
+                      onClick={() => setIsEditing(true)}
+                      variation="menu"
+                      style={{ 
+                        borderRadius: '20px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                      }}
+                    >
+                      <FaEdit style={{ marginRight: '0.5rem' }} />
+                      Modifier
+                    </Button>
+                    
+                    <Button 
+                      onClick={() => navigate('/account-settings')}
+                      variation="menu"
+                      style={{ 
+                        borderRadius: '20px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                      }}
+                    >
+                      <FaCog style={{ marginRight: '0.5rem' }} />
+                      Paramètres
+                    </Button>
+                  </>
+                ) : isAuthenticated && (
+                  <>
+                    <Button 
+                      onClick={() => {/* Fonction de message */}}
+                      variation="menu"
+                      style={{ 
+                        borderRadius: '20px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                      }}
+                    >
+                      Message
+                    </Button>
+                    
+                    <Button
+                      onClick={handleFollowToggle}
+                      isLoading={followMutation.isPending || unfollowMutation.isPending}
+                      variation={isFollowing ? "menu" : "primary"}
+                      style={{ 
+                        borderRadius: '20px',
+                        backgroundColor: isFollowing ? 'rgba(255, 255, 255, 0.1)' : 'var(--chordora-primary)'
+                      }}
+                    >
+                      {isFollowing ? (
+                        <>
+                          <FaUserCheck style={{ marginRight: '0.5rem' }} />
+                          Abonné
+                        </>
+                      ) : (
+                        <>
+                          <FaUserPlus style={{ marginRight: '0.5rem' }} />
+                          Suivre
+                        </>
+                      )}
+                    </Button>
+                    
+                    <Button
+                      variation="menu"
+                      style={{ 
+                        borderRadius: '20px',
+                        width: '40px',
+                        height: '40px',
+                        padding: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                      }}
+                    >
+                      <FaEllipsisH />
+                    </Button>
+                  </>
                 )}
               </Flex>
-              
-              {/* Statistiques de followers et suivis */}
-              <Flex marginTop="1rem" gap="1.5rem">
-                <Button
-                  onClick={() => {
-                    setModalTab('followers');
-                    setShowFollowModal(true);
-                  }}
-                  variation="link"
-                  padding="0"
-                >
-                  <Text fontWeight="bold">{followersCount}</Text>
-                  <Text marginLeft="0.25rem" color="gray">
-                    {followersCount === 1 ? 'abonné' : 'abonnés'}
-                  </Text>
-                </Button>
-                
-                <Button
-                  onClick={() => {
-                    setModalTab('following');
-                    setShowFollowModal(true);
-                  }}
-                  variation="link"
-                  padding="0"
-                >
-                  <Text fontWeight="bold">{followingCount}</Text>
-                  <Text marginLeft="0.25rem" color="gray">
-                    abonnements
-                  </Text>
-                </Button>
-              </Flex>
-              
-              {profile.bio && (
-                <Text marginTop="0.5rem">
-                  {profile.bio}
-                </Text>
+            </Flex>
+            
+            <Flex gap="0.5rem" wrap="wrap">
+              {profile.userType && (
+                <Badge variation="info">{profile.userType}</Badge>
               )}
+              {profile.experienceLevel && (
+                <Badge variation="success">{profile.experienceLevel}</Badge>
+              )}
+            </Flex>
+            
+            {/* Bio */}
+            {profile.bio && (
+              <Text style={{ marginTop: '0.75rem', maxWidth: '800px' }}>
+                {profile.bio}
+              </Text>
+            )}
+            
+            {/* Stats de followers */}
+            <Flex marginTop="1rem" gap="1.5rem">
+              <Text 
+                fontWeight="bold" 
+                style={{ cursor: 'pointer' }}
+                onClick={() => {
+                  setModalTab('followers');
+                  setShowFollowModal(true);
+                }}
+              >
+                <span style={{ color: 'var(--chordora-text-primary)' }}>{followersCount}</span>
+                <span style={{ marginLeft: '4px', color: 'var(--chordora-text-secondary)' }}>
+                  {followersCount === 1 ? 'abonné' : 'abonnés'}
+                </span>
+              </Text>
+              
+              <Text 
+                fontWeight="bold"
+                style={{ cursor: 'pointer' }}
+                onClick={() => {
+                  setModalTab('following');
+                  setShowFollowModal(true);
+                }}
+              >
+                <span style={{ color: 'var(--chordora-text-primary)' }}>{followingCount}</span>
+                <span style={{ marginLeft: '4px', color: 'var(--chordora-text-secondary)' }}>
+                  abonnements
+                </span>
+              </Text>
               
               {profile.location && (
-                <Flex alignItems="center" gap="0.5rem" marginTop="0.5rem">
-                  <FaMapMarkerAlt size={14} />
-                  <Text>{profile.location}</Text>
-                </Flex>
-              )}
-              
-              {/* Tags */}
-              {profile.tags && profile.tags.length > 0 && (
-                <Flex gap="0.5rem" wrap="wrap" marginTop="0.5rem" alignItems="center">
-                  <FaTag size={14} />
-                  {profile.tags.map(tag => (
-                    <Badge 
-                      key={tag} 
-                      variation="warning"
-                      size="small"
-                    >
-                      {tag}
-                    </Badge>
-                  ))}
+                <Flex alignItems="center" gap="0.5rem">
+                  <FaMapMarkerAlt color="var(--chordora-text-secondary)" size={14} />
+                  <Text color="var(--chordora-text-secondary)">{profile.location}</Text>
                 </Flex>
               )}
             </Flex>
             
-            {/* Bouton d'édition (pour son profil) ou bouton de suivi (pour les autres profils) */}
-            <Flex direction="column" gap="0.5rem">
-              {isOwnProfile ? (
-                <>
-                  <Button 
-                    onClick={() => setIsEditing(true)}
-                    variation="primary"
-                    size="small"
+            {/* Réseaux sociaux */}
+            {profile.socialLinks && Object.values(profile.socialLinks).some(link => link) && (
+              <Flex gap="1rem" marginTop="1rem">
+                {profile.socialLinks.instagram && (
+                  <a 
+                    href={profile.socialLinks.instagram} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ color: 'var(--chordora-text-secondary)' }}
                   >
-                    <FaEdit style={{ marginRight: '0.5rem' }} />
-                    Modifier mon profil
-                  </Button>
-                  
-                  <Button 
-                    onClick={() => navigate('/account-settings')}
-                    variation="link"
-                    size="small"
+                    <FaInstagram size={20} />
+                  </a>
+                )}
+                {profile.socialLinks.soundcloud && (
+                  <a 
+                    href={profile.socialLinks.soundcloud} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ color: 'var(--chordora-text-secondary)' }}
                   >
-                    <FaCog style={{ marginRight: '0.5rem' }} />
-                    Paramètres du compte
-                  </Button>
-                </>
-              ) : isAuthenticated && (
-                <Button
-                  onClick={handleFollowToggle}
-                  isLoading={followMutation.isPending || unfollowMutation.isPending}
-                  loadingText={isFollowing ? "Désabonnement..." : "Abonnement..."}
-                  variation={isFollowing ? "link" : "primary"}
-                  isDisabled={followMutation.isPending || unfollowMutation.isPending}
-                >
-                  {isFollowing ? (
-                    <>
-                      <FaUserCheck style={{ marginRight: '0.5rem' }} />
-                      Abonné
-                    </>
-                  ) : (
-                    <>
-                      <FaUserPlus style={{ marginRight: '0.5rem' }} />
-                      Suivre
-                    </>
-                  )}
-                </Button>
-              )}
-            </Flex>
+                    <FaSoundcloud size={20} />
+                  </a>
+                )}
+                {profile.socialLinks.youtube && (
+                  <a 
+                    href={profile.socialLinks.youtube} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ color: 'var(--chordora-text-secondary)' }}
+                  >
+                    <FaYoutube size={20} />
+                  </a>
+                )}
+                {profile.socialLinks.twitter && (
+                  <a 
+                    href={profile.socialLinks.twitter} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ color: 'var(--chordora-text-secondary)' }}
+                  >
+                    <FaTwitter size={20} />
+                  </a>
+                )}
+              </Flex>
+            )}
           </Flex>
-        </Card>
+        </Flex>
+      </div>
+      
+      {/* Onglets du profil */}
+      <Flex borderBottom="1px solid var(--chordora-divider)" marginTop="2rem" marginBottom="2rem">
+        <button
+          className={`tab-button ${activeTab === 'tracks' ? 'active' : ''}`}
+          onClick={() => setActiveTab('tracks')}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            padding: '1rem 1.5rem',
+            cursor: 'pointer',
+            color: activeTab === 'tracks' ? 'var(--chordora-primary)' : 'var(--chordora-text-secondary)',
+            fontWeight: activeTab === 'tracks' ? 'bold' : 'normal',
+            borderBottom: activeTab === 'tracks' ? '2px solid var(--chordora-primary)' : 'none',
+            transition: 'all 0.3s ease'
+          }}
+        >
+          <FaMusic style={{ marginRight: '0.5rem' }} />
+          Pistes
+        </button>
         
-        {/* Informations supplémentaires */}
-        <Card padding="1.5rem">
-          <Heading level={4} marginBottom="1rem">Détails musicaux</Heading>
+        <button
+          className={`tab-button ${activeTab === 'playlists' ? 'active' : ''}`}
+          onClick={() => setActiveTab('playlists')}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            padding: '1rem 1.5rem',
+            cursor: 'pointer',
+            color: activeTab === 'playlists' ? 'var(--chordora-primary)' : 'var(--chordora-text-secondary)',
+            fontWeight: activeTab === 'playlists' ? 'bold' : 'normal',
+            borderBottom: activeTab === 'playlists' ? '2px solid var(--chordora-primary)' : 'none',
+            transition: 'all 0.3s ease'
+          }}
+        >
+          <FaHeart style={{ marginRight: '0.5rem' }} />
+          Playlists
+        </button>
+        
+        <button
+          className={`tab-button ${activeTab === 'about' ? 'active' : ''}`}
+          onClick={() => setActiveTab('about')}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            padding: '1rem 1.5rem',
+            cursor: 'pointer',
+            color: activeTab === 'about' ? 'var(--chordora-primary)' : 'var(--chordora-text-secondary)',
+            fontWeight: activeTab === 'about' ? 'bold' : 'normal',
+            borderBottom: activeTab === 'about' ? '2px solid var(--chordora-primary)' : 'none',
+            transition: 'all 0.3s ease'
+          }}
+        >
+          À propos
+        </button>
+      </Flex>
+      
+      {/* Contenu des onglets */}
+      {activeTab === 'tracks' && (
+        <div>
+          {isOwnProfile && (
+            <Button 
+              onClick={() => navigate('/add-track')} 
+              variation="primary"
+              style={{
+                marginBottom: '1.5rem',
+                backgroundColor: 'var(--chordora-primary)',
+                borderRadius: '20px'
+              }}
+            >
+              <FaPlus style={{ marginRight: '0.5rem' }} />
+              Ajouter une piste
+            </Button>
+          )}
           
-          <Flex gap="2rem" wrap="wrap">
+          <TrackList userId={targetUserId!} />
+        </div>
+      )}
+      
+      {activeTab === 'playlists' && (
+        <div>
+          {/* Contenu des playlists */}
+          <Text>Playlists de l'utilisateur (aucune playlist pour le moment)</Text>
+        </div>
+      )}
+      
+      {activeTab === 'about' && (
+        <div style={{ backgroundColor: 'var(--chordora-card-bg)', padding: '1.5rem', borderRadius: '8px' }}>
+          <Heading level={3} marginBottom="1.5rem">À propos</Heading>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
             {/* Genres musicaux */}
             {((profile.musicGenres && profile.musicGenres.length > 0) || profile.musicGenre) && (
-              <View>
-                <Flex alignItems="center" gap="0.5rem">
-                  <FaMusic size={16} />
+              <div>
+                <Flex alignItems="center" gap="0.5rem" marginBottom="0.5rem">
+                  <FaMusic size={16} color="var(--chordora-text-secondary)" />
                   <Heading level={5}>Genres musicaux</Heading>
                 </Flex>
-                <Flex gap="0.5rem" marginTop="0.5rem" wrap="wrap">
+                <Flex gap="0.5rem" wrap="wrap">
                   {profile.musicGenres && profile.musicGenres.map(genre => (
                     <Badge key={genre} variation="info">{genre}</Badge>
                   ))}
@@ -345,165 +523,68 @@ const Profile: React.FC = () => {
                     <Badge variation="info">{profile.musicGenre}</Badge>
                   )}
                 </Flex>
-              </View>
+              </div>
             )}
             
             {/* Mood musical */}
             {profile.musicalMood && (
-              <View>
-                <Heading level={5}>Mood musical</Heading>
-                <Text marginTop="0.5rem">{profile.musicalMood}</Text>
-              </View>
+              <div>
+                <Heading level={5} marginBottom="0.5rem">Mood musical</Heading>
+                <Text>{profile.musicalMood}</Text>
+              </div>
+            )}
+            
+            {/* Tags */}
+            {profile.tags && profile.tags.length > 0 && (
+              <div>
+                <Flex alignItems="center" gap="0.5rem" marginBottom="0.5rem">
+                  <FaTag size={16} color="var(--chordora-text-secondary)" />
+                  <Heading level={5}>Tags</Heading>
+                </Flex>
+                <Flex gap="0.5rem" wrap="wrap">
+                  {profile.tags.map(tag => (
+                    <Badge key={tag} variation="warning">{tag}</Badge>
+                  ))}
+                </Flex>
+              </div>
             )}
             
             {/* Équipement */}
             {profile.equipment && profile.equipment.length > 0 && (
-              <View>
-                <Flex alignItems="center" gap="0.5rem">
-                  <FaToolbox size={16} />
+              <div>
+                <Flex alignItems="center" gap="0.5rem" marginBottom="0.5rem">
+                  <FaToolbox size={16} color="var(--chordora-text-secondary)" />
                   <Heading level={5}>Équipement</Heading>
                 </Flex>
-                <Flex gap="0.5rem" marginTop="0.5rem" wrap="wrap">
+                <Flex gap="0.5rem" wrap="wrap">
                   {profile.equipment.map(item => (
-                    <Badge key={item} variation="warning">{item}</Badge>
+                    <Badge key={item} variation="info">{item}</Badge>
                   ))}
                 </Flex>
-              </View>
+              </div>
             )}
             
             {/* Logiciel */}
             {profile.software && (
-              <View>
-                <Heading level={5}>Logiciel principal</Heading>
-                <Text marginTop="0.5rem">{profile.software}</Text>
-              </View>
+              <div>
+                <Heading level={5} marginBottom="0.5rem">Logiciel principal</Heading>
+                <Text>{profile.software}</Text>
+              </div>
             )}
-          </Flex>
+          </div>
           
           {/* Artistes favoris */}
           {profile.favoriteArtists && profile.favoriteArtists.some(artist => artist) && (
             <>
-              <Divider marginTop="1.5rem" marginBottom="1.5rem" />
-              <Heading level={5}>Artistes favoris</Heading>
-              <Text marginTop="0.5rem">
+              <Divider marginTop="2rem" marginBottom="1.5rem" />
+              <Heading level={5} marginBottom="0.5rem">Artistes favoris</Heading>
+              <Text>
                 {profile.favoriteArtists.filter(Boolean).join(', ')}
               </Text>
             </>
           )}
-          
-          {/* Réseaux sociaux */}
-          {profile.socialLinks && Object.values(profile.socialLinks).some(link => link) && (
-            <>
-              <Divider marginTop="1.5rem" marginBottom="1.5rem" />
-              <Heading level={5}>Réseaux sociaux</Heading>
-              <Flex gap="1rem" marginTop="0.5rem" wrap="wrap">
-                {profile.socialLinks.instagram && (
-                  <Button
-                    as="a"
-                    href={profile.socialLinks.instagram}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    variation="link"
-                  >
-                    Instagram
-                  </Button>
-                )}
-                {profile.socialLinks.soundcloud && (
-                  <Button
-                    as="a"
-                    href={profile.socialLinks.soundcloud}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    variation="link"
-                  >
-                    SoundCloud
-                  </Button>
-                )}
-                {profile.socialLinks.youtube && (
-                  <Button
-                    as="a"
-                    href={profile.socialLinks.youtube}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    variation="link"
-                  >
-                    YouTube
-                  </Button>
-                )}
-                {profile.socialLinks.twitter && (
-                  <Button
-                    as="a"
-                    href={profile.socialLinks.twitter}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    variation="link"
-                  >
-                    Twitter
-                  </Button>
-                )}
-              </Flex>
-            </>
-          )}
-        </Card>
-        
-        {/* Bibliothèque musicale (playlists et pistes) */}
-        <ProfilePlaylists 
-          userId={targetUserId!} 
-          isOwnProfile={isOwnProfile} 
-        />
-        
-        {/* Information de débogage (uniquement en développement) */}
-        {process.env.NODE_ENV === 'development' && (
-          <>
-            <Button 
-              onClick={() => setShowDebugInfo(!showDebugInfo)} 
-              marginTop="2rem" 
-              variation="link" 
-              size="small"
-            >
-              {showDebugInfo ? 'Masquer les infos de débogage' : 'Afficher les infos de débogage'}
-            </Button>
-            
-            {showDebugInfo && (
-              <Card variation="outlined" marginTop="1rem">
-                <Text fontWeight="bold">Informations de débogage</Text>
-                <Text>ID utilisateur ciblé: {targetUserId || 'Non disponible'}</Text>
-                <Text>ID utilisateur courant: {authUserId || 'Non disponible'}</Text>
-                <Text>ID utilisateur URL: {urlUserId || 'Non disponible'}</Text>
-                <Text>Est mon profil: {isOwnProfile ? 'Oui' : 'Non'}</Text>
-                <Text>Est en train de suivre: {isFollowing ? 'Oui' : 'Non'}</Text>
-                <Text>Nombre de followers: {followersCount}</Text>
-                <Text>Nombre d'abonnements: {followingCount}</Text>
-                <Text>Pseudo: {profile.username || 'Non défini'}</Text>
-                <Text>Mutation en cours: {(followMutation.isPending || unfollowMutation.isPending) ? 'Oui' : 'Non'}</Text>
-                <pre style={{ 
-                  whiteSpace: 'pre-wrap', 
-                  overflow: 'auto', 
-                  fontSize: '0.8rem',
-                  background: '#f0f0f0',
-                  padding: '1rem',
-                  borderRadius: '4px'
-                }}>
-                  {JSON.stringify(profile, null, 2)}
-                </pre>
-                {followStatus && (
-                  <pre style={{ 
-                    whiteSpace: 'pre-wrap', 
-                    overflow: 'auto', 
-                    fontSize: '0.8rem',
-                    background: '#f0f0f0',
-                    padding: '1rem',
-                    borderRadius: '4px',
-                    marginTop: '1rem'
-                  }}>
-                    {JSON.stringify(followStatus, null, 2)}
-                  </pre>
-                )}
-              </Card>
-            )}
-          </>
-        )}
-      </Flex>
+        </div>
+      )}
       
       {/* Modal pour afficher les followers/following */}
       {showFollowModal && targetUserId && (

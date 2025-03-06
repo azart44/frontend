@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
 import { 
-  View, 
-  Heading, 
   Text, 
   Button, 
   Flex, 
   Loader, 
-  Card,
   RadioGroupField,
   Alert
 } from '@aws-amplify/ui-react';
@@ -15,6 +12,7 @@ import { useUserPlaylists, useUpdatePlaylist } from '../../hooks/usePlaylists';
 import { FaPlus } from 'react-icons/fa';
 import CustomModal from '../common/CustomModal';
 import PlaylistForm from './PlaylistForm';
+import { Playlist } from '../../types/PlaylistTypes';
 
 interface AddToPlaylistProps {
   track: Track;
@@ -67,6 +65,7 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
       
       // Vérifier si la piste est déjà dans la playlist
       const trackIds = selectedPlaylist.track_ids || [];
+      
       if (trackIds.includes(track.track_id)) {
         setErrorMessage('Cette piste est déjà dans la playlist sélectionnée');
         return;
@@ -75,7 +74,7 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
       // Ajouter la piste à la playlist
       const updatedTrackIds = [...trackIds, track.track_id];
       
-      // Préparer les données pour la mise à jour
+      // Préparation des données pour la mise à jour
       const updateData = {
         playlist_id: selectedPlaylist.playlist_id,
         title: selectedPlaylist.title,
@@ -92,13 +91,13 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
       await updatePlaylistMutation.mutateAsync(updateData);
       
       // Afficher un message de succès
-      setSuccessMessage(`Piste ajoutée à la playlist "${selectedPlaylist.title}"`);
+      setSuccessMessage(`Piste "${track.title}" ajoutée à la playlist "${selectedPlaylist.title}"`);
       
       // Réinitialiser la sélection
       setSelectedPlaylistId('');
       
       // Rafraîchir la liste des playlists
-      refetchPlaylists();
+      await refetchPlaylists();
       
       // Fermer le modal après un court délai
       setTimeout(() => {
@@ -111,9 +110,9 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
   };
   
   // Gérer le succès de la création d'une nouvelle playlist
-  const handleNewPlaylistSuccess = () => {
+  const handleNewPlaylistSuccess = (playlist: Playlist) => {
     setShowNewPlaylistForm(false);
-    setSuccessMessage('Piste ajoutée à la nouvelle playlist');
+    setSuccessMessage(`Piste "${track.title}" ajoutée à la nouvelle playlist "${playlist.title}"`);
     
     // Rafraîchir la liste des playlists
     refetchPlaylists();

@@ -1,416 +1,393 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Grid, 
-  Flex, 
   Heading, 
   Text, 
-  Card, 
-  Image, 
-  Badge,
-  Button,
+  Button, 
+  Image,
   View
 } from '@aws-amplify/ui-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { FaPlay, FaHeart, FaDownload, FaEllipsisH } from 'react-icons/fa';
+import { useAudioContext } from '../contexts/AudioContext';
+import { FaPlay, FaPause, FaHeart, FaRandom } from 'react-icons/fa';
 import { Track } from '../types/TrackTypes';
-import '../ChordoraTheme.css';
-
-// Types pour les composants
-interface TrackCardProps {
-  track: Track;
-  onPlay: (track: Track) => void;
-}
-
-interface ArtistCardProps {
-  artist: {
-    userId: string;
-    username: string;
-    userType?: string;
-    profileImageUrl?: string;
-  };
-}
-
-// Composant pour une carte de piste audio
-const TrackCard: React.FC<TrackCardProps> = ({ track, onPlay }) => {
-  const navigate = useNavigate();
-  
-  return (
-    <Card className="content-card">
-      <Flex direction="column">
-        <Flex alignItems="center" gap="1rem">
-          <Image
-            src={track.cover_image || "/default-cover.jpg"}
-            alt={track.title}
-            height="64px"
-            width="64px"
-            objectFit="cover"
-            borderRadius="4px"
-          />
-          <Flex direction="column" flex="1">
-            <Text fontWeight="bold" fontSize="1.1rem" color="white">{track.title}</Text>
-            <Flex alignItems="center" gap="0.5rem">
-              <Text 
-                fontSize="0.9rem" 
-                color="#a0a0a0"
-                onClick={() => navigate(`/profile/${track.user_id}`)}
-                style={{ cursor: 'pointer' }}
-              >
-                {track.artist}
-              </Text>
-              <Flex alignItems="center">
-                <Badge
-                  backgroundColor="#3e1dfc"
-                  color="white"
-                  fontSize="0.7rem"
-                  padding="0.2rem 0.4rem"
-                  borderRadius="4px"
-                >
-                  {track.genre}
-                </Badge>
-                {track.bpm && (
-                  <Badge
-                    backgroundColor="#2a2d36"
-                    color="white"
-                    fontSize="0.7rem"
-                    padding="0.2rem 0.4rem"
-                    borderRadius="4px"
-                    marginLeft="0.4rem"
-                  >
-                    {track.bpm} BPM
-                  </Badge>
-                )}
-              </Flex>
-            </Flex>
-          </Flex>
-          <Button
-            onClick={() => onPlay(track)}
-            backgroundColor="#87e54c"
-            color="#121416"
-            size="small"
-            borderRadius="50%"
-            width="40px"
-            height="40px"
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-          >
-            <FaPlay />
-          </Button>
-        </Flex>
-        
-        <Flex style={{ height: '40px', backgroundColor: '#121416', marginTop: '1rem', borderRadius: '4px' }}>
-          <View className="audio-waveform" padding="0 10px" style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-            {[...Array(10)].map((_, i) => (
-              <View key={i} className="bar" style={{ animationDelay: `${i * 0.1}s` }} />
-            ))}
-          </View>
-        </Flex>
-        
-        <Flex justifyContent="space-between" marginTop="0.8rem">
-          <Flex gap="0.8rem">
-            <Button
-              backgroundColor="transparent"
-              color="white"
-              padding="0"
-              display="flex"
-              alignItems="center"
-              gap="0.3rem"
-            >
-              <FaHeart color="#a0a0a0" />
-              <Text fontSize="0.8rem" color="#a0a0a0">{track.likes || 0}</Text>
-            </Button>
-            
-            <Button
-              backgroundColor="transparent"
-              color="white"
-              padding="0"
-              display="flex"
-              alignItems="center"
-              gap="0.3rem"
-            >
-              <FaDownload color="#a0a0a0" />
-              <Text fontSize="0.8rem" color="#a0a0a0">{track.downloads || 0}</Text>
-            </Button>
-          </Flex>
-          
-          <Text fontSize="0.8rem" color="#a0a0a0">
-            {track.duration ? `${Math.floor(track.duration / 60)}:${String(Math.floor(track.duration % 60)).padStart(2, '0')}` : '0:00'}
-          </Text>
-        </Flex>
-      </Flex>
-    </Card>
-  );
-};
-
-// Composant pour une carte d'artiste
-const ArtistCard: React.FC<ArtistCardProps> = ({ artist }) => {
-  const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
-  
-  return (
-    <Card 
-      className="content-card" 
-      onClick={() => navigate(`/profile/${artist.userId}`)}
-      style={{ cursor: 'pointer' }}
-    >
-      <Flex alignItems="center" gap="1rem">
-        <Image
-          src={artist.profileImageUrl || "/default-profile.jpg"}
-          alt={artist.username}
-          height="50px"
-          width="50px"
-          objectFit="cover"
-          borderRadius="50%"
-        />
-        <Flex direction="column" flex="1">
-          <Text fontWeight="bold" color="white">{artist.username}</Text>
-          {artist.userType && (
-            <Badge
-              backgroundColor="#3e1dfc"
-              color="white"
-              fontSize="0.7rem"
-              padding="0.2rem 0.4rem"
-              borderRadius="4px"
-            >
-              {artist.userType}
-            </Badge>
-          )}
-        </Flex>
-        {isAuthenticated && (
-          <Button
-            size="small"
-            backgroundColor="transparent"
-            border="1px solid #87e54c"
-            color="#87e54c"
-            borderRadius="4px"
-            padding="0.3rem 0.6rem"
-            fontSize="0.8rem"
-            onClick={(e) => {
-              e.stopPropagation();
-              // Logique pour suivre l'artiste
-            }}
-          >
-            Suivre
-          </Button>
-        )}
-      </Flex>
-    </Card>
-  );
-};
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const { playTrack, currentTrack, isPlaying, togglePlay } = useAudioContext();
   const [trendingTracks, setTrendingTracks] = useState<Track[]>([]);
-  const [topArtists, setTopArtists] = useState<ArtistCardProps['artist'][]>([]);
-  const [loading, setLoading] = useState(true);
+  const [recentlyPlayed, setRecentlyPlayed] = useState<Track[]>([]);
+  const [topArtists, setTopArtists] = useState<any[]>([]);
   
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        // Simuler des données
-        const tracks: Track[] = [
-          {
-            track_id: '1',
-            title: 'Summer Vibes',
-            artist: 'Keiji',
-            user_id: '14a874d8-a001-7079-ae6e-45fab155068c',
-            genre: 'Trap',
-            bpm: 140,
-            duration: 183,
-            likes: 124,
-            downloads: 45,
-            cover_image: 'https://chordora-users.s3.us-east-1.amazonaws.com/public/default-profile'
-          },
-          {
-            track_id: '2',
-            title: 'Night Drive',
-            artist: 'Project Blvck',
-            user_id: 'user2',
-            genre: 'Drill',
-            bpm: 165,
-            duration: 201,
-            likes: 87,
-            downloads: 32,
-            cover_image: 'https://via.placeholder.com/64'
-          },
-          {
-            track_id: '3',
-            title: 'Cloud Nine',
-            artist: 'SeaSky',
-            user_id: 'user3',
-            genre: 'R&B',
-            bpm: 95,
-            duration: 175,
-            likes: 156,
-            downloads: 67,
-            cover_image: 'https://via.placeholder.com/64'
-          }
-        ];
-        
-        setTrendingTracks(tracks);
-        
-        // Simuler des données d'artistes
-        const artists = [
-          {
-            userId: '14a874d8-a001-7079-ae6e-45fab155068c',
-            username: 'Keiji',
-            userType: 'producer',
-            profileImageUrl: 'https://chordora-users.s3.us-east-1.amazonaws.com/public/default-profile'
-          },
-          {
-            userId: 'user2',
-            username: 'Project Blvck',
-            userType: 'beatmaker',
-            profileImageUrl: 'https://via.placeholder.com/50'
-          },
-          {
-            userId: 'user3',
-            username: 'SeaSky',
-            userType: 'artist',
-            profileImageUrl: 'https://via.placeholder.com/50'
-          },
-          {
-            userId: 'user4',
-            username: 'B',
-            userType: 'loopmaker',
-            profileImageUrl: 'https://via.placeholder.com/50'
-          },
-          {
-            userId: 'user5',
-            username: 'D. Sharp',
-            userType: 'producer',
-            profileImageUrl: 'https://via.placeholder.com/50'
-          }
-        ];
-        
-        setTopArtists(artists);
-      } catch (error) {
-        console.error('Erreur lors de la récupération des données:', error);
-      } finally {
-        setLoading(false);
-      }
+    // Simuler des données de l'API
+    const loadData = async () => {
+      // Données fictives pour la démo
+      const mockTracks: Track[] = [
+        {
+          track_id: '1',
+          title: 'Summer Vibes',
+          artist: 'Keiji',
+          user_id: '14a874d8-a001-7079-ae6e-45fab155068c',
+          genre: 'Trap',
+          bpm: 140,
+          duration: 183,
+          likes: 124,
+          downloads: 45,
+          cover_image: 'https://chordora-users.s3.us-east-1.amazonaws.com/public/default-profile'
+        },
+        {
+          track_id: '2',
+          title: 'Night Drive',
+          artist: 'Project Blvck',
+          user_id: 'user2',
+          genre: 'Drill',
+          bpm: 165,
+          duration: 201,
+          likes: 87,
+          downloads: 32,
+          cover_image: 'https://via.placeholder.com/64'
+        },
+        {
+          track_id: '3',
+          title: 'Cloud Nine',
+          artist: 'SeaSky',
+          user_id: 'user3',
+          genre: 'R&B',
+          bpm: 95,
+          duration: 175,
+          likes: 156,
+          downloads: 67,
+          cover_image: 'https://via.placeholder.com/64'
+        },
+        {
+          track_id: '4',
+          title: 'Electric Dreams',
+          artist: 'Neon Wave',
+          user_id: 'user4',
+          genre: 'Synthwave',
+          bpm: 120,
+          duration: 195,
+          likes: 203,
+          downloads: 89,
+          cover_image: 'https://via.placeholder.com/64'
+        },
+        {
+          track_id: '5',
+          title: 'Heavy Hearts',
+          artist: 'Soul Searcher',
+          user_id: 'user5',
+          genre: 'Boom Bap',
+          bpm: 88,
+          duration: 220,
+          likes: 178,
+          downloads: 72,
+          cover_image: 'https://via.placeholder.com/64'
+        },
+        {
+          track_id: '6',
+          title: 'City Lights',
+          artist: 'Urban Poet',
+          user_id: 'user6',
+          genre: 'Trap',
+          bpm: 130,
+          duration: 190,
+          likes: 134,
+          downloads: 55,
+          cover_image: 'https://via.placeholder.com/64'
+        }
+      ];
+      
+      const mockArtists = [
+        {
+          userId: '14a874d8-a001-7079-ae6e-45fab155068c',
+          username: 'Keiji',
+          userType: 'producer',
+          profileImageUrl: 'https://chordora-users.s3.us-east-1.amazonaws.com/public/default-profile'
+        },
+        {
+          userId: 'user2',
+          username: 'Project Blvck',
+          userType: 'beatmaker',
+          profileImageUrl: 'https://via.placeholder.com/50'
+        },
+        {
+          userId: 'user3',
+          username: 'SeaSky',
+          userType: 'artist',
+          profileImageUrl: 'https://via.placeholder.com/50'
+        },
+        {
+          userId: 'user4',
+          username: 'Neon Wave',
+          userType: 'producer',
+          profileImageUrl: 'https://via.placeholder.com/50'
+        },
+        {
+          userId: 'user5',
+          username: 'Soul Searcher',
+          userType: 'artist',
+          profileImageUrl: 'https://via.placeholder.com/50'
+        }
+      ];
+      
+      setTrendingTracks(mockTracks);
+      setRecentlyPlayed(mockTracks.slice().reverse().slice(0, 4));
+      setTopArtists(mockArtists);
     };
     
-    fetchData();
+    loadData();
   }, []);
   
   // Gérer la lecture d'une piste
   const handlePlayTrack = (track: Track) => {
-    // Ici, vous pouvez implémenter la logique pour jouer la piste
-    console.log('Lecture de la piste:', track);
-    // Vous pourriez utiliser un state global ou un contexte pour gérer le lecteur audio
+    playTrack(track);
+  };
+  
+  // Format time helper
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
   
   return (
-    <View className="homepage">
-      {/* En-tête avec banner */}
-      <View 
-        backgroundColor="#2a2d36" 
-        height="200px" 
-        borderRadius="12px"
-        marginBottom="2rem"
-        style={{
-          backgroundImage: 'linear-gradient(135deg, #3e1dfc 0%, #87e54c 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          textAlign: 'center',
-          padding: '1rem'
-        }}
-      >
-        <Flex direction="column" alignItems="center">
-          <Heading level={1} color="white" fontWeight="bold">
-            Bienvenue sur Chordora
-          </Heading>
-          <Text color="white" maxWidth="600px" marginTop="1rem">
-            Connectez-vous avec des beatmakers et des artistes, partagez vos créations et trouvez votre prochaine collaboration musicale.
-          </Text>
-          {!isAuthenticated && (
-            <Button 
-              onClick={() => navigate('/auth')}
-              marginTop="1.5rem"
-              backgroundColor="#87e54c"
-              color="#121416"
-              fontWeight="bold"
-              padding="0.8rem 1.5rem"
-              borderRadius="30px"
-            >
-              Commencer maintenant
-            </Button>
-          )}
-        </Flex>
-      </View>
+    <View>
+      {/* Bannière d'accueil */}
+      <div className="home-banner">
+        <div className="home-banner-content">
+          <span className="sponsored-badge">SPONSORISÉ</span>
+          <h1 className="home-banner-title">
+            Entrez Dans Le Monde Où La Musique Rencontre La Magie
+          </h1>
+          <p className="home-banner-text">
+            Explorez une vaste bibliothèque de beats couvrant tous les genres et toutes les époques.
+          </p>
+          <Button 
+            variation="primary"
+            style={{ 
+              backgroundColor: 'white', 
+              color: 'black', 
+              borderRadius: '25px',
+              padding: '0.75rem 2rem',
+              fontWeight: 600
+            }}
+          >
+            Découvrir maintenant
+          </Button>
+        </div>
+      </div>
       
-      <Grid
-        templateColumns={{ base: '1fr', medium: '3fr 1fr' }}
-        gap="2rem"
-      >
-        {/* Section principale - Pistes en tendance */}
-        <View>
-          <Heading level={3} color="#87e54c" marginBottom="1rem">
-            Pistes en tendance
-          </Heading>
-          
-          <Flex direction="column" gap="1rem">
-            {trendingTracks.map(track => (
-              <TrackCard 
-                key={track.track_id}
-                track={track}
-                onPlay={handlePlayTrack}
-              />
-            ))}
-          </Flex>
-          
-          <Button
-            variation="link"
-            color="#87e54c"
-            marginTop="1rem"
-            onClick={() => navigate('/explore')}
-          >
-            Voir plus de pistes →
-          </Button>
-        </View>
+      {/* Section "Joués récemment" */}
+      <section style={{ marginBottom: '2rem' }}>
+        <div className="section-title">
+          <h2>Joués récemment</h2>
+          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/tracks'); }}>
+            Voir tous
+          </a>
+        </div>
         
-        {/* Sidebar - Artistes populaires et activité récente */}
-        <View>
-          <Heading level={3} color="#87e54c" marginBottom="1rem">
-            Artistes populaires
-          </Heading>
-          
-          <Flex direction="column" gap="0.8rem">
-            {topArtists.map(artist => (
-              <ArtistCard key={artist.userId} artist={artist} />
+        <div className="playlist-grid">
+          {recentlyPlayed.map(track => (
+            <div key={track.track_id} className="playlist-card">
+              <div style={{ position: 'relative' }}>
+                <Image
+                  src={track.cover_image || '/default-cover.jpg'}
+                  alt={track.title}
+                  className="playlist-card-image"
+                />
+                <div 
+                  style={{
+                    position: 'absolute',
+                    bottom: '8px',
+                    right: '8px',
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    backgroundColor: 'var(--chordora-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    opacity: 0,
+                    transition: 'opacity 0.2s ease',
+                    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.3)'
+                  }}
+                  className="play-button-overlay"
+                  onClick={() => handlePlayTrack(track)}
+                  onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                >
+                  {currentTrack?.track_id === track.track_id && isPlaying ? (
+                    <FaPause color="white" />
+                  ) : (
+                    <FaPlay color="white" />
+                  )}
+                </div>
+              </div>
+              <h3 className="playlist-card-title">{track.title}</h3>
+              <p className="playlist-card-subtitle">
+                {track.artist} • {track.genre}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+      
+      {/* Section "Billboard cette semaine" */}
+      <section style={{ marginBottom: '2rem' }}>
+        <div className="section-title">
+          <h2>Cette semaine, le top billboard #25</h2>
+          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/tracks'); }}>
+            Voir tous
+          </a>
+        </div>
+        
+        <table className="tracks-table">
+          <thead>
+            <tr>
+              <th style={{ width: '40px' }}>#</th>
+              <th>Titre</th>
+              <th>Artiste</th>
+              <th>Genre</th>
+              <th style={{ width: '80px' }}>Durée</th>
+              <th style={{ width: '60px' }}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {trendingTracks.slice(0, 5).map((track, index) => (
+              <tr key={track.track_id} 
+                onClick={() => handlePlayTrack(track)}
+                style={{ cursor: 'pointer' }}
+              >
+                <td>{index + 1}</td>
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <Image
+                      src={track.cover_image || '/default-cover.jpg'}
+                      alt={track.title}
+                      width="40px"
+                      height="40px"
+                      style={{ 
+                        objectFit: 'cover',
+                        borderRadius: '4px'
+                      }}
+                    />
+                    <div>
+                      <div style={{ fontWeight: 500 }}>{track.title}</div>
+                      {track.bpm && (
+                        <div style={{ fontSize: '0.8rem', color: 'var(--chordora-text-secondary)' }}>
+                          {track.bpm} BPM
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </td>
+                <td>{track.artist}</td>
+                <td>{track.genre}</td>
+                <td>{formatTime(track.duration || 0)}</td>
+                <td>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button 
+                      style={{ 
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: 'var(--chordora-text-secondary)'
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Like track action
+                      }}
+                    >
+                      <FaHeart />
+                    </button>
+                    <button 
+                      style={{ 
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: 'var(--chordora-text-secondary)'
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Add to playlist action
+                      }}
+                    >
+                      <FaRandom />
+                    </button>
+                  </div>
+                </td>
+              </tr>
             ))}
-          </Flex>
-          
-          <Button
-            variation="link"
-            color="#87e54c"
-            marginTop="1rem"
-            onClick={() => navigate('/users')}
+          </tbody>
+        </table>
+      </section>
+      
+      {/* Section "Artistes populaires" */}
+      <section style={{ marginBottom: '2rem' }}>
+        <div className="section-title">
+          <h2>Artistes populaires</h2>
+          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/users'); }}>
+            Voir tous
+          </a>
+        </div>
+        
+        <div className="playlist-grid">
+          {topArtists.map(artist => (
+            <div 
+              key={artist.userId} 
+              className="playlist-card"
+              onClick={() => navigate(`/profile/${artist.userId}`)}
+            >
+              <div style={{ position: 'relative' }}>
+                <Image
+                  src={artist.profileImageUrl || '/default-profile.jpg'}
+                  alt={artist.username}
+                  className="playlist-card-image"
+                  style={{ borderRadius: '50%' }}
+                />
+              </div>
+              <h3 className="playlist-card-title" style={{ textAlign: 'center' }}>
+                {artist.username}
+              </h3>
+              <p className="playlist-card-subtitle" style={{ textAlign: 'center' }}>
+                {artist.userType}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+      
+      {/* Call to action pour les utilisateurs non connectés */}
+      {!isAuthenticated && (
+        <section style={{ 
+          backgroundColor: 'var(--chordora-card-bg)',
+          borderRadius: '8px',
+          padding: '2rem',
+          marginTop: '3rem',
+          marginBottom: '2rem',
+          textAlign: 'center'
+        }}>
+          <Heading level={3} style={{ marginBottom: '1rem' }}>
+            Rejoignez Chordora aujourd'hui
+          </Heading>
+          <Text style={{ marginBottom: '1.5rem', maxWidth: '600px', margin: '0 auto' }}>
+            Créez votre compte pour accéder à plus de fonctionnalités, collaborer avec d'autres artistes et partager vos créations musicales.
+          </Text>
+          <Button 
+            onClick={() => navigate('/auth')}
+            variation="primary"
+            style={{ 
+              backgroundColor: 'var(--chordora-primary)',
+              borderRadius: '25px',
+              padding: '0.75rem 2rem'
+            }}
           >
-            Explorer tous les artistes →
+            S'inscrire gratuitement
           </Button>
-          
-          {isAuthenticated && (
-            <>
-              <Heading level={3} color="#87e54c" marginTop="2rem" marginBottom="1rem">
-                Activité récente
-              </Heading>
-              
-              <Card className="content-card">
-                <Text color="#a0a0a0" textAlign="center">
-                  Suivez des artistes pour voir leur activité récente ici.
-                </Text>
-              </Card>
-            </>
-          )}
-        </View>
-      </Grid>
+        </section>
+      )}
     </View>
   );
 };

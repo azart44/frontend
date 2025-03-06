@@ -24,6 +24,8 @@ const Favorites = lazy(() => import('./components/favorites/Favorites'));
 const PlaylistList = lazy(() => import('./components/playlist/PlaylistList'));
 const PlaylistDetail = lazy(() => import('./components/playlist/PlaylistDetail'));
 const PlaylistForm = lazy(() => import('./components/playlist/PlaylistForm'));
+// Liste des pistes (ajouté pour faciliter la navigation)
+const TrackListPage = lazy(() => import('./components/track/TrackListPage'));
 
 // Composant de chargement réutilisable avec spinner
 const Loading = () => (
@@ -132,6 +134,16 @@ function App() {
                       } 
                     />
                     
+                    {/* Route pour afficher la liste des pistes */}
+                    <Route 
+                      path="/tracks" 
+                      element={
+                        <ProfileCompletionRoute>
+                          <TrackListPage />
+                        </ProfileCompletionRoute>
+                      }
+                    />
+                    
                     {/* Routes pour les playlists */}
                     <Route path="/playlists">
                       <Route 
@@ -150,7 +162,14 @@ function App() {
                           </ProfileCompletionRoute>
                         } 
                       />
-                      <Route path=":playlistId" element={<PlaylistDetail />} />
+                      <Route 
+                        path=":playlistId" 
+                        element={
+                          <ProfileCompletionRoute>
+                            <PlaylistDetail />
+                          </ProfileCompletionRoute>
+                        }
+                      />
                     </Route>
                     
                     {/* Fallback pour les routes inconnues */}

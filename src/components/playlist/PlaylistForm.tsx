@@ -69,11 +69,15 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
       if (isEditing) {
         // Mise à jour d'une playlist existante
         const response = await updatePlaylistMutation.mutateAsync(values);
-        if (onSuccess) onSuccess(response.data.playlist);
+        if (onSuccess && response.data && response.data.playlist) {
+          onSuccess(response.data.playlist);
+        }
       } else {
         // Création d'une nouvelle playlist
         const response = await createPlaylistMutation.mutateAsync(values);
-        if (onSuccess) onSuccess(response.data.playlist);
+        if (onSuccess && response.data && response.data.playlist) {
+          onSuccess(response.data.playlist);
+        }
       }
     } catch (err: any) {
       console.error('Erreur lors de la sauvegarde de la playlist:', err);
