@@ -1,23 +1,23 @@
 import React, { useState, useCallback } from 'react';
 import { 
-  View, 
   Heading, 
   TextField, 
   SelectField, 
   Button, 
   Flex, 
-  Text,
+  Alert, 
   Card,
-  TextAreaField,
-  SwitchField,
   Image,
-  Divider
+  Text,
+  SwitchField,
+  TextAreaField
 } from '@aws-amplify/ui-react';
 import { useNavigate } from 'react-router-dom';
-import { FaCloudUploadAlt, FaMusic, FaImage } from 'react-icons/fa';
+import { FaCloudUploadAlt, FaMusic, FaImage, FaPlus } from 'react-icons/fa';
 import { useCreateTrack } from '../../hooks/useTracks';
 import { useForm } from '../../hooks/useForm';
-import { MUSIC_GENRES } from '../../constants/profileData';
+import { MUSIC_GENRES, MUSIC_MOODS } from '../../constants/profileData';
+import { Track } from '../../types/TrackTypes';
 
 // Formats de fichiers audio acceptés
 const ACCEPTED_AUDIO_FORMATS = ['audio/mpeg', 'audio/mp3', 'audio/wav'];
@@ -28,354 +28,356 @@ const MAX_AUDIO_SIZE = 25 * 1024 * 1024;
 // Taille maximale d'image (5 Mo)
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
-/**
- * Composant pour uploader une nouvelle piste audio avec image de couverture
- */
 const TrackUpload: React.FC = () => {
   const navigate = useNavigate();
+  
+  // États pour les fichiers
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [coverImage, setCoverImage] = useState<File | null>(null);
   const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [audioFileDragActive, setAudioFileDragActive] = useState(false);
-  const [coverImageDragActive, setCoverImageDragActive] = useState(false);
   
-  // Utiliser le hook personnalisé pour la création de piste
-  const uploadTrackMutation = useCreateTrack();
+  // États pour la gestion des erreurs et du formulaire
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   
-  // Utiliser le hook de formulaire pour gérer les valeurs
-  const { values, handleChange, errors, validate, setValues } = useForm({
+  // Hook pour créer une piste
+  const createTrackMutation = useCreateTrack();
+  
+  // Formulaire avec validation
+  const { 
+    values, 
+    handleChange, 
+    errors, 
+    validate, 
+    setValues 
+  } = useForm<{
+    title: string;
+    genre: string;
+    bpm: number;
+    description: string;
+    mood: string;
+    tags: string[];
+    isPrivate: boolean;
+  }>({
     title: '',
     genre: '',
-    bpm: 0,
+    bpm: 120,
     description: '',
-    tags: [] as string[],
+    mood: '',
+    tags: [],
     isPrivate: false
   });
   
-  // Validation du fichier audio
-  const validateAudioFile = useCallback((file: File): string | null => {
-    if (!ACCEPTED_AUDIO_FORMATS.includes(file.type)) {
-      return 'Format de fichier non supporté. Utilisez MP3 ou WAV.';
-    }
-    
-    if (file.size > MAX_AUDIO_SIZE) {
-      return `Le fichier est trop volumineux. La taille maximum est de ${MAX_AUDIO_SIZE / 1024 / 1024} Mo.`;
-    }
-    
-    return null;
-  }, []);
-  
-  // Validation de l'image de couverture
-  const validateCoverImage = useCallback((file: File): string | null => {
-    if (!ACCEPTED_IMAGE_FORMATS.includes(file.type)) {
-      return 'Format d\'image non supporté. Utilisez JPG, PNG ou WEBP.';
-    }
-    
-    if (file.size > MAX_IMAGE_SIZE) {
-      return `L'image est trop volumineuse. La taille maximum est de ${MAX_IMAGE_SIZE / 1024 / 1024} Mo.`;
-    }
-    
-    return null;
-  }, []);
-  
-  // Gérer le drag and drop pour le fichier audio
-  const handleAudioDrag = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setAudioFileDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setAudioFileDragActive(false);
-    }
-  }, []);
-  
-  // Gérer le drag and drop pour l'image de couverture
-  const handleCoverImageDrag = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setCoverImageDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setCoverImageDragActive(false);
-    }
-  }, []);
-  
-  // Gérer le drop de fichier audio
-  const handleAudioDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setAudioFileDragActive(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      const error = validateAudioFile(file);
+  // Gérer l'upload de l'image de couverture
+  const handleCoverImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
       
-      if (error) {
-        alert(error);
+      // Vérifier la taille (max 5 Mo)
+      if (file.size > MAX_IMAGE_SIZE) {
+        setError('L\'image ne doit pas dépasser 5 Mo');
+        return;
+      }
+      
+      // Vérifier le format
+      if (!ACCEPTED_IMAGE_FORMATS.includes(file.type)) {
+        setError('Format d\'image non supporté. Utilisez JPG, PNG ou WEBP.');
+        return;
+      }
+      
+      setCoverImage(file);
+      
+      // Créer un aperçu de l'image
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCoverImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  // Gérer l'upload du fichier audio
+  const handleAudioFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      
+      // Vérifier la taille (max 25 Mo)
+      if (file.size > MAX_AUDIO_SIZE) {
+        setError('Le fichier audio ne doit pas dépasser 25 Mo');
+        return;
+      }
+      
+      // Vérifier le format
+      if (!ACCEPTED_AUDIO_FORMATS.includes(file.type)) {
+        setError('Format audio non supporté. Utilisez MP3 ou WAV.');
         return;
       }
       
       setAudioFile(file);
+      setError(null);
     }
-  }, [validateAudioFile]);
-  
-  // Gérer le drop d'image de couverture
-  const handleCoverImageDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setCoverImageDragActive(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      const error = validateCoverImage(file);
-      
-      if (error) {
-        alert(error);
-        return;
-      }
-      
-      handleCoverImageFile(file);
-    }
-  }, [validateCoverImage]);
-  
-  // Gérer la sélection de fichier audio
-  const handleAudioFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const error = validateAudioFile(file);
-      
-      if (error) {
-        alert(error);
-        return;
-      }
-      
-      setAudioFile(file);
-    }
-  }, [validateAudioFile]);
-  
-  // Gérer la sélection d'image de couverture
-  const handleCoverImageChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const error = validateCoverImage(file);
-      
-      if (error) {
-        alert(error);
-        return;
-      }
-      
-      handleCoverImageFile(file);
-    }
-  }, [validateCoverImage]);
-  
-  // Traiter l'image de couverture sélectionnée
-  const handleCoverImageFile = (file: File) => {
-    setCoverImage(file);
-    
-    // Créer un aperçu de l'image
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setCoverImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
   };
   
-  // Supprimer l'image de couverture
-  const handleRemoveCoverImage = () => {
-    setCoverImage(null);
-    setCoverImagePreview(null);
-  };
-  
-  // Gérer les tags (séparés par des virgules)
-  const handleTagsChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  // Gérer les tags
+  const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const tagsArray = e.target.value
       .split(',')
       .map(tag => tag.trim())
-      .filter(tag => tag.length > 0);
+      .filter(tag => tag.length > 0)
+      .slice(0, 3); // Limiter à 3 tags
     
     setValues(prev => ({ ...prev, tags: tagsArray }));
-  }, [setValues]);
+  };
   
   // Soumettre le formulaire
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+    setSuccess(false);
     
-    if (!audioFile) {
-      alert('Veuillez sélectionner un fichier audio');
-      return;
-    }
-    
-    // Valider uniquement les champs requis
+    // Validation des champs
     const validationRules = {
       title: (value: string) => !value ? 'Le titre est requis' : null,
       genre: (value: string) => !value ? 'Le genre est requis' : null,
-      bpm: (value: number) => !value ? 'Le BPM est requis' : null,
+      bpm: (value: number) => !value || value <= 0 ? 'Le BPM doit être positif' : null
     };
     
     if (!validate(validationRules)) {
       return;
     }
     
-    // Convertir l'image en base64 si elle existe
-    let coverImageBase64: string | null = null;
-    let coverImageType: string | null = null;
-    
-    if (coverImage) {
-      coverImageBase64 = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(coverImage);
-      });
-      coverImageType = coverImage.type;
+    // Vérifier que le fichier audio est présent
+    if (!audioFile) {
+      setError('Veuillez sélectionner un fichier audio');
+      return;
     }
     
-    // Préparer les données du formulaire
-    const formData = {
-      title: values.title,
-      genre: values.genre,
-      bpm: Number(values.bpm),
-      description: values.description,
-      tags: values.tags,
-      isPrivate: values.isPrivate,
-      fileName: audioFile.name,
-      fileType: audioFile.type,
-      coverImageBase64, // Ajouter l'image en base64
-      coverImageType    // Type de l'image
-    };
-    
     try {
-      // Démarrer l'upload
-      setUploadProgress(0);
+      // Convertir l'image de couverture en base64 si elle existe
+      let coverImageBase64: string | null = null;
+      let coverImageType: string | null = null;
       
-      // Démarrer l'upload avec le hook personnalisé
-      await uploadTrackMutation.mutateAsync({
+      if (coverImage) {
+        coverImageBase64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(coverImage);
+        });
+        coverImageType = coverImage.type;
+      }
+      
+      // Préparer les données du formulaire
+      const formData = {
+        title: values.title,
+        genre: values.genre,
+        bpm: Number(values.bpm),
+        description: values.description,
+        mood: values.mood,
+        tags: values.tags,
+        isPrivate: values.isPrivate,
+        fileName: audioFile.name,
+        fileType: audioFile.type,
+        coverImageBase64,
+        coverImageType
+      };
+      
+      // Démarrer l'upload
+      const result = await createTrackMutation.mutateAsync({
         formData,
         file: audioFile
       });
       
-      // Rediriger vers le profil après succès
-      navigate('/profile');
-    } catch (error) {
-      console.error('Erreur lors de l\'upload:', error);
-      alert('Une erreur est survenue lors de l\'upload. Veuillez réessayer.');
+      // Afficher le succès
+      setSuccess(true);
+      
+      // Rediriger après un court délai
+      setTimeout(() => {
+        navigate('/profile');
+      }, 1500);
+    } catch (uploadError) {
+      console.error('Erreur lors de l\'upload:', uploadError);
+      setError('Une erreur est survenue lors de l\'upload. Veuillez réessayer.');
     }
-  }, [audioFile, coverImage, values, validate, navigate, uploadTrackMutation]);
+  }, [audioFile, coverImage, values, validate, navigate, createTrackMutation]);
   
   return (
-    <View padding="2rem">
-      <Heading level={2} marginBottom="1rem">Ajouter une nouvelle piste</Heading>
+    <Card padding="1.5rem">
+      <Heading level={3} marginBottom="1rem">
+        Ajouter une nouvelle piste
+      </Heading>
+      
+      {error && (
+        <Alert 
+          variation="error" 
+          heading="Erreur" 
+          marginBottom="1rem"
+          isDismissible={true}
+        >
+          {error}
+        </Alert>
+      )}
+      
+      {success && (
+        <Alert 
+          variation="success" 
+          heading="Succès" 
+          marginBottom="1rem"
+          isDismissible={true}
+        >
+          Votre piste a été téléchargée avec succès !
+        </Alert>
+      )}
       
       <form onSubmit={handleSubmit}>
         <Flex direction="column" gap="1.5rem">
-          {/* Section informations principales */}
-          <Card padding="1.5rem">
-            <Heading level={3} marginBottom="1rem">Informations de la piste</Heading>
-            
-            <TextField
-              label="Titre"
-              name="title"
-              value={values.title}
-              onChange={handleChange}
-              hasError={!!errors.title}
-              errorMessage={errors.title}
-              required
-            />
-            
-            <SelectField
-              label="Genre"
-              name="genre"
-              value={values.genre}
-              onChange={handleChange}
-              hasError={!!errors.genre}
-              errorMessage={errors.genre}
-              required
-              marginTop="1rem"
+          {/* Section informations et image */}
+          <Flex 
+            direction={{ base: 'column', medium: 'row' }}
+            gap="1.5rem"
+            alignItems="flex-start"
+          >
+            {/* Image de couverture */}
+            <Flex 
+              direction="column" 
+              alignItems="center" 
+              gap="1rem"
+              width={{ base: '100%', medium: '200px' }}
             >
-              <option value="">Sélectionner un genre</option>
-              {MUSIC_GENRES.map(genre => (
-                <option key={genre} value={genre}>{genre}</option>
-              ))}
-            </SelectField>
+              <View 
+                backgroundColor={coverImagePreview ? 'transparent' : '#333'}
+                width="200px"
+                height="200px"
+                borderRadius="8px"
+                style={{ 
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  border: '1px solid var(--chordora-divider)'
+                }}
+              >
+                {coverImagePreview ? (
+                  <Image
+                    src={coverImagePreview}
+                    alt="Cover preview"
+                    width="100%"
+                    height="100%"
+                    style={{ objectFit: 'cover' }}
+                  />
+                ) : (
+                  <FaImage size={48} color="#666" />
+                )}
+              </View>
+              
+              <label 
+                htmlFor="cover-upload"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '0.5rem 1rem',
+                  backgroundColor: 'var(--chordora-primary)',
+                  color: 'white',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '0.9rem'
+                }}
+              >
+                <FaImage style={{ marginRight: '0.5rem' }} />
+                {coverImagePreview ? 'Changer l\'image' : 'Ajouter une image'}
+              </label>
+              <input
+                id="cover-upload"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleCoverImageChange}
+                style={{ display: 'none' }}
+              />
+              <Text fontSize="0.8rem" color="gray">
+                JPG, PNG ou WEBP, max 5Mo
+              </Text>
+            </Flex>
             
-            <TextField
-              label="BPM"
-              name="bpm"
-              type="number"
-              value={values.bpm.toString()}
-              onChange={handleChange}
-              hasError={!!errors.bpm}
-              errorMessage={errors.bpm}
-              required
-              marginTop="1rem"
-            />
-            
-            <TextAreaField
-              label="Description (optionnelle)"
-              name="description"
-              value={values.description}
-              onChange={handleChange}
-              rows={3}
-              marginTop="1rem"
-            />
-            
-            <TextField
-              label="Tags (séparés par des virgules)"
-              value={values.tags.join(', ')}
-              onChange={handleTagsChange}
-              placeholder="Ex: chill, melodic, summer"
-              marginTop="1rem"
-            />
-            
-            <SwitchField
-              label="Piste privée"
-              name="isPrivate"
-              checked={values.isPrivate}
-              onChange={(e) => setValues(prev => ({ ...prev, isPrivate: e.target.checked }))}
-              labelPosition="end"
-              marginTop="1rem"
-            />
-          </Card>
+            {/* Champs du formulaire */}
+            <Flex direction="column" gap="1rem" flex="1">
+              <TextField
+                label="Titre"
+                name="title"
+                value={values.title}
+                onChange={handleChange}
+                placeholder="Entrez le titre de votre piste"
+                hasError={!!errors.title}
+                errorMessage={errors.title}
+                isRequired
+              />
+              
+              <SelectField
+                label="Genre"
+                name="genre"
+                value={values.genre}
+                onChange={handleChange}
+                placeholder="Sélectionnez un genre"
+                hasError={!!errors.genre}
+                errorMessage={errors.genre}
+                isRequired
+              >
+                <option value="">Sélectionnez un genre</option>
+                {MUSIC_GENRES.map(genre => (
+                  <option key={genre} value={genre}>{genre}</option>
+                ))}
+              </SelectField>
+              
+              <TextField
+                label="BPM"
+                name="bpm"
+                type="number"
+                value={values.bpm.toString()}
+                onChange={handleChange}
+                placeholder="Entrez le BPM"
+                hasError={!!errors.bpm}
+                errorMessage={errors.bpm}
+                isRequired
+              />
+              
+              <TextAreaField
+                label="Description (optionnelle)"
+                name="description"
+                value={values.description}
+                onChange={handleChange}
+                placeholder="Décrivez votre piste"
+                rows={3}
+              />
+              
+              <SwitchField
+                label="Piste privée"
+                name="isPrivate"
+                checked={values.isPrivate}
+                onChange={(e) => setValues(prev => ({ ...prev, isPrivate: e.target.checked }))}
+                labelPosition="end"
+              />
+            </Flex>
+          </Flex>
           
-          {/* Zone de drop pour le fichier audio */}
-          <Card>
-            <Heading level={3} marginBottom="1rem">Fichier Audio</Heading>
+          {/* Section fichier audio */}
+          <Card padding="1.5rem">
+            <Flex 
+              justifyContent="space-between" 
+              alignItems="center"
+              marginBottom="1rem"
+            >
+              <Heading level={4}>Fichier Audio</Heading>
+            </Flex>
             
             <Card
-              onDragEnter={handleAudioDrag}
-              onDragOver={handleAudioDrag}
-              onDragLeave={handleAudioDrag}
-              onDrop={handleAudioDrop}
               padding="2rem"
-              backgroundColor={audioFileDragActive ? "rgba(62, 29, 252, 0.05)" : "white"}
+              backgroundColor={audioFile ? 'rgba(62, 29, 252, 0.05)' : 'white'}
               style={{
-                border: audioFileDragActive ? "2px dashed #3e1dfc" : "2px dashed #ccc",
+                border: audioFile ? '2px dashed #3e1dfc' : '2px dashed #ccc',
                 textAlign: "center",
                 cursor: "pointer"
               }}
               onClick={() => document.getElementById('audio-upload')?.click()}
             >
-              <Flex direction="column" alignItems="center" gap="1rem">
-                {audioFile ? (
-                  <>
-                    <FaMusic size={48} color="#3e1dfc" />
-                    <Text fontWeight="bold">{audioFile.name}</Text>
-                    <Text>{(audioFile.size / (1024 * 1024)).toFixed(2)} Mo</Text>
-                  </>
-                ) : (
-                  <>
-                    <FaCloudUploadAlt size={48} />
-                    <Text fontWeight="bold">
-                      Glissez votre fichier audio ici ou cliquez pour parcourir
-                    </Text>
-                    <Text fontSize="small" color="gray">
-                      MP3 ou WAV, max 25 Mo
-                    </Text>
-                  </>
-                )}
-              </Flex>
               <input
                 id="audio-upload"
                 type="file"
@@ -383,97 +385,81 @@ const TrackUpload: React.FC = () => {
                 onChange={handleAudioFileChange}
                 style={{ display: "none" }}
               />
+              
+              {audioFile ? (
+                <Flex direction="column" alignItems="center" gap="1rem">
+                  <FaMusic size={48} color="#3e1dfc" />
+                  <Text fontWeight="bold">{audioFile.name}</Text>
+                  <Text>{(audioFile.size / (1024 * 1024)).toFixed(2)} Mo</Text>
+                </Flex>
+              ) : (
+                <Flex direction="column" alignItems="center" gap="1rem">
+                  <FaCloudUploadAlt size={48} />
+                  <Text fontWeight="bold">
+                    Glissez votre fichier audio ici ou cliquez pour parcourir
+                  </Text>
+                  <Text fontSize="small" color="gray">
+                    MP3 ou WAV, max 25 Mo
+                  </Text>
+                </Flex>
+              )}
             </Card>
           </Card>
           
-          {/* Zone de drop pour l'image de couverture */}
-          <Card>
-            <Heading level={3} marginBottom="1rem">Image de couverture (optionnelle)</Heading>
+          {/* Section tags et mood */}
+          <Card padding="1.5rem">
+            <Heading level={4} marginBottom="1rem">Informations supplémentaires</Heading>
             
-            {coverImagePreview ? (
-              <Flex direction="column" alignItems="center" gap="1rem">
-                <Image
-                  src={coverImagePreview}
-                  alt="Aperçu de la couverture"
-                  width="200px"
-                  height="200px"
-                  objectFit="cover"
-                  borderRadius="8px"
-                />
-                <Text>{coverImage?.name} - {(coverImage?.size || 0 / (1024 * 1024)).toFixed(2)} Mo</Text>
-                <Button 
-                  onClick={handleRemoveCoverImage} 
-                  variation="destructive"
-                  size="small"
-                >
-                  Supprimer l'image
-                </Button>
-              </Flex>
-            ) : (
-              <Card
-                onDragEnter={handleCoverImageDrag}
-                onDragOver={handleCoverImageDrag}
-                onDragLeave={handleCoverImageDrag}
-                onDrop={handleCoverImageDrop}
-                padding="2rem"
-                backgroundColor={coverImageDragActive ? "rgba(135, 229, 76, 0.05)" : "white"}
-                style={{
-                  border: coverImageDragActive ? "2px dashed #87e54c" : "2px dashed #ccc",
-                  textAlign: "center",
-                  cursor: "pointer"
-                }}
-                onClick={() => document.getElementById('cover-image-upload')?.click()}
-              >
-                <Flex direction="column" alignItems="center" gap="1rem">
-                  <FaImage size={48} />
-                  <Text fontWeight="bold">
-                    Glissez une image de couverture ici ou cliquez pour parcourir
-                  </Text>
-                  <Text fontSize="small" color="gray">
-                    JPG, PNG ou WEBP, max 5 Mo
-                  </Text>
-                </Flex>
-                <input
-                  id="cover-image-upload"
-                  type="file"
-                  accept=".jpg,.jpeg,.png,.webp"
-                  onChange={handleCoverImageChange}
-                  style={{ display: "none" }}
-                />
-              </Card>
-            )}
+            <TextField
+              label="Tags (séparés par des virgules, max 3)"
+              value={(values.tags || []).join(', ')}
+              onChange={handleTagsChange}
+              placeholder="Ex: Drill, Mélancolique, Trap"
+            />
+            
+            <SelectField
+              label="Mood musical"
+              name="mood"
+              value={values.mood}
+              onChange={handleChange}
+              marginTop="1rem"
+            >
+              <option value="">Sélectionnez un mood</option>
+              {MUSIC_MOODS.map(mood => (
+                <option key={mood} value={mood}>{mood}</option>
+              ))}
+            </SelectField>
           </Card>
           
-          {/* Barre de progression */}
-          {uploadProgress > 0 && (
-            <Flex direction="column" marginTop="1rem">
-              <Text>Progression de l'upload: {uploadProgress}%</Text>
-              <View 
-                backgroundColor="#3e1dfc" 
-                style={{ 
-                  width: `${uploadProgress}%`, 
-                  height: '4px', 
-                  marginTop: '0.5rem',
-                  borderRadius: '2px',
-                  transition: 'width 0.3s ease-in-out'
-                }}
-              />
-            </Flex>
-          )}
-          
-          {/* Bouton d'envoi */}
-          <Button 
-            type="submit" 
-            variation="primary" 
-            isDisabled={uploadTrackMutation.isPending || !audioFile}
-            isLoading={uploadTrackMutation.isPending}
-            size="large"
-          >
-            {uploadTrackMutation.isPending ? 'Téléversement en cours...' : 'Téléverser la piste'}
-          </Button>
+          {/* Boutons de soumission */}
+          <Flex gap="1rem">
+            <Button 
+              type="submit" 
+              variation="primary"
+              isLoading={createTrackMutation.isPending}
+              isDisabled={!audioFile}
+              style={{ 
+                borderRadius: '20px',
+                backgroundColor: 'var(--chordora-primary)'
+              }}
+            >
+              <FaPlus style={{ marginRight: '0.5rem' }} />
+              {createTrackMutation.isPending ? 'Téléversement en cours...' : 'Téléverser la piste'}
+            </Button>
+            
+            <Button 
+              onClick={() => navigate('/profile')}
+              variation="link"
+              style={{ 
+                borderRadius: '20px'
+              }}
+            >
+              Annuler
+            </Button>
+          </Flex>
         </Flex>
       </form>
-    </View>
+    </Card>
   );
 };
 
