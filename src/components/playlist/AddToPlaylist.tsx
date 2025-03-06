@@ -13,6 +13,8 @@ import { FaPlus } from 'react-icons/fa';
 import CustomModal from '../common/CustomModal';
 import PlaylistForm from './PlaylistForm';
 import { Playlist } from '../../types/PlaylistTypes';
+import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface AddToPlaylistProps {
   track: Track;
@@ -29,6 +31,8 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
   isOpen, 
   onClose 
 }) => {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string>('');
   const [showNewPlaylistForm, setShowNewPlaylistForm] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -46,6 +50,11 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
   
   // Gérer l'ajout à une playlist existante
   const handleAddToExistingPlaylist = async () => {
+    if (!isAuthenticated) {
+      navigate('/auth');
+      return;
+    }
+
     if (!selectedPlaylistId) {
       setErrorMessage('Veuillez sélectionner une playlist');
       return;
@@ -240,4 +249,4 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
   );
 };
 
-export default AddToPlaylist;
+export default React.memo(AddToPlaylist);

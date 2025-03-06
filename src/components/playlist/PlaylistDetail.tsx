@@ -383,14 +383,14 @@ const PlaylistDetail: React.FC = () => {
                           )}
                           
                           {/* Ajouter un séparateur entre les pistes sauf pour la dernière */}
-                          {index < playlist.tracks.length - 1 && !snapshot.isDragging && (
-                            <div style={{ 
-                              height: '1px', 
-                              backgroundColor: 'var(--chordora-divider)',
-                              margin: '0 1rem'
-                            }} />
-                          )}
-                        </div>
+                          {playlist.tracks && index < playlist.tracks.length - 1 && !snapshot.isDragging && (
+                        <div style={{ 
+                            height: '1px', 
+                            backgroundColor: 'var(--chordora-divider)',
+                            margin: '0 1rem'
+                        }} />
+                    )}
+                    </div>
                       )}
                     </Draggable>
                   ))}

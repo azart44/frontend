@@ -67,6 +67,7 @@ const ProfilePlaylists: React.FC<ProfilePlaylistsProps> = ({ userId, isOwnProfil
           <PlaylistList 
             userId={userId} 
             showAddButton={isOwnProfile}
+            onAddPlaylist={() => navigate('/playlists/new')}
           />
         </View>
       )}

@@ -20,8 +20,8 @@ import { Playlist } from '../../types/PlaylistTypes';
 interface PlaylistListProps {
   userId?: string;
   showAddButton?: boolean;
+  onAddPlaylist?: () => void;
   onPlaylistClick?: (playlist: Playlist) => void;
-  isOwnProfile?: boolean; // Ajout de la propriété pour compatibilité avec ProfilePlaylists
 }
 
 /**
@@ -30,6 +30,7 @@ interface PlaylistListProps {
 const PlaylistList: React.FC<PlaylistListProps> = ({ 
   userId, 
   showAddButton = true,
+  onAddPlaylist,
   onPlaylistClick
 }) => {
   const navigate = useNavigate();
@@ -42,7 +43,7 @@ const PlaylistList: React.FC<PlaylistListProps> = ({
   const { 
     data, 
     isLoading, 
-    error, 
+    error,
     refetch 
   } = useUserPlaylists(userId);
   
@@ -82,6 +83,15 @@ const PlaylistList: React.FC<PlaylistListProps> = ({
   
   // Déterminer si l'utilisateur peut modifier les playlists
   const canEdit = userId === authUserId || !userId;
+  
+  // Afficher le formulaire d'ajout si nécessaire
+  const handleCreatePlaylist = () => {
+    if (onAddPlaylist) {
+      onAddPlaylist();
+    } else {
+      navigate('/playlists/new');
+    }
+  };
   
   // Afficher le formulaire d'ajout si nécessaire
   if (showAddForm) {
@@ -139,21 +149,18 @@ const PlaylistList: React.FC<PlaylistListProps> = ({
   // Afficher un message si aucune playlist n'est trouvée
   if (playlists.length === 0) {
     return (
-      <View>
+      <View padding="2rem" textAlign="center">
+        <Text marginBottom="1rem">Aucune playlist pour le moment</Text>
+        
         {showAddButton && canEdit && (
-          <Flex direction="column" alignItems="center" padding="2rem">
-            <Text marginBottom="1rem">Vous n'avez pas encore de playlist.</Text>
-            <Button 
-              onClick={() => setShowAddForm(true)} 
-              variation="primary"
-            >
-              <FaPlus style={{ marginRight: '0.5rem' }} />
-              Créer ma première playlist
-            </Button>
-          </Flex>
-        )}
-        {!showAddButton && (
-          <Text padding="1rem">Aucune playlist trouvée.</Text>
+          <Button 
+            onClick={handleCreatePlaylist}
+            variation="primary"
+            style={{ borderRadius: '20px' }}
+          >
+            <FaPlus style={{ marginRight: '0.5rem' }} />
+            Créer ma première playlist
+          </Button>
         )}
       </View>
     );
@@ -166,7 +173,7 @@ const PlaylistList: React.FC<PlaylistListProps> = ({
         
         {showAddButton && canEdit && (
           <Button 
-            onClick={() => setShowAddForm(true)} 
+            onClick={handleCreatePlaylist}
             variation="primary"
             size="small"
           >
