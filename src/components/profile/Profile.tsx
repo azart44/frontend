@@ -423,24 +423,7 @@ const Profile: React.FC = () => {
         marginTop="2rem" 
         marginBottom="2rem"
       >
-        <button
-          className={`tab-button ${activeTab === 'collection' ? 'active' : ''}`}
-          onClick={() => setActiveTab('collection')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            padding: '1rem 1.5rem',
-            cursor: 'pointer',
-            color: activeTab === 'collection' ? 'var(--chordora-primary)' : 'var(--chordora-text-secondary)',
-            fontWeight: activeTab === 'collection' ? 'bold' : 'normal',
-            borderBottom: activeTab === 'collection' ? '2px solid var(--chordora-primary)' : 'none',
-            transition: 'all 0.3s ease'
-          }}
-        >
-          <FaMusic style={{ marginRight: '0.5rem' }} />
-          Ma Collection
-        </button>
-        
+
         <button
           className={`tab-button ${activeTab === 'about' ? 'active' : ''}`}
           onClick={() => setActiveTab('about')}
@@ -456,6 +439,23 @@ const Profile: React.FC = () => {
           }}
         >
           À propos
+        </button>
+        <button
+          className={`tab-button ${activeTab === 'collection' ? 'active' : ''}`}
+          onClick={() => setActiveTab('collection')}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            padding: '1rem 1.5rem',
+            cursor: 'pointer',
+            color: activeTab === 'collection' ? 'var(--chordora-primary)' : 'var(--chordora-text-secondary)',
+            fontWeight: activeTab === 'collection' ? 'bold' : 'normal',
+            borderBottom: activeTab === 'collection' ? '2px solid var(--chordora-primary)' : 'none',
+            transition: 'all 0.3s ease'
+          }}
+        >
+          <FaMusic style={{ marginRight: '0.5rem' }} />
+          Collection
         </button>
       </Flex>
       
