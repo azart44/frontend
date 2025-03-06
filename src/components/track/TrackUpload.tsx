@@ -9,6 +9,7 @@ import {
   Card,
   Image,
   Text,
+  View,
   SwitchField,
   TextAreaField
 } from '@aws-amplify/ui-react';
