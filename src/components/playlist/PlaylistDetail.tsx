@@ -16,8 +16,9 @@ import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautif
 import { usePlaylist, useUpdatePlaylist, useDeletePlaylist } from '../../hooks/usePlaylists';
 import { useAudioContext } from '../../contexts/AudioContext';
 import { useAuth } from '../../contexts/AuthContext';
-import PlaylistForm from './PlaylistForm';
+import PlaylistEditForm from './PlaylistEditForm';
 import TrackCard from '../track/TrackCard';
+import ChordoraButton from '../common/ChordoraButton';
 
 /**
  * Composant pour afficher les détails d'une playlist avec drag-and-drop
@@ -151,7 +152,7 @@ const PlaylistDetail: React.FC = () => {
     playTrack(playlist.tracks[0]);
   }, [playlist, playTrack]);
   
-  // Afficher le formulaire d'édition
+  // Si en mode édition, afficher le formulaire d'édition
   if (isEditing && playlist) {
     return (
       <View>
@@ -164,8 +165,8 @@ const PlaylistDetail: React.FC = () => {
           Retour à la playlist
         </Button>
         
-        <PlaylistForm 
-          initialData={playlist}
+        <PlaylistEditForm 
+          playlist={playlist}
           onSuccess={() => {
             setIsEditing(false);
             refetch();
@@ -274,32 +275,32 @@ const PlaylistDetail: React.FC = () => {
             
             {/* Boutons d'action */}
             <Flex gap="1rem" marginTop="1rem">
-              <Button 
+              <ChordoraButton 
                 onClick={handlePlayPlaylist}
                 variation="primary"
                 isDisabled={!playlist.tracks || playlist.tracks.length === 0}
               >
                 <FaPlay style={{ marginRight: '0.5rem' }} />
                 Lire la playlist
-              </Button>
+              </ChordoraButton>
               
               {isOwner && (
                 <>
-                  <Button 
+                  <ChordoraButton 
                     onClick={() => setIsEditing(true)}
                     variation="menu"
                   >
                     <FaEdit style={{ marginRight: '0.5rem' }} />
                     Modifier
-                  </Button>
+                  </ChordoraButton>
                   
-                  <Button 
+                  <ChordoraButton 
                     onClick={handleDeletePlaylist}
-                    variation="destructive"
+                    variation="danger"
                   >
                     <FaTrash style={{ marginRight: '0.5rem' }} />
                     Supprimer
-                  </Button>
+                  </ChordoraButton>
                 </>
               )}
             </Flex>
@@ -384,13 +385,13 @@ const PlaylistDetail: React.FC = () => {
                           
                           {/* Ajouter un séparateur entre les pistes sauf pour la dernière */}
                           {playlist.tracks && index < playlist.tracks.length - 1 && !snapshot.isDragging && (
-                        <div style={{ 
-                            height: '1px', 
-                            backgroundColor: 'var(--chordora-divider)',
-                            margin: '0 1rem'
-                        }} />
-                    )}
-                    </div>
+                            <div style={{ 
+                                height: '1px', 
+                                backgroundColor: 'var(--chordora-divider)',
+                                margin: '0 1rem'
+                            }} />
+                          )}
+                        </div>
                       )}
                     </Draggable>
                   ))}

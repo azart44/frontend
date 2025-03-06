@@ -24,8 +24,10 @@ const Favorites = lazy(() => import('./components/favorites/Favorites'));
 const PlaylistList = lazy(() => import('./components/playlist/PlaylistList'));
 const PlaylistDetail = lazy(() => import('./components/playlist/PlaylistDetail'));
 const PlaylistForm = lazy(() => import('./components/playlist/PlaylistForm'));
-// Liste des pistes (ajouté pour faciliter la navigation)
+// Liste des pistes
 const TrackListPage = lazy(() => import('./components/track/TrackListPage'));
+// Détail de piste
+const TrackDetail = lazy(() => import('./components/track/TrackDetail'));
 
 // Composant de chargement réutilisable avec spinner
 const Loading = () => (
@@ -134,15 +136,33 @@ function App() {
                       } 
                     />
                     
-                    {/* Route pour afficher la liste des pistes */}
-                    <Route 
-                      path="/tracks" 
-                      element={
-                        <ProfileCompletionRoute>
-                          <TrackListPage />
-                        </ProfileCompletionRoute>
-                      }
-                    />
+                    {/* Routes pour les pistes */}
+                    <Route path="/tracks">
+                      <Route 
+                        index
+                        element={
+                          <ProfileCompletionRoute>
+                            <TrackListPage />
+                          </ProfileCompletionRoute>
+                        }
+                      />
+                      <Route 
+                        path=":trackId" 
+                        element={
+                          <ProfileCompletionRoute>
+                            <TrackDetail />
+                          </ProfileCompletionRoute>
+                        }
+                      />
+                      <Route 
+                        path=":trackId/edit" 
+                        element={
+                          <ProfileCompletionRoute>
+                            <TrackDetail edit={true} />
+                          </ProfileCompletionRoute>
+                        }
+                      />
+                    </Route>
                     
                     {/* Routes pour les playlists */}
                     <Route path="/playlists">
@@ -167,6 +187,14 @@ function App() {
                         element={
                           <ProfileCompletionRoute>
                             <PlaylistDetail />
+                          </ProfileCompletionRoute>
+                        }
+                      />
+                      <Route 
+                        path=":playlistId/edit" 
+                        element={
+                          <ProfileCompletionRoute>
+                            <PlaylistDetail edit={true} />
                           </ProfileCompletionRoute>
                         }
                       />
