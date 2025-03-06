@@ -4,15 +4,18 @@ import {
   Flex, 
   Badge, 
   Button, 
-  Image
+  Image,
+  Menu,
+  MenuItem,
+  Divider
 } from '@aws-amplify/ui-react';
 import { 
   FaPlay, 
   FaPause, 
-  FaHeart, 
-  FaRegHeart, 
+  FaPlus, 
   FaEllipsisH,
-  FaPlus
+  FaEdit,
+  FaTrash
 } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { Track } from '../../types/TrackTypes';
@@ -27,17 +30,25 @@ interface TrackCardProps {
   showLikeButton?: boolean;
   isInFavorites?: boolean;
   displayStyle?: 'compact' | 'full' | 'row';
+  onEdit?: (track: Track) => void;
+  onDelete?: (trackId: string) => void;
 }
 
+/**
+ * Composant de carte de piste amélioré avec menu d'options
+ * Au lieu d'afficher directement les boutons Modifier/Supprimer, utilise un menu déroulant
+ */
 const TrackCard: React.FC<TrackCardProps> = ({ 
   track,
   onPlay,
   showLikeButton = false,
   isInFavorites = false,
-  displayStyle = 'full'
+  displayStyle = 'full',
+  onEdit,
+  onDelete
 }) => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, userId: authUserId } = useAuth();
   const { currentTrack, isPlaying, togglePlay } = useAudioContext();
   const isCurrentTrack = currentTrack?.track_id === track.track_id;
   
@@ -47,6 +58,9 @@ const TrackCard: React.FC<TrackCardProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   // État pour gérer l'ouverture du modal AddToPlaylist
   const [showAddToPlaylist, setShowAddToPlaylist] = useState(false);
+  
+  // Déterminer si l'utilisateur est propriétaire de la piste
+  const isOwner = authUserId === track.user_id;
   
   const handlePlayClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -64,7 +78,6 @@ const TrackCard: React.FC<TrackCardProps> = ({
   // Gérer l'ajout à une playlist
   const handleAddToPlaylist = (e: React.MouseEvent) => {
     e.stopPropagation();
-    e.preventDefault(); // Empêcher tout comportement par défaut
     
     if (!isAuthenticated) {
       navigate('/auth');
@@ -74,13 +87,30 @@ const TrackCard: React.FC<TrackCardProps> = ({
     setShowAddToPlaylist(true);
   };
   
+  // Gérer la modification de la piste
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onEdit) {
+      onEdit(track);
+    }
+  };
+  
+  // Gérer la suppression de la piste
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDelete && window.confirm(`Êtes-vous sûr de vouloir supprimer la piste "${track.title}" ?`)) {
+      onDelete(track.track_id);
+    }
+  };
+  
   // URL de l'image de couverture avec fallback
   const coverImageSrc = !imageError && track.cover_image 
     ? track.cover_image 
     : "/default-cover.jpg";
   
   // Formater le temps de la piste
-  const formatTime = (seconds: number): string => {
+  const formatTime = (seconds?: number): string => {
+    if (!seconds) return '0:00';
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
@@ -182,21 +212,36 @@ const TrackCard: React.FC<TrackCardProps> = ({
             >
               <FaPlus color="#a0a0a0" />
             </Button>
-            <Button
-              variation="link"
-              size="small"
-              style={{ padding: 0 }}
-              onClick={(e) => {
-                e.stopPropagation();
-                // Show options
-              }}
-            >
-              <FaEllipsisH color="#a0a0a0" />
-            </Button>
+            
+            {/* Menu d'options avec bouton à trois points (uniquement pour le propriétaire) */}
+            {isOwner && (
+              <Menu
+                trigger={
+                  <Button
+                    variation="link"
+                    size="small"
+                    style={{ padding: 0 }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <FaEllipsisH color="#a0a0a0" />
+                  </Button>
+                }
+              >
+                <MenuItem onClick={handleEdit}>
+                  <FaEdit style={{ marginRight: '0.5rem', color: 'var(--chordora-text-secondary)' }} />
+                  Modifier
+                </MenuItem>
+                <Divider />
+                <MenuItem onClick={handleDelete} style={{ color: 'red' }}>
+                  <FaTrash style={{ marginRight: '0.5rem', color: 'red' }} />
+                  Supprimer
+                </MenuItem>
+              </Menu>
+            )}
           </Flex>
         </Flex>
 
-        {/* Toujours inclure le modal, mais contrôlé par isOpen */}
+        {/* Modal d'ajout à une playlist */}
         <AddToPlaylist 
           track={track} 
           isOpen={showAddToPlaylist} 
@@ -293,7 +338,7 @@ const TrackCard: React.FC<TrackCardProps> = ({
             </Text>
           </Flex>
           
-          {showLikeButton && (
+          <Flex gap="0.5rem">
             <Button
               variation="link"
               size="small"
@@ -302,10 +347,36 @@ const TrackCard: React.FC<TrackCardProps> = ({
             >
               <FaPlus color="#a0a0a0" />
             </Button>
-          )}
+            
+            {/* Menu d'options avec bouton à trois points (uniquement pour le propriétaire) */}
+            {isOwner && (
+              <Menu
+                trigger={
+                  <Button
+                    variation="link"
+                    size="small"
+                    style={{ padding: 0 }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <FaEllipsisH color="#a0a0a0" />
+                  </Button>
+                }
+              >
+                <MenuItem onClick={handleEdit}>
+                  <FaEdit style={{ marginRight: '0.5rem', color: 'var(--chordora-text-secondary)' }} />
+                  Modifier
+                </MenuItem>
+                <Divider />
+                <MenuItem onClick={handleDelete} style={{ color: 'red' }}>
+                  <FaTrash style={{ marginRight: '0.5rem', color: 'red' }} />
+                  Supprimer
+                </MenuItem>
+              </Menu>
+            )}
+          </Flex>
         </div>
 
-        {/* Toujours inclure le modal, mais contrôlé par isOpen */}
+        {/* Modal d'ajout à une playlist */}
         <AddToPlaylist 
           track={track} 
           isOpen={showAddToPlaylist} 
@@ -442,12 +513,38 @@ const TrackCard: React.FC<TrackCardProps> = ({
               >
                 <FaPlus color="#a0a0a0" />
               </Button>
+              
+              {/* Menu d'options avec bouton à trois points (uniquement pour le propriétaire) */}
+              {isOwner && (
+                <Menu
+                  trigger={
+                    <Button
+                      variation="link"
+                      size="small"
+                      style={{ padding: 0 }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <FaEllipsisH color="#a0a0a0" />
+                    </Button>
+                  }
+                >
+                  <MenuItem onClick={handleEdit}>
+                    <FaEdit style={{ marginRight: '0.5rem', color: 'var(--chordora-text-secondary)' }} />
+                    Modifier
+                  </MenuItem>
+                  <Divider />
+                  <MenuItem onClick={handleDelete} style={{ color: 'red' }}>
+                    <FaTrash style={{ marginRight: '0.5rem', color: 'red' }} />
+                    Supprimer
+                  </MenuItem>
+                </Menu>
+              )}
             </Flex>
           </Flex>
         </div>
       </div>
 
-      {/* Toujours inclure le modal, mais contrôlé par isOpen */}
+      {/* Modal d'ajout à une playlist */}
       <AddToPlaylist 
         track={track} 
         isOpen={showAddToPlaylist} 

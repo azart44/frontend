@@ -10,23 +10,25 @@ import {
   TextField,
   SelectField,
   TextAreaField,
-  Image
+  Image,
+  Alert
 } from '@aws-amplify/ui-react';
 import { useUserTracks, useDeleteTrack, useUpdateTrack } from '../../hooks/useTracks';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAudioContext } from '../../contexts/AudioContext';
 import { useForm } from '../../hooks/useForm';
 import { Track } from '../../types/TrackTypes';
-import TrackCard from '../track/TrackCard';
-import { FaEdit, FaTrash } from 'react-icons/fa';
+import TrackCard from './TrackCard'; // Importe le composant TrackCard amélioré
+import { FaPlus } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 
 interface TrackListProps {
   userId: string;
   filters?: Record<string, string>;
-  onRefresh?: () => void; // Nouvelle prop pour notifier du rafraîchissement
+  onRefresh?: () => void;
 }
 
-// Interface d'édition de piste étendue (à utiliser uniquement dans ce composant)
+// Interface d'édition de piste étendue
 interface EditableTrack extends Partial<Track> {
   coverImageBase64?: string | null;
   coverImageType?: string | null;
@@ -34,9 +36,10 @@ interface EditableTrack extends Partial<Track> {
 
 /**
  * Composant pour afficher la liste des pistes audio d'un utilisateur
- * avec options de lecture, modification et suppression
+ * avec options de lecture, modification et suppression via un menu discret
  */
 const TrackList: React.FC<TrackListProps> = ({ userId, filters = {}, onRefresh }) => {
+  const navigate = useNavigate();
   const { userId: currentUserId } = useAuth();
   const { playTrack } = useAudioContext();
   const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
@@ -55,7 +58,7 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {}, onRefresh }
   const deleteTrackMutation = useDeleteTrack();
   const updateTrackMutation = useUpdateTrack();
   
-  // Formulaire pour l'édition d'une piste avec notre interface étendue
+  // Formulaire pour l'édition d'une piste
   const { 
     values: editValues, 
     handleChange: handleEditChange, 
@@ -169,20 +172,18 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {}, onRefresh }
   
   // Supprimer une piste
   const handleDeleteTrack = async (trackId: string) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer cette piste ?')) {
-      try {
-        await deleteTrackMutation.mutateAsync(trackId);
-        
-        // Rafraîchir les données
-        await refetch();
-        
-        // Notifier le parent du rafraîchissement si la fonction est fournie
-        if (onRefresh) {
-          onRefresh();
-        }
-      } catch (error) {
-        console.error('Erreur lors de la suppression:', error);
+    try {
+      await deleteTrackMutation.mutateAsync(trackId);
+      
+      // Rafraîchir les données
+      await refetch();
+      
+      // Notifier le parent du rafraîchissement si la fonction est fournie
+      if (onRefresh) {
+        onRefresh();
       }
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
     }
   };
   
@@ -210,10 +211,11 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {}, onRefresh }
       <Text>Aucune piste trouvée</Text>
       {userId === currentUserId && (
         <Button 
-          onClick={() => window.location.href = '/add-track'} 
+          onClick={() => navigate('/add-track')} 
           variation="primary"
           marginTop="1rem"
         >
+          <FaPlus style={{ marginRight: '0.5rem' }} />
           Ajouter une piste
         </Button>
       )}
@@ -310,45 +312,14 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {}, onRefresh }
               </Flex>
             </Card>
           ) : (
-            <Card style={{ overflow: 'hidden', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-              <div className="track-card-container">
-                {/* Utiliser TrackCard pour l'affichage cohérent avec un style compact */}
-                <TrackCard 
-                  track={track}
-                  showLikeButton={true}
-                  displayStyle="row"
-                  onPlay={() => handlePlayTrack(track)}
-                />
-                
-                {/* Boutons d'édition/suppression en dessous de la carte */}
-                {canEdit && (
-                  <Flex 
-                    direction="row"
-                    justifyContent="flex-end"
-                    padding="0.75rem 1rem"
-                    backgroundColor="rgba(0,0,0,0.03)"
-                    style={{ borderTop: "1px solid rgba(0,0,0,0.1)" }}
-                  >
-                    <Button 
-                      onClick={() => startEditing(track)} 
-                      size="small"
-                      variation="link"
-                      marginRight="1.5rem"
-                    >
-                      <FaEdit style={{ marginRight: '5px' }} /> Modifier
-                    </Button>
-                    <Button 
-                      onClick={() => handleDeleteTrack(track.track_id)} 
-                      size="small"
-                      variation="link"
-                      style={{ color: "red" }}
-                    >
-                      <FaTrash style={{ marginRight: '5px' }} /> Supprimer
-                    </Button>
-                  </Flex>
-                )}
-              </div>
-            </Card>
+            <TrackCard 
+              track={track}
+              onPlay={() => handlePlayTrack(track)}
+              showLikeButton={true}
+              displayStyle="row"
+              onEdit={canEdit ? startEditing : undefined}
+              onDelete={canEdit ? handleDeleteTrack : undefined}
+            />
           )}
         </div>
       ))}
