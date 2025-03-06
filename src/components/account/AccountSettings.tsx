@@ -3,9 +3,8 @@ import {
   View, 
   Heading, 
   Text, 
-  Button, 
-  Card, 
   Flex, 
+  Card,
   TextField,
   Alert, 
   Divider,
@@ -18,7 +17,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { deleteProfile } from '../../api/profile';
-import { FaLock, FaTrash, FaExclamationTriangle } from 'react-icons/fa';
+import { FaLock, FaTrash, FaExclamationTriangle, FaUserCog, FaEnvelope } from 'react-icons/fa';
+import ChordoraButton from '../common/ChordoraButton';
 
 /**
  * Composant pour les paramètres du compte utilisateur
@@ -222,11 +222,19 @@ const AccountSettings: React.FC = () => {
       
       {/* Informations de base */}
       <Card padding="1.5rem" marginBottom="2rem">
-        <Heading level={3} marginBottom="1rem">Informations de base</Heading>
+        <Heading level={3} marginBottom="1rem">
+          <Flex alignItems="center" gap="0.5rem">
+            <FaUserCog />
+            <Text>Informations de base</Text>
+          </Flex>
+        </Heading>
         
         <Flex direction="column" gap="1rem">
           <Flex alignItems="center" justifyContent="space-between">
-            <Text>Adresse email</Text>
+            <Flex alignItems="center" gap="0.5rem">
+              <FaEnvelope color="var(--chordora-text-secondary)" />
+              <Text>Adresse email</Text>
+            </Flex>
             <Text fontWeight="bold">{userEmail || 'Non disponible'}</Text>
           </Flex>
         </Flex>
@@ -292,19 +300,19 @@ const AccountSettings: React.FC = () => {
               required
             />
             
-            <Button 
+            <ChordoraButton 
               type="submit" 
               variation="primary"
               isLoading={isPasswordLoading}
             >
               Modifier le mot de passe
-            </Button>
+            </ChordoraButton>
           </Flex>
         </form>
       </Card>
       
       {/* Suppression du compte */}
-      <Card padding="1.5rem" backgroundColor="#fff8f8">
+      <Card padding="1.5rem" backgroundColor="#1a1a1a">
         <Heading level={3} marginBottom="1rem" color="#d32f2f">
           <Flex alignItems="center" gap="0.5rem">
             <FaTrash />
@@ -319,12 +327,12 @@ const AccountSettings: React.FC = () => {
               y compris votre profil, vos pistes et vos collaborations.
             </Text>
             
-            <Button 
+            <ChordoraButton 
               onClick={handleInitiateDelete}
-              variation="destructive"
+              variation="danger"
             >
               Supprimer mon compte
-            </Button>
+            </ChordoraButton>
           </>
         ) : (
           <>
@@ -365,20 +373,20 @@ const AccountSettings: React.FC = () => {
                   />
                   
                   <Flex gap="1rem">
-                    <Button 
+                    <ChordoraButton 
                       type="submit" 
-                      variation="destructive"
+                      variation="danger"
                       isLoading={isDeleteLoading}
                     >
                       Confirmer la suppression
-                    </Button>
+                    </ChordoraButton>
                     
-                    <Button 
-                      onClick={handleCancelDelete}
-                      variation="warning"
+                    <ChordoraButton 
+                      onClick={handleCancelDelete} 
+                      variation="link"
                     >
                       Annuler
-                    </Button>
+                    </ChordoraButton>
                   </Flex>
                 </Flex>
               </form>
@@ -399,20 +407,20 @@ const AccountSettings: React.FC = () => {
                   />
                   
                   <Flex gap="1rem">
-                    <Button 
+                    <ChordoraButton 
                       type="submit" 
-                      variation="destructive"
+                      variation="danger"
                       isLoading={isDeleteLoading}
                     >
                       Finaliser la suppression
-                    </Button>
+                    </ChordoraButton>
                     
-                    <Button 
+                    <ChordoraButton 
                       onClick={handleCancelDelete}
-                      variation="warning"
+                      variation="link"
                     >
                       Annuler
-                    </Button>
+                    </ChordoraButton>
                   </Flex>
                 </Flex>
               </form>
