@@ -65,7 +65,7 @@ const PlaylistEditForm: React.FC<PlaylistEditFormProps> = ({
     data: searchResults, 
     isLoading: isSearching 
   } = useSearchTracks(
-    searchTerm ? { query: searchTerm, userId: userId } : { userId: userId }
+    searchTerm ? { query: searchTerm, userId: userId || '' } : { userId: userId || '' }
   );
   
   // Utilisation des hooks de mutation
