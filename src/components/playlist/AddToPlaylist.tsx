@@ -35,7 +35,7 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
   onClose 
 }) => {
   const navigate = useNavigate();
-  const { isAuthenticated, userId } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string>('');
   const [showNewPlaylistForm, setShowNewPlaylistForm] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -79,12 +79,6 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
     
     try {
       setErrorMessage(null);
-      
-      // Vérifier si la piste appartient à l'utilisateur
-      if (track.user_id !== userId) {
-        setErrorMessage('Vous ne pouvez ajouter que vos propres pistes à vos playlists');
-        return;
-      }
       
       // Trouver la playlist sélectionnée
       const selectedPlaylist = playlistsData?.playlists.find(
@@ -236,11 +230,6 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
             </Flex>
             
             <Divider style={{ margin: '0 0 1.5rem 0', backgroundColor: 'var(--chordora-divider)' }} />
-            
-            {/* Message informatif pour indiquer la limitation */}
-            <Text color="var(--chordora-text-secondary)" marginBottom="1rem" fontSize="0.9rem">
-              Vous ne pouvez ajouter que vos propres pistes à vos playlists.
-            </Text>
             
             <Flex gap="1rem" direction="column">
               {isLoadingPlaylists ? (

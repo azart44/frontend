@@ -19,7 +19,6 @@ import { useForm } from '../../hooks/useForm';
 import { Playlist, PlaylistFormData } from '../../types/PlaylistTypes';
 import { useUpdatePlaylist, useDeletePlaylist } from '../../hooks/usePlaylists';
 import { useSearchTracks } from '../../hooks/useTracks';
-import { useAuth } from '../../contexts/AuthContext';
 import { FaImage, FaMusic, FaPlus, FaTimes, FaSort, FaCheck, FaSave } from 'react-icons/fa';
 import { Track } from '../../types/TrackTypes';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
@@ -41,7 +40,6 @@ const PlaylistEditForm: React.FC<PlaylistEditFormProps> = ({
 }) => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const { userId } = useAuth();
   
   // État pour la couverture
   const [coverImage, setCoverImage] = useState<File | null>(null);
@@ -60,12 +58,12 @@ const PlaylistEditForm: React.FC<PlaylistEditFormProps> = ({
     })
   );
   
-  // Recherche de pistes - modification pour n'afficher que les pistes de l'utilisateur
+  // Recherche de pistes
   const { 
     data: searchResults, 
     isLoading: isSearching 
   } = useSearchTracks(
-    searchTerm ? { query: searchTerm, userId: userId || '' } : { userId: userId || '' }
+    searchTerm ? { query: searchTerm } : {}
   );
   
   // Utilisation des hooks de mutation
@@ -123,12 +121,6 @@ const PlaylistEditForm: React.FC<PlaylistEditFormProps> = ({
   
   // Ajouter une piste à la playlist
   const handleAddTrack = (track: Track) => {
-    // Vérifier si la piste appartient à l'utilisateur
-    if (track.user_id !== userId) {
-      setError('Vous ne pouvez ajouter que vos propres pistes à vos playlists');
-      return;
-    }
-    
     // Vérifier si la piste n'est pas déjà dans la sélection
     if (!selectedTracks.some(t => t.track_id === track.track_id)) {
       setSelectedTracks(prev => [...prev, track]);
@@ -340,11 +332,6 @@ const PlaylistEditForm: React.FC<PlaylistEditFormProps> = ({
               </ChordoraButton>
             </Flex>
             
-            {/* Message informatif pour indiquer la limitation */}
-            <Text color="var(--chordora-text-secondary)" marginBottom="1rem" fontSize="0.9rem">
-              Vous ne pouvez ajouter que vos propres pistes à votre playlist.
-            </Text>
-            
             {/* Recherche de pistes */}
             {showTrackSearch && (
               <Flex direction="column" gap="1rem" marginBottom="1.5rem">
@@ -352,7 +339,7 @@ const PlaylistEditForm: React.FC<PlaylistEditFormProps> = ({
                   label="Rechercher des pistes"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Titre, genre..."
+                  placeholder="Titre, artiste, genre..."
                 />
                 
                 <View 

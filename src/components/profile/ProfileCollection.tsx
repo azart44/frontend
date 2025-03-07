@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
   Heading, 
@@ -13,7 +13,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useUserTracks } from '../../hooks/useTracks';
 import { useUserPlaylists } from '../../hooks/usePlaylists';
-import { FaPlus, FaMusic, FaList, FaLock } from 'react-icons/fa';
+import { FaPlus, FaMusic, FaList } from 'react-icons/fa';
 import TrackList from '../track/TrackList';
 import PlaylistList from '../playlist/PlaylistList';
 import { Track } from '../../types/TrackTypes';
@@ -46,25 +46,6 @@ const ProfileCollection: React.FC<ProfileCollectionProps> = ({ userId, isOwnProf
     error: playlistsError,
     refetch: refetchPlaylists
   } = useUserPlaylists(userId);
-  
-  // Vérifier s'il y a des pistes privées
-  const hasPrivateTracks = useMemo(() => {
-    if (!isOwnProfile) return false;
-    return (tracksData?.tracks || []).some(track => track.isPrivate);
-  }, [tracksData?.tracks, isOwnProfile]);
-  
-  // Filtrer les playlists pour ne montrer que les playlists publiques aux non-propriétaires
-  const visiblePlaylists = useMemo(() => {
-    if (!playlistsData?.playlists) return [];
-    
-    // Si c'est le propriétaire, montrer toutes les playlists
-    if (isOwnProfile) {
-      return playlistsData.playlists;
-    }
-    
-    // Sinon, filtrer les playlists privées
-    return playlistsData.playlists.filter(playlist => playlist.is_public);
-  }, [playlistsData?.playlists, isOwnProfile]);
   
   // Fonction pour ajouter une nouvelle piste
   const handleAddTrack = () => {
@@ -102,12 +83,7 @@ const ProfileCollection: React.FC<ProfileCollectionProps> = ({ userId, isOwnProf
             <FaMusic />
             <Text>Pistes</Text>
             {tracksData && (
-              <Badge variation="info" size="small">
-                {isOwnProfile 
-                  ? tracksData.count 
-                  : tracksData.tracks.filter(t => !t.isPrivate).length
-                }
-              </Badge>
+              <Badge variation="info" size="small">{tracksData.count}</Badge>
             )}
           </Flex>
         </button>
@@ -129,12 +105,7 @@ const ProfileCollection: React.FC<ProfileCollectionProps> = ({ userId, isOwnProf
             <FaList />
             <Text>Playlists</Text>
             {playlistsData && (
-              <Badge variation="info" size="small">
-                {isOwnProfile 
-                  ? playlistsData.count 
-                  : visiblePlaylists.length
-                }
-              </Badge>
+              <Badge variation="info" size="small">{playlistsData.count}</Badge>
             )}
           </Flex>
         </button>
@@ -155,20 +126,6 @@ const ProfileCollection: React.FC<ProfileCollectionProps> = ({ userId, isOwnProf
             {activeTab === 'tracks' ? 'Ajouter une piste' : 'Créer une playlist'}
           </Button>
         </Flex>
-      )}
-      
-      {/* Alerte pour les pistes privées (uniquement pour le propriétaire) */}
-      {isOwnProfile && hasPrivateTracks && activeTab === 'tracks' && (
-        <Alert
-          variation="info"
-          marginBottom="1.5rem"
-          isDismissible={true}
-        >
-          <Text fontSize="0.9rem">
-            <FaLock style={{ marginRight: '0.5rem' }} />
-            Certaines de vos pistes sont privées et ne sont visibles que par vous.
-          </Text>
-        </Alert>
       )}
       
       {/* Contenu des onglets avec z-index élevé pour assurer la visibilité des modals */}

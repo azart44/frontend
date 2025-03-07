@@ -1,26 +1,28 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
   Heading, 
   Text, 
+  Button, 
   Flex, 
   Loader, 
   Card,
-  Badge,
-  Alert
+  Badge
 } from '@aws-amplify/ui-react';
 import { useNavigate } from 'react-router-dom';
-import { FaPlus, FaMusic, FaList, FaEdit, FaTrash, FaLock, FaGlobe } from 'react-icons/fa';
+import { FaPlay, FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
 import { useUserPlaylists, useDeletePlaylist } from '../../hooks/usePlaylists';
+import { useAudioContext } from '../../contexts/AudioContext';
 import { useAuth } from '../../contexts/AuthContext';
-import ChordoraButton from '../common/ChordoraButton';
+import PlaylistForm from './PlaylistForm';
+import { Playlist } from '../../types/PlaylistTypes';
 
 interface PlaylistListProps {
   userId?: string;
   showAddButton?: boolean;
-  hideAddButton?: boolean; // Pour cacher explicitement le bouton
+  hideAddButton?: boolean; // Nouvelle prop pour cacher explicitement le bouton
   onAddPlaylist?: () => void;
-  onPlaylistClick?: (playlistId: string) => void;
+  onPlaylistClick?: (playlist: Playlist) => void;
 }
 
 /**
@@ -29,12 +31,15 @@ interface PlaylistListProps {
 const PlaylistList: React.FC<PlaylistListProps> = ({ 
   userId, 
   showAddButton = true,
-  hideAddButton = false,
+  hideAddButton = false, // Valeur par défaut à false
   onAddPlaylist,
   onPlaylistClick
 }) => {
   const navigate = useNavigate();
   const { userId: authUserId } = useAuth();
+  const { playTrack } = useAudioContext();
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
   
   // Récupération des playlists
   const { 
@@ -48,18 +53,18 @@ const PlaylistList: React.FC<PlaylistListProps> = ({
   const deletePlaylistMutation = useDeletePlaylist();
   
   // Gérer le clic sur une playlist
-  const handlePlaylistClick = (playlistId: string) => {
+  const handlePlaylistClick = (playlist: Playlist) => {
     if (onPlaylistClick) {
-      onPlaylistClick(playlistId);
+      onPlaylistClick(playlist);
     } else {
       // Navigation par défaut vers la page de détail
-      navigate(`/playlists/${playlistId}`);
+      navigate(`/playlists/${playlist.playlist_id}`);
     }
   };
   
   // Gérer la suppression d'une playlist
-  const handleDeletePlaylist = async (playlist: any, e: React.MouseEvent) => {
-    e.stopPropagation(); // Éviter la propagation vers le parent
+  const handleDeletePlaylist = async (playlist: Playlist, e: React.MouseEvent) => {
+    e.stopPropagation(); // Éviter de déclencher le clic sur la playlist
     
     if (window.confirm(`Êtes-vous sûr de vouloir supprimer la playlist "${playlist.title}" ?`)) {
       try {
@@ -73,15 +78,15 @@ const PlaylistList: React.FC<PlaylistListProps> = ({
   };
   
   // Gérer l'édition d'une playlist
-  const handleEditClick = (playlistId: string, e: React.MouseEvent) => {
+  const handleEditClick = (playlist: Playlist, e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate(`/playlists/${playlistId}/edit`);
+    setEditingPlaylist(playlist);
   };
   
   // Déterminer si l'utilisateur peut modifier les playlists
   const canEdit = userId === authUserId || !userId;
   
-  // Créer une nouvelle playlist
+  // Afficher le formulaire d'ajout si nécessaire
   const handleCreatePlaylist = () => {
     if (onAddPlaylist) {
       onAddPlaylist();
@@ -90,11 +95,43 @@ const PlaylistList: React.FC<PlaylistListProps> = ({
     }
   };
   
+  // Afficher le formulaire d'ajout si nécessaire
+  if (showAddForm) {
+    return (
+      <View>
+        <PlaylistForm 
+          onSuccess={(playlist) => {
+            setShowAddForm(false);
+            // Optionnel : naviguer vers la nouvelle playlist
+            navigate(`/playlists/${playlist.playlist_id}`);
+          }}
+          onCancel={() => setShowAddForm(false)}
+        />
+      </View>
+    );
+  }
+  
+  // Afficher le formulaire d'édition si nécessaire
+  if (editingPlaylist) {
+    return (
+      <View>
+        <PlaylistForm 
+          initialData={editingPlaylist}
+          onSuccess={() => {
+            setEditingPlaylist(null);
+            refetch();
+          }}
+          onCancel={() => setEditingPlaylist(null)}
+        />
+      </View>
+    );
+  }
+  
   // Afficher un loader pendant le chargement
   if (isLoading) {
     return (
       <Flex justifyContent="center" padding="2rem">
-        <div className="loading-spinner"></div>
+        <Loader size="large" />
       </Flex>
     );
   }
@@ -111,167 +148,172 @@ const PlaylistList: React.FC<PlaylistListProps> = ({
   // Récupérer les playlists
   const playlists = data?.playlists || [];
   
+  // Afficher un message si aucune playlist n'est trouvée
+  if (playlists.length === 0) {
+    return (
+      <View padding="2rem" textAlign="center">
+        <Text marginBottom="1rem">Aucune playlist pour le moment</Text>
+        
+        {showAddButton && canEdit && !hideAddButton && (
+          <Button 
+            onClick={handleCreatePlaylist}
+            variation="primary"
+            style={{ borderRadius: '20px' }}
+          >
+            <FaPlus style={{ marginRight: '0.5rem' }} />
+            Créer ma première playlist
+          </Button>
+        )}
+      </View>
+    );
+  }
+  
   return (
     <View>
-      <Flex justifyContent="space-between" alignItems="center" marginBottom="1.5rem">
+      <Flex justifyContent="space-between" alignItems="center" marginBottom="1rem">
         <Heading level={3}>Playlists {data?.count ? `(${data.count})` : ''}</Heading>
         
         {showAddButton && canEdit && !hideAddButton && (
-          <Flex direction="column" alignItems="flex-end">
-            <ChordoraButton 
-              onClick={handleCreatePlaylist}
-              variation="primary"
-              size="small"
-            >
-              <FaPlus style={{ marginRight: '0.5rem' }} />
-              Nouvelle playlist
-            </ChordoraButton>
-            
-            {/* Message informatif sur la restriction */}
-            <Text fontSize="small" color="var(--chordora-text-secondary)" marginTop="0.5rem">
-              Vous pourrez y ajouter uniquement vos propres pistes.
-            </Text>
-          </Flex>
+          <Button 
+            onClick={handleCreatePlaylist}
+            variation="primary"
+            size="small"
+          >
+            <FaPlus style={{ marginRight: '0.5rem' }} />
+            Nouvelle playlist
+          </Button>
         )}
       </Flex>
       
-      {/* Afficher un message si aucune playlist n'est trouvée */}
-      {playlists.length === 0 ? (
-        <View padding="2rem" textAlign="center">
-          <Text marginBottom="1rem">Aucune playlist pour le moment</Text>
-          
-          {showAddButton && canEdit && !hideAddButton && (
-            <ChordoraButton 
-              onClick={handleCreatePlaylist}
-              variation="primary"
-              style={{ borderRadius: '20px' }}
+      <Flex 
+        wrap="wrap" 
+        gap="1rem"
+      >
+        {playlists.map((playlist) => (
+          <Card
+            key={playlist.playlist_id}
+            onClick={() => handlePlaylistClick(playlist)}
+            padding="0"
+            width={{ base: '100%', small: 'calc(50% - 0.5rem)', medium: '12rem' }}
+            height="12rem"
+            style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
+          >
+            {/* Image de couverture (ou fallback) */}
+            <div 
+              style={{ 
+                position: 'relative', 
+                width: '100%', 
+                height: '60%',
+                backgroundColor: '#f0f0f0',
+                backgroundImage: playlist.cover_image_url ? `url(${playlist.cover_image_url})` : 'linear-gradient(to right, #3e1dfc, #87e54c)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
+              }}
             >
-              <FaPlus style={{ marginRight: '0.5rem' }} />
-              Créer ma première playlist
-            </ChordoraButton>
-          )}
-        </View>
-      ) : (
-        <Flex 
-          wrap="wrap" 
-          gap="1rem"
-        >
-          {playlists.map((playlist) => (
-            <Card
-              key={playlist.playlist_id}
-              onClick={() => handlePlaylistClick(playlist.playlist_id)}
-              padding="0"
-              width={{ base: '100%', small: 'calc(50% - 0.5rem)', medium: '12rem' }}
-              height="12rem"
-              style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
-            >
-              {/* Image de couverture (ou fallback) */}
+              {!playlist.is_public && (
+                <Badge 
+                  variation="warning"
+                  style={{ position: 'absolute', top: '0.5rem', right: '0.5rem' }}
+                >
+                  Privée
+                </Badge>
+              )}
+              
+              {/* Overlay avec bouton de lecture */}
               <div 
-                style={{ 
-                  position: 'relative', 
-                  width: '100%', 
-                  height: '60%',
-                  backgroundColor: '#121212',
-                  backgroundImage: playlist.cover_image_url ? `url(${playlist.cover_image_url})` : 'linear-gradient(to right, #3e1dfc, #87e54c)',
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center'
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: 'rgba(0,0,0,0.2)',
+                  opacity: 0,
+                  transition: 'opacity 0.2s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '0'}
+              >
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (playlist.tracks && playlist.tracks.length > 0) {
+                      // Jouer la première piste
+                      playTrack(playlist.tracks[0]);
+                    }
+                  }}
+                  variation="primary"
+                  size="small"
+                  style={{
+                    borderRadius: '50%',
+                    width: '3rem',
+                    height: '3rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  isDisabled={!playlist.track_count}
+                >
+                  <FaPlay />
+                </Button>
+              </div>
+            </div>
+            
+            {/* Informations de la playlist */}
+            <Flex 
+              direction="column" 
+              padding="0.75rem"
+              height="40%"
+            >
+              <Text 
+                fontWeight="bold" 
+                fontSize="1rem"
+                style={{
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
                 }}
               >
-                {/* Badge public/privé */}
-                {playlist.is_public !== undefined && (
-                  <Badge 
-                    variation={playlist.is_public ? "info" : "warning"}
-                    style={{ position: 'absolute', top: '0.5rem', right: '0.5rem' }}
-                  >
-                    {playlist.is_public ? 
-                      <FaGlobe style={{ marginRight: '0.25rem' }} /> : 
-                      <FaLock style={{ marginRight: '0.25rem' }} />
-                    }
-                    {playlist.is_public ? 'Public' : 'Privé'}
-                  </Badge>
-                )}
-                
-                {/* Icône de musique si pas d'image */}
-                {!playlist.cover_image_url && (
-                  <Flex 
-                    alignItems="center" 
-                    justifyContent="center" 
-                    height="100%"
-                  >
-                    <FaMusic color="#ffffff" size={24} />
-                  </Flex>
-                )}
-              </div>
+                {playlist.title}
+              </Text>
+              <Text fontSize="0.8rem" color="#808080">
+                {playlist.track_count} {playlist.track_count === 1 ? 'piste' : 'pistes'}
+              </Text>
               
-              {/* Informations de la playlist */}
-              <Flex 
-                direction="column" 
-                padding="0.75rem"
-                height="40%"
-                justifyContent="space-between"
-              >
-                <div>
-                  <Text 
-                    fontWeight="bold" 
-                    fontSize="1rem"
-                    style={{
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
-                    }}
+              {/* Actions (édition, suppression) */}
+              {canEdit && (
+                <Flex 
+                  position="absolute"
+                  bottom="0.5rem"
+                  right="0.5rem"
+                  gap="0.5rem"
+                >
+                  <Button
+                    onClick={(e) => handleEditClick(playlist, e)}
+                    variation="link"
+                    size="small"
+                    padding="0.25rem"
                   >
-                    {playlist.title}
-                  </Text>
-                  <Text fontSize="0.8rem" color="var(--chordora-text-secondary)">
-                    {playlist.track_count || 0} {(playlist.track_count || 0) === 1 ? 'piste' : 'pistes'}
-                  </Text>
-                </div>
-                
-                {/* Actions (édition, suppression) */}
-                {canEdit && (
-                  <Flex 
-                    position="absolute"
-                    bottom="0.5rem"
-                    right="0.5rem"
-                    gap="0.5rem"
+                    <FaEdit size={16} />
+                  </Button>
+                  <Button
+                    onClick={(e) => handleDeletePlaylist(playlist, e)}
+                    variation="link"
+                    size="small"
+                    padding="0.25rem"
+                    style={{ color: 'red' }}
                   >
-                    <ChordoraButton
-                      onClick={(e) => handleEditClick(playlist.playlist_id, e)}
-                      variation="link"
-                      size="small"
-                      padding="0.25rem"
-                    >
-                      <FaEdit size={16} />
-                    </ChordoraButton>
-                    <ChordoraButton
-                      onClick={(e) => handleDeletePlaylist(playlist, e)}
-                      variation="link"
-                      size="small"
-                      padding="0.25rem"
-                      style={{ color: 'red' }}
-                    >
-                      <FaTrash size={16} />
-                    </ChordoraButton>
-                  </Flex>
-                )}
-              </Flex>
-            </Card>
-          ))}
-        </Flex>
-      )}
-      
-      {/* Alerte informative sur les restrictions */}
-      {showAddButton && canEdit && playlists.length > 0 && (
-        <Alert
-          variation="info"
-          marginTop="2rem"
-          isDismissible={true}
-        >
-          <Text fontSize="0.9rem">
-            Rappel : Vous ne pouvez ajouter que vos propres pistes à vos playlists.
-          </Text>
-        </Alert>
-      )}
+                    <FaTrash size={16} />
+                  </Button>
+                </Flex>
+              )}
+            </Flex>
+          </Card>
+        ))}
+      </Flex>
     </View>
   );
 };

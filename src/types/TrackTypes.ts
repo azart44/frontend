@@ -17,7 +17,7 @@ export interface Track {
   plays?: number;
   artist?: string;
   isPremium?: boolean;
-  isPrivate?: boolean;  // Ajout de cette propriété
+  isPrivate?: boolean;
   price?: number;
   created_at?: string | number;
   updated_at?: string | number;
