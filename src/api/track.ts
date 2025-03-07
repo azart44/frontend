@@ -99,3 +99,11 @@ export const deleteTrack = (trackId: string) =>
 export const searchTracks = (params: Record<string, string | number>) => {
   return apiClient.get<TracksResponse>('/search-tracks', { params });
 };
+
+/**
+ * Incrémente le compteur d'écoutes d'une piste
+ * @param trackId ID de la piste écoutée
+ * @returns Promise avec la réponse de l'API
+ */
+export const incrementPlayCount = (trackId: string) => 
+  apiClient.post('/track-plays', { trackId });

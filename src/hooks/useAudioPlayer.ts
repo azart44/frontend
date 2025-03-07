@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Track } from '../types/TrackTypes';
+import { incrementPlayCount } from '../api/track';
 
 interface AudioPlayerOptions {
   onEnded?: () => void;
@@ -23,6 +24,7 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressIntervalRef = useRef<number | null>(null);
   const playPromiseRef = useRef<Promise<void> | null>(null);
+  const playCountedRef = useRef<boolean>(false); // Pour suivre si l'écoute a été comptée
 
   // Fonction utilitaire pour vérifier si une erreur est de type AbortError
   const isAbortError = (error: unknown): boolean => {
@@ -132,6 +134,30 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
     };
   }, [isPlaying]);
   
+  // Comptage des écoutes après 5 secondes de lecture
+  useEffect(() => {
+    if (isPlaying && currentTrack?.track_id && !playCountedRef.current) {
+      // Attendre 5 secondes avant de compter comme une écoute
+      const timer = setTimeout(() => {
+        incrementPlayCount(currentTrack.track_id)
+          .then(() => {
+            playCountedRef.current = true;
+            console.log('Écoute comptabilisée pour:', currentTrack.track_id);
+          })
+          .catch(error => {
+            console.error('Erreur lors du comptage de l\'écoute:', error);
+          });
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isPlaying, currentTrack]);
+  
+  // Réinitialiser le compteur d'écoute lorsqu'une nouvelle piste est chargée
+  useEffect(() => {
+    playCountedRef.current = false;
+  }, [currentTrackId]);
+  
   // Charger et jouer une piste
   const loadTrack = useCallback(async (track: Track) => {
     try {
@@ -185,6 +211,9 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
         // Mettre à jour l'état
         setCurrentTrackId(track.track_id);
         setCurrentTrack(track);
+        
+        // Réinitialiser le compteur d'écoute pour la nouvelle piste
+        playCountedRef.current = false;
       }
     } catch (error: unknown) {
       console.error('Erreur lors du chargement de la piste:', error);
