@@ -18,7 +18,7 @@ import { useCreatePlaylist, useUpdatePlaylist } from '../../hooks/usePlaylists';
 import { useSearchTracks } from '../../hooks/useTracks';
 import { FaImage, FaMusic, FaPlus } from 'react-icons/fa';
 import { Track } from '../../types/TrackTypes';
-import TrackCard from '../track/TrackCard';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface PlaylistFormProps {
   initialData?: {
@@ -45,6 +45,7 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const isEditing = !!initialData?.playlist_id;
+  const { userId } = useAuth();
   
   // État pour la couverture
   const [coverImage, setCoverImage] = useState<File | null>(null);
@@ -62,12 +63,12 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
     } as Track)) || []) as Track[]
   );
   
-  // Recherche de pistes
+  // Recherche de pistes - modification pour n'afficher que les pistes de l'utilisateur
   const { 
     data: searchResults, 
     isLoading: isSearching 
   } = useSearchTracks(
-    searchTerm ? { query: searchTerm } : {}
+    searchTerm ? { query: searchTerm, userId: userId } : { userId: userId }
   );
   
   // Utilisation des hooks de mutation
@@ -115,6 +116,12 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
   
   // Ajouter une piste à la playlist
   const handleAddTrack = (track: Track) => {
+    // Vérifier si la piste appartient à l'utilisateur
+    if (track.user_id !== userId) {
+      setError('Vous ne pouvez ajouter que vos propres pistes à vos playlists');
+      return;
+    }
+    
     // Vérifier si la piste n'est pas déjà dans la sélection
     if (!selectedTracks.some(t => t.track_id === track.track_id)) {
       const newTracks = [...selectedTracks, track];
@@ -360,6 +367,11 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
               </Button>
             </Flex>
             
+            {/* Message informatif pour indiquer la limitation */}
+            <Text color="var(--chordora-text-secondary)" marginBottom="1rem" fontSize="0.9rem">
+              Vous ne pouvez ajouter que vos propres pistes à votre playlist.
+            </Text>
+            
             {/* Recherche de pistes */}
             {showTrackSearch && (
               <Flex direction="column" gap="1rem" marginBottom="1.5rem">
@@ -367,7 +379,7 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
                   label="Rechercher des pistes"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Titre, artiste, genre..."
+                  placeholder="Titre, genre..."
                 />
                 
                 <View 
@@ -454,7 +466,6 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
                         </Flex>
                       </Flex>
                     </Flex>
-                    
                     <Button 
                       onClick={() => handleRemoveTrack(track.track_id)}
                       variation="link"
