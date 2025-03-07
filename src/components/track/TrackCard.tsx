@@ -15,7 +15,8 @@ import {
   FaPlus, 
   FaEllipsisH,
   FaEdit,
-  FaTrash
+  FaTrash,
+  FaLock
 } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { Track } from '../../types/TrackTypes';
@@ -148,17 +149,39 @@ const TrackCard: React.FC<TrackCardProps> = ({
           </div>
           
           <Flex alignItems="center" gap="1rem" flex="1">
-            <Image
-              src={coverImageSrc}
-              alt={track.title}
-              width="50px"
-              height="50px"
-              style={{ 
-                objectFit: 'cover',
-                borderRadius: '4px'
-              }}
-              onError={() => setImageError(true)}
-            />
+            <div style={{ position: 'relative' }}>
+              <Image
+                src={coverImageSrc}
+                alt={track.title}
+                width="50px"
+                height="50px"
+                style={{ 
+                  objectFit: 'cover',
+                  borderRadius: '4px'
+                }}
+                onError={() => setImageError(true)}
+              />
+              
+              {/* Badge pour piste privée */}
+              {track.isPrivate && (
+                <Badge
+                  style={{
+                    position: 'absolute',
+                    top: '2px',
+                    left: '2px',
+                    backgroundColor: 'rgba(0,0,0,0.6)',
+                    color: 'white',
+                    borderRadius: '2px',
+                    padding: '0.1rem 0.25rem',
+                    fontSize: '0.6rem'
+                  }}
+                >
+                  <FaLock size={8} style={{ marginRight: '0.1rem' }} />
+                  Privé
+                </Badge>
+              )}
+            </div>
+            
             <Flex direction="column">
               <Text 
                 fontWeight={isCurrentTrack ? 'bold' : 'normal'}
@@ -282,6 +305,26 @@ const TrackCard: React.FC<TrackCardProps> = ({
               }}
               onError={() => setImageError(true)}
             />
+            
+            {/* Badge pour piste privée */}
+            {track.isPrivate && (
+              <Badge
+                style={{
+                  position: 'absolute',
+                  top: '2px',
+                  left: '2px',
+                  backgroundColor: 'rgba(0,0,0,0.6)',
+                  color: 'white',
+                  borderRadius: '2px',
+                  padding: '0.1rem 0.25rem',
+                  fontSize: '0.6rem'
+                }}
+              >
+                <FaLock size={8} style={{ marginRight: '0.1rem' }} />
+                Privé
+              </Badge>
+            )}
+            
             {isHovered && (
               <div 
                 style={{
@@ -413,6 +456,26 @@ const TrackCard: React.FC<TrackCardProps> = ({
             }}
             onError={() => setImageError(true)}
           />
+          
+          {/* Badge pour piste privée */}
+          {track.isPrivate && (
+            <Badge
+              style={{
+                position: 'absolute',
+                top: '8px',
+                left: '8px',
+                backgroundColor: 'rgba(0,0,0,0.6)',
+                color: 'white',
+                borderRadius: '4px',
+                padding: '0.25rem 0.5rem',
+                fontSize: '0.7rem'
+              }}
+            >
+              <FaLock style={{ marginRight: '0.25rem' }} />
+              Privé
+            </Badge>
+          )}
+          
           {isHovered && (
             <div 
               style={{

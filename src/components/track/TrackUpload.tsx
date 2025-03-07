@@ -14,11 +14,12 @@ import {
   TextAreaField
 } from '@aws-amplify/ui-react';
 import { useNavigate } from 'react-router-dom';
-import { FaCloudUploadAlt, FaMusic, FaImage, FaPlus } from 'react-icons/fa';
+import { FaCloudUploadAlt, FaMusic, FaImage, FaPlus, FaLock } from 'react-icons/fa';
 import { useCreateTrack } from '../../hooks/useTracks';
 import { useForm } from '../../hooks/useForm';
 import { MUSIC_GENRES, MUSIC_MOODS } from '../../constants/profileData';
 import { Track } from '../../types/TrackTypes';
+import ChordoraButton from '../common/ChordoraButton';
 
 // Formats de fichiers audio acceptés
 const ACCEPTED_AUDIO_FORMATS = ['audio/mpeg', 'audio/mp3', 'audio/wav'];
