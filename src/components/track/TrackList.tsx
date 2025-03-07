@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   View, 
   Heading, 
@@ -19,7 +19,7 @@ import { useAudioContext } from '../../contexts/AudioContext';
 import { useForm } from '../../hooks/useForm';
 import { Track } from '../../types/TrackTypes';
 import TrackCard from './TrackCard'; // Importe le composant TrackCard amélioré
-import { FaPlus } from 'react-icons/fa';
+import { FaPlus, FaLock } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 
 interface TrackListProps {
@@ -72,6 +72,25 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {}, onRefresh }
     coverImageType: null
   });
   
+  // Filtrer les pistes privées pour les utilisateurs non-propriétaires
+  const filteredTracks = useMemo(() => {
+    const tracks = data?.tracks || [];
+    
+    // Si l'utilisateur consulte son propre profil, montrer toutes les pistes
+    if (userId === currentUserId) {
+      return tracks;
+    }
+    
+    // Sinon, filtrer les pistes privées
+    return tracks.filter(track => !track.isPrivate);
+  }, [data?.tracks, userId, currentUserId]);
+  
+  // Vérifier s'il y a des pistes privées
+  const hasPrivateTracks = useMemo(() => {
+    if (userId !== currentUserId) return false;
+    return (data?.tracks || []).some(track => track.isPrivate);
+  }, [data?.tracks, userId, currentUserId]);
+  
   // Initialiser le formulaire d'édition
   const startEditing = (track: Track) => {
     setEditValues({
@@ -79,6 +98,7 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {}, onRefresh }
       genre: track.genre,
       bpm: track.bpm,
       description: track.description || '',
+      isPrivate: track.isPrivate,
       coverImageBase64: null,
       coverImageType: null
     });
@@ -133,7 +153,8 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {}, onRefresh }
         title: editValues.title,
         genre: editValues.genre,
         bpm: editValues.bpm,
-        description: editValues.description
+        description: editValues.description,
+        isPrivate: editValues.isPrivate
       };
       
       // Ajouter l'image de couverture seulement si elle a été changée
@@ -203,12 +224,10 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {}, onRefresh }
     <Text color="red">Erreur lors du chargement des pistes: {String(error)}</Text>
   );
   
-  // Extraire les pistes du résultat de la requête
-  const tracks = data?.tracks || [];
-  
-  if (tracks.length === 0) return (
+  // Afficher un message si aucune piste n'est trouvée
+  if (filteredTracks.length === 0) return (
     <Card padding="2rem" textAlign="center">
-      <Text>Aucune piste trouvée</Text>
+      <Text>Aucune piste{userId !== currentUserId ? " publique" : ""} trouvée</Text>
       {userId === currentUserId && (
         <Button 
           onClick={() => navigate('/add-track')} 
@@ -227,7 +246,21 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {}, onRefresh }
   
   return (
     <Flex direction="column" gap="1rem">
-      {tracks.map((track: Track) => (
+      {/* Alerte pour les pistes privées (uniquement pour le propriétaire) */}
+      {hasPrivateTracks && canEdit && (
+        <Alert
+          variation="info"
+          marginBottom="1rem"
+          isDismissible={true}
+        >
+          <Text fontSize="0.9rem">
+            <FaLock style={{ marginRight: '0.5rem' }} />
+            Certaines de vos pistes sont privées et ne sont visibles que par vous.
+          </Text>
+        </Alert>
+      )}
+      
+      {filteredTracks.map((track: Track) => (
         <div key={track.track_id} style={{ marginBottom: '1.5rem' }}>
           {editingTrackId === track.track_id ? (
             <Card padding="1.5rem" borderRadius="8px">
@@ -267,6 +300,28 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {}, onRefresh }
                   onChange={handleEditChange}
                   rows={3}
                 />
+                
+                {/* Option pour rendre la piste privée */}
+                <Flex alignItems="center" gap="1rem">
+                  <input
+                    type="checkbox"
+                    id="isPrivate"
+                    name="isPrivate"
+                    checked={editValues.isPrivate}
+                    onChange={(e) => {
+                      setEditValues(prev => ({
+                        ...prev,
+                        isPrivate: e.target.checked
+                      }));
+                    }}
+                  />
+                  <label htmlFor="isPrivate">
+                    <Flex alignItems="center" gap="0.5rem">
+                      <FaLock />
+                      <Text>Piste privée (visible uniquement par vous)</Text>
+                    </Flex>
+                  </label>
+                </Flex>
                 
                 {/* Section pour l'image de couverture */}
                 <Flex direction="column" gap="1rem" marginTop="1rem">

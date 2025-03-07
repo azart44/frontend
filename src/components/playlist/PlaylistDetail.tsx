@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { 
   View, 
   Heading, 
@@ -8,7 +8,8 @@ import {
   Loader, 
   Card,
   Badge,
-  Image
+  Image,
+  Alert
 } from '@aws-amplify/ui-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FaPlay, FaPause, FaEdit, FaTrash, FaLock, FaGlobe, FaArrowLeft } from 'react-icons/fa';
@@ -19,6 +20,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import PlaylistEditForm from './PlaylistEditForm';
 import TrackCard from '../track/TrackCard';
 import ChordoraButton from '../common/ChordoraButton';
+import { Track } from '../../types/TrackTypes';
 
 // Interface pour les props du composant
 interface PlaylistDetailProps {
@@ -54,6 +56,24 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({ edit = false }) => {
   
   // Vérifier si l'utilisateur est propriétaire de la playlist
   const isOwner = playlist?.user_id === userId;
+  
+  // Filtrer les pistes privées si l'utilisateur n'est pas le propriétaire
+  const visibleTracks = useMemo(() => {
+    if (!playlist?.tracks) return [];
+    
+    // Si l'utilisateur est le propriétaire de la playlist, afficher toutes les pistes
+    if (isOwner) {
+      return playlist.tracks;
+    }
+    
+    // Sinon, filtrer les pistes privées
+    return playlist.tracks.filter(track => !track.isPrivate);
+  }, [playlist?.tracks, isOwner]);
+  
+  // Vérifier s'il y a des pistes privées dans la playlist
+  const hasPrivateTracks = useMemo(() => {
+    return playlist?.tracks?.some(track => track.isPrivate) || false;
+  }, [playlist?.tracks]);
   
   // Gérer le glisser-déposer des pistes
   const handleDragEnd = useCallback(async (result: DropResult) => {
@@ -150,11 +170,11 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({ edit = false }) => {
   
   // Lire la playlist (première piste)
   const handlePlayPlaylist = useCallback(() => {
-    if (!playlist || !playlist.tracks || playlist.tracks.length === 0) return;
+    if (!visibleTracks || visibleTracks.length === 0) return;
     
-    // Jouer la première piste
-    playTrack(playlist.tracks[0]);
-  }, [playlist, playTrack]);
+    // Jouer la première piste visible
+    playTrack(visibleTracks[0]);
+  }, [visibleTracks, playTrack]);
   
   // Si en mode édition, afficher le formulaire d'édition
   if (isEditing && playlist) {
@@ -223,6 +243,11 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({ edit = false }) => {
     );
   }
   
+  // Le nombre réel de pistes affichées (après filtrage des pistes privées)
+  const displayedTrackCount = visibleTracks.length;
+  // Le nombre total de pistes dans la playlist (pour le propriétaire uniquement)
+  const totalTrackCount = playlist.tracks?.length || 0;
+  
   return (
     <View padding="1rem">
       {/* Bouton de retour */}
@@ -274,7 +299,10 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({ edit = false }) => {
             )}
             
             <Text fontSize="0.9rem" color="#808080">
-              {playlist.track_count} {playlist.track_count === 1 ? 'piste' : 'pistes'}
+              {isOwner 
+                ? `${totalTrackCount} ${totalTrackCount === 1 ? 'piste' : 'pistes'}`
+                : `${displayedTrackCount} ${displayedTrackCount === 1 ? 'piste' : 'pistes'}`
+              }
             </Text>
             
             {/* Boutons d'action */}
@@ -282,7 +310,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({ edit = false }) => {
               <ChordoraButton 
                 onClick={handlePlayPlaylist}
                 variation="primary"
-                isDisabled={!playlist.tracks || playlist.tracks.length === 0}
+                isDisabled={displayedTrackCount === 0}
               >
                 <FaPlay style={{ marginRight: '0.5rem' }} />
                 Lire la playlist
@@ -312,12 +340,26 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({ edit = false }) => {
         </Flex>
       </Card>
       
+      {/* Alerte pour les pistes privées visibles uniquement par le propriétaire */}
+      {isOwner && hasPrivateTracks && (
+        <Alert
+          variation="info"
+          marginBottom="1.5rem"
+          isDismissible={true}
+        >
+          <Text fontSize="0.9rem">
+            <FaLock style={{ marginRight: '0.5rem' }} />
+            Cette playlist contient des pistes privées qui ne seront visibles que par vous.
+          </Text>
+        </Alert>
+      )}
+      
       {/* Liste des pistes avec drag-and-drop */}
       <Heading level={3} marginBottom="1rem">Pistes</Heading>
       
-      {(!playlist.tracks || playlist.tracks.length === 0) && (
+      {displayedTrackCount === 0 && (
         <Card padding="2rem" textAlign="center">
-          <Text>Aucune piste dans cette playlist.</Text>
+          <Text>Aucune piste{isOwner ? "" : " publique"} dans cette playlist.</Text>
           {isOwner && (
             <Button 
               onClick={() => navigate('/tracks')} 
@@ -330,7 +372,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({ edit = false }) => {
         </Card>
       )}
       
-      {playlist.tracks && playlist.tracks.length > 0 && (
+      {displayedTrackCount > 0 && (
         <Card padding="0" backgroundColor="var(--chordora-card-bg)" borderRadius="8px">
           <DragDropContext onDragEnd={handleDragEnd}>
             <Droppable droppableId="playlist-tracks">
@@ -339,7 +381,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({ edit = false }) => {
                   {...provided.droppableProps}
                   ref={provided.innerRef}
                 >
-                  {playlist.tracks?.map((track, index) => (
+                  {visibleTracks.map((track, index) => (
                     <Draggable 
                       key={track.track_id} 
                       draggableId={track.track_id} 
@@ -388,7 +430,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({ edit = false }) => {
                           )}
                           
                           {/* Ajouter un séparateur entre les pistes sauf pour la dernière */}
-                          {playlist.tracks && index < playlist.tracks.length - 1 && !snapshot.isDragging && (
+                          {index < visibleTracks.length - 1 && !snapshot.isDragging && (
                             <div style={{ 
                                 height: '1px', 
                                 backgroundColor: 'var(--chordora-divider)',
