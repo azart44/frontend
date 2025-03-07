@@ -18,15 +18,11 @@ const CompleteProfile = lazy(() => import('./components/profile/CompleteProfile'
 const UserList = lazy(() => import('./components/user/UserList'));
 const TrackUpload = lazy(() => import('./components/track/TrackUpload'));
 const AccountSettings = lazy(() => import('./components/account/AccountSettings'));
-// Ajouter le composant Favorites
 const Favorites = lazy(() => import('./components/favorites/Favorites'));
-// Ajouter les composants pour les playlists
 const PlaylistList = lazy(() => import('./components/playlist/PlaylistList'));
 const PlaylistDetail = lazy(() => import('./components/playlist/PlaylistDetail'));
 const PlaylistForm = lazy(() => import('./components/playlist/PlaylistForm'));
-// Liste des pistes
 const TrackListPage = lazy(() => import('./components/track/TrackListPage'));
-// Détail de piste
 const TrackDetail = lazy(() => import('./components/track/TrackDetail'));
 
 // Composant de chargement réutilisable avec spinner

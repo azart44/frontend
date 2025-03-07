@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { 
   View, 
   Heading, 
@@ -20,15 +20,20 @@ import PlaylistEditForm from './PlaylistEditForm';
 import TrackCard from '../track/TrackCard';
 import ChordoraButton from '../common/ChordoraButton';
 
+// Interface pour les props du composant
+interface PlaylistDetailProps {
+  edit?: boolean; // Prop optionnelle pour démarrer en mode édition
+}
+
 /**
  * Composant pour afficher les détails d'une playlist avec drag-and-drop
  */
-const PlaylistDetail: React.FC = () => {
+const PlaylistDetail: React.FC<PlaylistDetailProps> = ({ edit = false }) => {
   const { playlistId } = useParams<{ playlistId: string }>();
   const navigate = useNavigate();
   const { userId } = useAuth();
   const { currentTrack, isPlaying, playTrack, togglePlay } = useAudioContext();
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(edit);
   
   // Récupération de la playlist
   const { 
@@ -41,6 +46,11 @@ const PlaylistDetail: React.FC = () => {
   // Hooks de mutation
   const updatePlaylistMutation = useUpdatePlaylist();
   const deletePlaylistMutation = useDeletePlaylist();
+  
+  // Synchroniser l'état d'édition avec la prop
+  useEffect(() => {
+    setIsEditing(edit);
+  }, [edit]);
   
   // Vérifier si l'utilisateur est propriétaire de la playlist
   const isOwner = playlist?.user_id === userId;
@@ -70,12 +80,6 @@ const PlaylistDetail: React.FC = () => {
     
     // Créer le nouvel ordre des pistes
     const updatedTrackIds = newTracks.map(track => track.track_id);
-    
-    // Mettre à jour les positions
-    const updatedPositions: Record<string, number> = {};
-    newTracks.forEach((track, index) => {
-      updatedPositions[track.track_id] = index;
-    });
     
     try {
       // Mise à jour de la playlist avec le nouvel ordre
