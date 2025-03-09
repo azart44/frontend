@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Flex, 
   Text, 
-  Slider,
   Image,
   Button 
 } from '@aws-amplify/ui-react';
@@ -23,16 +22,14 @@ const AudioPlayer: React.FC = () => {
     isPlaying,
     duration,
     currentTime,
-    volume,
-    isLoading,
-    error,
     togglePlay,
-    seek,
-    changeVolume,
-    skipToNext,
-    skipToPrevious
+    seek
   } = useAudioContext();
   
+  // Ajouter les états manquants localement puisqu'ils n'existent pas dans le contexte
+  const [volume, setVolume] = useState(0.8);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [showVolumeControl, setShowVolumeControl] = useState(false);
   const [seekValue, setSeekValue] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -55,7 +52,6 @@ const AudioPlayer: React.FC = () => {
   // Gérer le changement de position
   const handleSeekChange = (newValue: number) => {
     setSeekValue(newValue);
-    // Ne pas encore chercher dans l'audio - attendre que l'utilisateur relâche
     setIsDragging(true);
   };
   
@@ -63,6 +59,26 @@ const AudioPlayer: React.FC = () => {
   const handleSeekEnd = () => {
     seek(seekValue);
     setIsDragging(false);
+  };
+  
+  // Implémentation simple des fonctions manquantes
+  const changeVolume = (newVolume: number) => {
+    setVolume(newVolume);
+    // Si vous avez un élément audio dans votre contexte, vous devriez aussi mettre à jour son volume
+    const audioElement = document.querySelector('audio');
+    if (audioElement) {
+      audioElement.volume = newVolume;
+    }
+  };
+  
+  const skipToNext = () => {
+    // Implémentation temporaire
+    console.log('Skip to next track');
+  };
+  
+  const skipToPrevious = () => {
+    // Implémentation temporaire
+    console.log('Skip to previous track');
   };
   
   // Gérer le clic direct sur la barre de progression
@@ -218,10 +234,10 @@ const AudioPlayer: React.FC = () => {
               onTouchEnd={handleSeekEnd}
               style={{
                 position: 'absolute',
-                top: '-8px', // Centrer verticalement (4px de padding de chaque côté)
+                top: '-8px',
                 left: 0,
                 width: '100%',
-                height: '20px', // Plus large pour faciliter le toucher
+                height: '20px',
                 opacity: 0,
                 cursor: 'pointer',
                 margin: 0,
@@ -282,8 +298,6 @@ const AudioPlayer: React.FC = () => {
               style={{
                 width: '80px',
                 height: '100%',
-                appearance: 'slider-vertical',
-                writingMode: 'bt-lr', /* IE */
                 transform: 'rotate(270deg)',
                 margin: 0
               }}
