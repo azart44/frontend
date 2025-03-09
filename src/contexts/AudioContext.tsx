@@ -1,74 +1,68 @@
 // src/contexts/AudioContext.tsx
 import React, { createContext, useContext, ReactNode } from 'react';
-import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { Track } from '../types/TrackTypes';
+import { useAudioPlayer } from '../hooks/useAudioPlayer';
 
-// Interface définissant le contenu du contexte
-interface AudioContextType {
+// Interface mise à jour pour inclure toutes les propriétés utilisées
+export interface AudioContextType {
+  // États
   isPlaying: boolean;
   currentTrackId: string | null;
   currentTrack: Track | null;
   duration: number;
   currentTime: number;
-  volume: number;
-  isLoading: boolean;
-  error: string | null;
+  volume: number;  // Ajouté
+  isLoading: boolean;  // Ajouté
+  error: string | null;  // Ajouté
+  
+  // Méthodes
   playTrack: (track: Track) => void;
   togglePlay: () => void;
-  changeVolume: (newVolume: number) => void;
   seek: (time: number) => void;
+  changeVolume: (volume: number) => void;  // Ajouté
 }
 
-// Création du contexte avec des valeurs par défaut
-const AudioContext = createContext<AudioContextType>({
+// Valeurs par défaut du contexte
+const defaultContext: AudioContextType = {
   isPlaying: false,
   currentTrackId: null,
   currentTrack: null,
   duration: 0,
   currentTime: 0,
-  volume: 0.8,
+  volume: 0.8,  // Valeur par défaut
   isLoading: false,
   error: null,
+  
   playTrack: () => {},
   togglePlay: () => {},
+  seek: () => {},
   changeVolume: () => {},
-  seek: () => {}
-});
+};
 
-// Hook pour utiliser le contexte
+// Création du contexte
+const AudioContext = createContext<AudioContextType>(defaultContext);
+
+// Hook pour utiliser le contexte audio
 export const useAudioContext = () => useContext(AudioContext);
 
-// Propriétés du provider
-interface AudioProviderProps {
-  children: ReactNode;
-}
-
-// Composant Provider
-export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
-  // Utilisation du hook personnalisé pour la lecture audio
-  const {
-    isPlaying,
-    currentTrackId,
-    currentTrack,
-    duration,
+// Provider du contexte audio
+export const AudioProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // Utilisation du hook useAudioPlayer
+  const { 
+    isPlaying, 
+    currentTrackId, 
+    currentTrack, 
+    duration, 
     currentTime,
     volume,
     isLoading,
     error,
-    playTrack,
-    togglePlay,
-    changeVolume,
-    seek
-  } = useAudioPlayer({
-    onEnded: () => {
-      console.log('Piste terminée');
-      // Ici, vous pourriez ajouter une logique pour jouer la piste suivante
-    },
-    onError: (error) => {
-      console.error('Erreur de lecture audio:', error);
-    }
-  });
-
+    playTrack, 
+    togglePlay, 
+    seek,
+    changeVolume
+  } = useAudioPlayer();
+  
   // Valeur du contexte
   const contextValue: AudioContextType = {
     isPlaying,
@@ -81,10 +75,10 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
     error,
     playTrack,
     togglePlay,
-    changeVolume,
-    seek
+    seek,
+    changeVolume
   };
-
+  
   return (
     <AudioContext.Provider value={contextValue}>
       {children}
