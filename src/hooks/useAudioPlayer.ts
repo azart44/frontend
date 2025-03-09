@@ -70,9 +70,11 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
       
       audioElement.addEventListener('error', (e) => {
         console.error('Erreur audio:', e);
+        console.error('Code d\'erreur:', audioElement.error ? audioElement.error.code : 'inconnu');
+        console.error('Message d\'erreur:', audioElement.error ? audioElement.error.message : 'inconnu');
         setIsLoading(false);
         setIsPlaying(false);
-        setError('Impossible de charger le fichier audio');
+        setError('Impossible de charger le fichier audio.');
         if (options.onError) options.onError(e);
       });
       
@@ -169,6 +171,8 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
         throw new Error('Aucune URL de lecture disponible');
       }
       
+      console.log("Chargement de l'URL:", track.presigned_url);
+      
       // Réinitialiser l'audio
       if (audioRef.current) {
         // S'assurer que toute promesse de lecture précédente est terminée
@@ -193,20 +197,23 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
         // Précharger l'audio
         audioRef.current.load();
         
-        // Tenter de jouer l'audio
-        playPromiseRef.current = audioRef.current.play();
-        playPromiseRef.current
-          .then(() => {
-            setIsPlaying(true);
-          })
-          .catch((playError: unknown) => {
-            // Si ce n'est pas une erreur d'interruption, la traiter comme une vraie erreur
-            if (!isAbortError(playError)) {
-              console.error('Erreur de lecture:', playError);
+        // Ajouter un délai pour permettre au navigateur de charger le média
+        setTimeout(() => {
+          if (!audioRef.current) return;
+          
+          // Tenter de jouer l'audio
+          playPromiseRef.current = audioRef.current.play();
+          playPromiseRef.current
+            .then(() => {
+              setIsPlaying(true);
+            })
+            .catch((playError: unknown) => {
+              // Afficher l'erreur pour debug
+              console.error('Erreur de lecture détaillée:', playError);
               setError(`Impossible de lire la piste: ${playError instanceof Error ? playError.message : 'Erreur inconnue'}`);
               setIsPlaying(false);
-            }
-          });
+            });
+        }, 100);
         
         // Mettre à jour l'état
         setCurrentTrackId(track.track_id);
@@ -249,19 +256,25 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
         setIsPlaying(false);
       }
     } else {
-      playPromiseRef.current = audioRef.current.play();
-      playPromiseRef.current
-        .then(() => setIsPlaying(true))
-        .catch((error: unknown) => {
-          // Si ce n'est pas une erreur d'interruption, la traiter comme une vraie erreur
-          if (!isAbortError(error)) {
-            console.error('Erreur de lecture:', error);
-            setError(`Impossible de lire la piste: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
-            setIsPlaying(false);
-          }
-        });
+      // Si l'audio a une erreur, essayons de recharger la piste
+      if (audioRef.current.error && currentTrack) {
+        // Recharger la piste
+        loadTrack(currentTrack);
+      } else {
+        playPromiseRef.current = audioRef.current.play();
+        playPromiseRef.current
+          .then(() => setIsPlaying(true))
+          .catch((error: unknown) => {
+            // Si ce n'est pas une erreur d'interruption, la traiter comme une vraie erreur
+            if (!isAbortError(error)) {
+              console.error('Erreur de lecture:', error);
+              setError(`Impossible de lire la piste: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+              setIsPlaying(false);
+            }
+          });
+      }
     }
-  }, [isPlaying]);
+  }, [isPlaying, currentTrack, loadTrack]);
   
   // Changer le volume
   const changeVolume = useCallback((newVolume: number) => {
