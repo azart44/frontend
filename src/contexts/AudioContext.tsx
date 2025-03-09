@@ -1,125 +1,175 @@
-import React, { createContext, useContext, ReactNode, useCallback, useState } from 'react';
+// src/contexts/AudioContext.tsx
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { Track } from '../types/TrackTypes';
-import { getTrackById } from '../api/track';
 
-// Interface du contexte
+// Interface pour le contexte audio
 interface AudioContextType {
-  isPlaying: boolean;
   currentTrack: Track | null;
-  currentTime: number;
+  isPlaying: boolean;
   duration: number;
+  currentTime: number;
   volume: number;
+  isLoading: boolean;
+  error: string | null;
   playTrack: (track: Track) => void;
   togglePlay: () => void;
   seek: (time: number) => void;
   changeVolume: (volume: number) => void;
-  isLoading: boolean;
-  error: string | null;
+  setCurrentPlaylist: (tracks: Track[], startIndex?: number) => void;
+  skipToNext: () => void;
+  skipToPrevious: () => void;
 }
 
-// Création du contexte
-const AudioContext = createContext<AudioContextType | undefined>(undefined);
+// Création du contexte avec des valeurs par défaut
+const AudioContext = createContext<AudioContextType>({
+  currentTrack: null,
+  isPlaying: false,
+  duration: 0,
+  currentTime: 0,
+  volume: 0.8,
+  isLoading: false,
+  error: null,
+  playTrack: () => {},
+  togglePlay: () => {},
+  seek: () => {},
+  changeVolume: () => {},
+  setCurrentPlaylist: () => {},
+  skipToNext: () => {},
+  skipToPrevious: () => {},
+});
 
-// Props pour le provider
-interface AudioProviderProps {
-  children: ReactNode;
-}
+// Hook personnalisé pour utiliser le contexte
+export const useAudioContext = () => useContext(AudioContext);
 
 // Provider du contexte
-export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
-  const [trackQueue, setTrackQueue] = useState<Track[]>([]);
-  
-  // Utilisation du hook audio
+export const AudioProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
+  const [playlist, setPlaylist] = useState<Track[]>([]);
+  const [currentIndex, setCurrentIndex] = useState<number>(-1);
+
+  // Utiliser le hook audio player
   const {
     isPlaying,
     currentTrack,
     duration,
     currentTime,
     volume,
-    loadTrack,
-    togglePlay,
-    seek,
-    changeVolume,
     isLoading,
-    error
+    error,
+    playTrack: playTrackFromHook,
+    togglePlay: togglePlayFromHook,
+    changeVolume: changeVolumeFromHook,
+    seek: seekFromHook,
   } = useAudioPlayer({
     onEnded: () => {
-      // Logique de lecture de la piste suivante dans la file d'attente
-      console.log('Track ended, checking queue...');
-      // À implémenter plus tard
+      // Passer à la piste suivante quand une piste se termine
+      if (playlist.length > 0 && currentIndex < playlist.length - 1) {
+        const nextIndex = currentIndex + 1;
+        setCurrentIndex(nextIndex);
+        playTrackFromHook(playlist[nextIndex]);
+      }
     },
-    autoplay: true // Activer la lecture automatique lors du chargement d'une piste
+    onError: (err) => {
+      console.error("Erreur de lecture audio:", err);
+      
+      // Essayer de passer à la piste suivante en cas d'erreur
+      if (playlist.length > 0 && currentIndex < playlist.length - 1) {
+        console.log("Tentative de passer à la piste suivante suite à une erreur");
+        const nextIndex = currentIndex + 1;
+        setCurrentIndex(nextIndex);
+        playTrackFromHook(playlist[nextIndex]);
+      }
+    },
+    // Désactiver l'autoplay pour éviter les problèmes CORS
+    autoplay: false
   });
-  
-  // Fonction pour jouer une piste
-  const playTrack = useCallback((track: Track) => {
-    console.log('Tentative de lecture de la piste:', track.title);
+
+  // Définir la liste de lecture actuelle
+  const setCurrentPlaylist = (tracks: Track[], startIndex: number = 0) => {
+    if (tracks.length === 0) return;
     
-    // Si la piste n'a pas d'URL présignée mais a un file_path, c'est peut-être
-    // qu'il faut aller la chercher manuellement
-    if (!track.presigned_url && track.track_id) {
-      console.log('Pas d\'URL présignée mais track_id disponible, tentative de récupération...');
-      // Récupérer les détails de la piste pour obtenir l'URL présignée
-      getTrackById(track.track_id)
-        .then(response => {
-          console.log('Piste récupérée avec URL présignée:', response.data);
-          if (response.data.presigned_url) {
-            // Mettre à jour la piste avec l'URL présignée et jouer
-            const updatedTrack = {
-              ...track,
-              presigned_url: response.data.presigned_url
-            };
-            console.log('URL présignée récupérée:', updatedTrack.presigned_url);
-            loadTrack(updatedTrack);
-          } else {
-            console.error('Impossible de récupérer l\'URL présignée');
-          }
-        })
-        .catch(error => {
-          console.error('Erreur lors de la récupération de la piste:', error);
-        });
-      return;
+    setPlaylist(tracks);
+    setCurrentIndex(startIndex);
+    
+    // Jouer la piste de départ
+    if (startIndex >= 0 && startIndex < tracks.length) {
+      playTrackFromHook(tracks[startIndex]);
     }
-    
-    // Vérifier que nous avons bien une URL présignée
-    if (!track.presigned_url) {
-      console.error('Erreur: Pas d\'URL présignée disponible pour cette piste');
-      return;
-    }
-    
-    console.log('URL présignée disponible, lecture directe:', track.presigned_url);
-    // Charger et jouer la piste
-    loadTrack(track);
-  }, [loadTrack]);
-  
-  // Valeur du contexte
-  const contextValue: AudioContextType = {
-    isPlaying,
-    currentTrack,
-    currentTime,
-    duration,
-    volume,
-    playTrack,
-    togglePlay,
-    seek,
-    changeVolume,
-    isLoading,
-    error
   };
-  
+
+  // Passer à la piste suivante
+  const skipToNext = () => {
+    if (playlist.length === 0 || currentIndex >= playlist.length - 1) return;
+    
+    const nextIndex = currentIndex + 1;
+    setCurrentIndex(nextIndex);
+    playTrackFromHook(playlist[nextIndex]);
+  };
+
+  // Revenir à la piste précédente
+  const skipToPrevious = () => {
+    // Si on est au début de la piste actuelle, revenir à la précédente
+    // Sinon, recommencer la piste actuelle
+    if (currentTime > 3 && currentTrack) {
+      seekFromHook(0);
+      return;
+    }
+    
+    if (playlist.length === 0 || currentIndex <= 0) return;
+    
+    const prevIndex = currentIndex - 1;
+    setCurrentIndex(prevIndex);
+    playTrackFromHook(playlist[prevIndex]);
+  };
+
+  // Mettre à jour l'index courant quand une nouvelle piste est jouée
+  useEffect(() => {
+    if (currentTrack && playlist.length > 0) {
+      const index = playlist.findIndex(track => track.track_id === currentTrack.track_id);
+      if (index !== -1 && index !== currentIndex) {
+        setCurrentIndex(index);
+      }
+    }
+  }, [currentTrack, playlist, currentIndex]);
+
+  // Jouer une piste spécifique
+  const playTrack = (track: Track) => {
+    // Vérifier si la piste est dans la playlist actuelle
+    const index = playlist.findIndex(t => t.track_id === track.track_id);
+    
+    if (index !== -1) {
+      // La piste est dans la playlist, mettre à jour l'index
+      setCurrentIndex(index);
+    } else {
+      // La piste n'est pas dans la playlist, créer une nouvelle liste avec cette piste
+      setPlaylist([track]);
+      setCurrentIndex(0);
+    }
+    
+    // Jouer la piste
+    playTrackFromHook(track);
+  };
+
   return (
-    <AudioContext.Provider value={contextValue}>
+    <AudioContext.Provider
+      value={{
+        currentTrack,
+        isPlaying,
+        duration,
+        currentTime,
+        volume,
+        isLoading,
+        error,
+        playTrack,
+        togglePlay: togglePlayFromHook,
+        seek: seekFromHook,
+        changeVolume: changeVolumeFromHook,
+        setCurrentPlaylist,
+        skipToNext,
+        skipToPrevious,
+      }}
+    >
       {children}
     </AudioContext.Provider>
   );
-};
-
-// Hook pour utiliser le contexte audio
-export const useAudioContext = () => {
-  const context = useContext(AudioContext);
-  if (context === undefined) {
-    throw new Error('useAudioContext must be used within an AudioProvider');
-  }
-  return context;
 };
