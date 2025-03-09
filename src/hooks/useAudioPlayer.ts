@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Track } from '../types/TrackTypes';
 import { incrementPlayCount } from '../api/track';
-import { validatePresignedUrl, testAudioUrl } from '../utils/audioDebugger';
 
 interface AudioPlayerOptions {
   onEnded?: () => void;
@@ -12,7 +11,7 @@ interface AudioPlayerOptions {
 }
 
 /**
- * Hook personnalisé pour gérer la lecture audio
+ * Hook personnalisé pour gérer la lecture audio avec une meilleure gestion des URL présignées
  */
 export function useAudioPlayer(options: AudioPlayerOptions = {}) {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -28,7 +27,7 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
   const progressIntervalRef = useRef<number | null>(null);
   const playPromiseRef = useRef<Promise<void> | null>(null);
   const playCountedRef = useRef<boolean>(false);
-  const urlCacheRef = useRef<Map<string, string>>(new Map()); // Cache pour les URLs testées avec succès
+  const urlCacheRef = useRef<Map<string, string>>(new Map());
 
   // Fonction utilitaire pour vérifier si une erreur est de type AbortError
   const isAbortError = (error: unknown): boolean => {
@@ -58,6 +57,54 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
     }
   };
 
+  // Tester l'accessibilité d'une URL audio
+  const testAudioUrl = async (url: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      console.log(`Testant l'URL audio: ${url.substring(0, 100)}...`);
+      
+      // Faire une requête HEAD pour vérifier l'accessibilité sans télécharger le fichier
+      const response = await fetch(url, { 
+        method: 'HEAD',
+        mode: 'cors',
+        credentials: 'omit' // Important pour les URL présignées S3
+      });
+      
+      if (!response.ok) {
+        console.error(`Erreur HTTP ${response.status} lors du test de l'URL audio`);
+        return {
+          success: false,
+          message: `Erreur HTTP ${response.status}: ${response.statusText}`
+        };
+      }
+      
+      // Vérifier le Content-Type
+      const contentType = response.headers.get('Content-Type');
+      console.log(`Type de contenu de l'URL: ${contentType}`);
+      
+      const isAudioFile = contentType && (
+        contentType.startsWith('audio/') || 
+        contentType.includes('octet-stream') ||  // S3 utilise parfois octet-stream
+        contentType.includes('mpeg')
+      );
+      
+      if (!isAudioFile) {
+        console.warn(`Type de contenu non audio: ${contentType || 'Inconnu'}`);
+        // On continue quand même car parfois le type MIME est incorrect mais le fichier est lisible
+      }
+      
+      return {
+        success: true,
+        message: `URL accessible, type: ${contentType || 'non spécifié'}`
+      };
+    } catch (e) {
+      console.error(`Erreur réseau lors du test de l'URL: ${e instanceof Error ? e.message : String(e)}`);
+      return {
+        success: false,
+        message: `Erreur réseau: ${e instanceof Error ? e.message : String(e)}`
+      };
+    }
+  };
+
   // Initialisation de l'élément audio
   useEffect(() => {
     // Créer l'élément audio s'il n'existe pas
@@ -67,6 +114,12 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
       // Configuration des événements audio
       const audioElement = audioRef.current;
       
+      // Amélioration importante: réglage du crossOrigin pour les URLs signées S3
+      audioElement.crossOrigin = "anonymous";
+      
+      // Force le préchargement automatique
+      audioElement.preload = "auto";
+      
       audioElement.addEventListener('loadedmetadata', () => {
         console.log('Métadonnées audio chargées, durée:', audioElement.duration);
         setDuration(audioElement.duration || 0);
@@ -75,6 +128,7 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
       
       audioElement.addEventListener('canplay', () => {
         console.log('Audio prêt à être joué, autoplay:', options.autoplay);
+        setIsLoading(false);
         if (options.autoplay) {
           console.log('Tentative de lecture automatique...');
           try {
@@ -114,6 +168,19 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
         if (options.onError) options.onError(e);
       });
       
+      // Ajouter un gestionnaire pour les progrès de chargement
+      audioElement.addEventListener('progress', () => {
+        if (audioElement.buffered.length > 0) {
+          const bufferedEnd = audioElement.buffered.end(audioElement.buffered.length - 1);
+          console.log(`Audio buffered: ${bufferedEnd} / ${audioElement.duration} seconds`);
+        }
+      });
+
+      // Ajouter un gestionnaire pour le début de chargement
+      audioElement.addEventListener('loadstart', () => {
+        console.log('Chargement audio commencé');
+      });
+
       // Définir le volume initial
       audioElement.volume = volume;
     }
@@ -146,6 +213,8 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
         audioElement.removeEventListener('canplay', () => {});
         audioElement.removeEventListener('ended', () => {});
         audioElement.removeEventListener('error', () => {});
+        audioElement.removeEventListener('progress', () => {});
+        audioElement.removeEventListener('loadstart', () => {});
       }
       
       // Nettoyer l'intervalle de progression
@@ -213,11 +282,13 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
       return urlCacheRef.current.get(url) || null;
     }
     
-    // Valider le format de l'URL
-    const validation = validatePresignedUrl(url);
-    if (!validation.isValid) {
-      console.error('URL présignée invalide:', validation.message);
-      setError(`URL présignée invalide: ${validation.message}`);
+    // Vérifier que l'URL est bien formée
+    try {
+      const urlObj = new URL(url);
+      console.log(`URL valide: ${urlObj.protocol}//${urlObj.hostname}`);
+    } catch (e) {
+      console.error('URL mal formée:', e);
+      setError(`URL présignée invalide: ${e instanceof Error ? e.message : String(e)}`);
       return null;
     }
     
@@ -229,6 +300,8 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
         setError(`Impossible d'accéder à l'audio: ${test.message}`);
         return null;
       }
+      
+      console.log('URL validée avec succès:', test.message);
       
       // Si l'URL est valide et accessible, on la met en cache
       urlCacheRef.current.set(url, url);
@@ -249,7 +322,11 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
       
       // Vérifier et récupérer l'URL valide
       const url = track.presigned_url;
-      console.log('URL présignée reçue:', url);
+      console.log('URL présignée reçue:', url?.substring(0, 100));
+      
+      if (!url) {
+        throw new Error('Aucune URL présignée fournie avec la piste');
+      }
       
       // Valider et tester l'URL
       const validatedUrl = await validateAndTestUrl(url);
@@ -257,8 +334,28 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
         throw new Error('URL invalide ou inaccessible');
       }
       
-      // Créer un nouvel élément audio
+      // Arrêter l'élément audio précédent s'il existe
+      if (audioRef.current) {
+        try {
+          const oldAudio = audioRef.current;
+          oldAudio.pause();
+          
+          // Si une promesse de lecture est en cours, attendez qu'elle se résolve avant de continuer
+          if (playPromiseRef.current) {
+            await playPromiseRef.current.catch(() => {});
+          }
+          
+          oldAudio.src = '';
+          oldAudio.load();
+        } catch (cleanupError) {
+          console.error('Erreur lors du nettoyage de l\'ancien audio:', cleanupError);
+        }
+      }
+      
+      // Créer un nouvel élément audio pour éviter les problèmes de cache
       const newAudio = new Audio();
+      newAudio.preload = "auto";
+      newAudio.crossOrigin = "anonymous"; // Crucial pour les URL présignées S3
       
       // Configurer les événements sur le nouvel élément
       newAudio.addEventListener('loadedmetadata', () => {
@@ -267,8 +364,20 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
         setIsLoading(false);
       });
       
+      newAudio.addEventListener('loadstart', () => {
+        console.log('Chargement de la nouvelle piste commencé');
+      });
+
+      newAudio.addEventListener('progress', () => {
+        if (newAudio.buffered.length > 0) {
+          const bufferedEnd = newAudio.buffered.end(newAudio.buffered.length - 1);
+          console.log(`Nouvelle piste buffered: ${bufferedEnd} / ${newAudio.duration} seconds`);
+        }
+      });
+      
       newAudio.addEventListener('canplay', () => {
         console.log('Nouvel audio prêt à être joué');
+        setIsLoading(false);
         try {
           playPromiseRef.current = newAudio.play();
           playPromiseRef.current
@@ -277,9 +386,11 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
               setIsPlaying(true);
             })
             .catch((playError) => {
-              console.error('Erreur de lecture après canplay:', playError);
-              setIsPlaying(false);
-              setError(`Impossible de lire la piste: ${playError instanceof Error ? playError.message : 'Erreur inconnue'}`);
+              if (!isAbortError(playError)) {
+                console.error('Erreur de lecture après canplay:', playError);
+                setIsPlaying(false);
+                setError(`Impossible de lire la piste: ${playError instanceof Error ? playError.message : 'Erreur inconnue'}`);
+              }
             });
         } catch (e) {
           console.error('Exception lors de la tentative de lecture:', e);
@@ -299,36 +410,25 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
         logAudioError(newAudio);
         setIsLoading(false);
         setIsPlaying(false);
-        setError('Impossible de charger le fichier audio');
+        
+        // Si l'erreur est MEDIA_ERR_SRC_NOT_SUPPORTED, cela peut être dû à un problème de CORS
+        if (newAudio.error && newAudio.error.code === 4) {
+          setError(`Format audio non supporté ou problème CORS. Vérifier la configuration du bucket S3.`);
+        } else {
+          setError('Impossible de charger le fichier audio');
+        }
+        
         if (options.onError) options.onError(e);
       });
       
       // Définir le volume
       newAudio.volume = volume;
       
-      // Arrêter l'élément audio précédent s'il existe
-      if (audioRef.current) {
-        try {
-          const oldAudio = audioRef.current;
-          oldAudio.pause();
-          oldAudio.src = '';
-          
-          // Nettoyer les écouteurs d'événements
-          oldAudio.onloadedmetadata = null;
-          oldAudio.oncanplay = null;
-          oldAudio.onended = null;
-          oldAudio.onerror = null;
-        } catch (cleanupError) {
-          console.error('Erreur lors du nettoyage de l\'ancien audio:', cleanupError);
-        }
-      }
-      
       // Affecter le nouvel élément audio
       audioRef.current = newAudio;
       
-      // CORRECTION: S'assurer que l'URL est correctement définie et que crossOrigin est configuré
-      console.log('Définition de la source sur le nouvel audio:', validatedUrl);
-      newAudio.crossOrigin = "anonymous"; // Permet de lire depuis différentes origines
+      // CORRECTION: S'assurer que l'URL est correctement définie
+      console.log('Définition de la source sur le nouvel audio:', validatedUrl.substring(0, 100));
       newAudio.src = validatedUrl;
       newAudio.load();
       
@@ -344,12 +444,12 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
       setIsPlaying(false);
       setIsLoading(false);
     }
-  }, [volume, options]);
+  }, [volume, options, validateAndTestUrl]);
   
   // Basculer lecture/pause avec gestion améliorée des erreurs
   const togglePlay = useCallback(() => {
     if (!audioRef.current) {
-      console.error('Élément audio non initialisé (togglePlay)');
+      console.error('Élément audio non initialisé');
       return;
     }
     
@@ -448,7 +548,7 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
     setCurrentTime(safeTime);
   }, [duration]);
   
-  // Ajouter une méthode pour vérifier/rafraîchir l'URL présignée
+  // Ajouter une méthode pour rafraîchir l'URL présignée
   const refreshTrack = useCallback(async () => {
     if (currentTrack) {
       console.log('Rafraîchissement de la piste:', currentTrack.title);
@@ -457,6 +557,12 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
       setError('Aucune piste active à rafraîchir');
     }
   }, [currentTrack, loadTrack]);
+  
+  // Fonction pour jouer une piste directement
+  const playTrack = useCallback((track: Track) => {
+    console.log('Demande de lecture directe:', track.title);
+    loadTrack(track);
+  }, [loadTrack]);
   
   return {
     // États
@@ -470,6 +576,7 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
     error,
     
     // Méthodes
+    playTrack,
     loadTrack,
     togglePlay,
     changeVolume,
