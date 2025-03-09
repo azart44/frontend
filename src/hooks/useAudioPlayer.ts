@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Track } from '../types/TrackTypes';
 import { incrementPlayCount } from '../api/track';
+import { validatePresignedUrl } from '../utils/audioDebugger';
 
 interface AudioPlayerOptions {
   onEnded?: () => void;
@@ -111,7 +112,7 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
             }
           }, 1000);
         } else {
-          setError('Impossible de lire le fichier audio');
+          setError(`Impossible de lire le fichier audio (${errorMessage})`);
           setIsPlaying(false);
           if (options.onError) options.onError(e);
         }
@@ -127,6 +128,7 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
       if (audioElement) {
         audioElement.pause();
         audioElement.src = '';
+        audioElement.load();
         
         // Supprimer les écouteurs d'événements
         audioElement.removeEventListener('loadedmetadata', () => {});
@@ -188,15 +190,54 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
     retryAttemptsRef.current = 0;
   }, [currentTrackId]);
   
+  // Fonction pour configurer une nouvelle piste
+  const setupNewTrack = useCallback((track: Track) => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+      audioRef.current.crossOrigin = "anonymous";
+      audioRef.current.volume = volume;
+    }
+    
+    audioRef.current.src = track.presigned_url || '';
+    audioRef.current.load();
+    
+    try {
+      playPromiseRef.current = audioRef.current.play();
+      playPromiseRef.current
+        .then(() => {
+          console.log('Lecture démarrée avec succès');
+          setIsPlaying(true);
+          setCurrentTrackId(track.track_id);
+          setCurrentTrack(track);
+        })
+        .catch((playError) => {
+          console.error('Erreur de lecture initiale:', playError);
+          
+          // Si l'erreur est liée aux restrictions autoplay, on ne considère pas ça comme une erreur fatale
+          if (playError.name === "NotAllowedError") {
+            console.log("Autoplay bloqué par le navigateur - en attente d'interaction utilisateur");
+            setIsPlaying(false);
+            setCurrentTrackId(track.track_id);
+            setCurrentTrack(track);
+            setError(null);
+          } else {
+            setError(`Erreur de lecture: ${playError.message}`);
+            setIsPlaying(false);
+          }
+        });
+    } catch (error: any) {
+      console.error('Exception lors de la lecture:', error);
+      setError(`Erreur de lecture: ${error.message}`);
+      setIsPlaying(false);
+    }
+  }, [volume]);
+  
   // Charger et jouer une piste
   const loadTrack = useCallback((track: Track) => {
     try {
       console.log('Chargement de la piste:', track.title);
       setIsLoading(true);
       setError(null);
-      
-      // Réinitialiser le compteur de tentatives
-      retryAttemptsRef.current = 0;
       
       // Vérifier que l'URL présignée existe
       if (!track.presigned_url) {
@@ -206,9 +247,18 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
         return;
       }
       
+      // Vérifier la validité de l'URL présignée
+      const urlValidation = validatePresignedUrl(track.presigned_url);
+      if (!urlValidation.isValid) {
+        console.error(urlValidation.message);
+        setError(`Impossible de lire le fichier: ${urlValidation.message}`);
+        setIsLoading(false);
+        return;
+      }
+      
       console.log('URL présignée:', track.presigned_url.substring(0, 100) + '...');
       
-      // Arrêter la lecture en cours
+      // Arrêter la lecture en cours proprement
       if (audioRef.current) {
         const oldAudio = audioRef.current;
         oldAudio.pause();
@@ -218,59 +268,32 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
           playPromiseRef.current
             .then(() => {
               oldAudio.src = '';
+              oldAudio.load(); // Force le nettoyage
+              
+              // Charger et jouer la nouvelle piste après le nettoyage
+              setTimeout(() => setupNewTrack(track), 50);
             })
             .catch(() => {
               oldAudio.src = '';
+              oldAudio.load();
+              setTimeout(() => setupNewTrack(track), 50);
             });
         } else {
           oldAudio.src = '';
+          oldAudio.load();
+          setTimeout(() => setupNewTrack(track), 50);
         }
+      } else {
+        // Pas d'audio en cours, charger directement
+        setupNewTrack(track);
       }
-      
-      // S'assurer que l'élément audio est prêt
-      if (!audioRef.current) {
-        console.error("Élément audio non initialisé");
-        setError("Erreur d'initialisation audio");
-        setIsLoading(false);
-        return;
-      }
-      
-      // Définir la source et lancer le chargement
-      audioRef.current.src = track.presigned_url;
-      audioRef.current.load();
-      
-      // Tentative de lecture
-      playPromiseRef.current = audioRef.current.play();
-      playPromiseRef.current
-        .then(() => {
-          console.log('Lecture démarrée avec succès');
-          setIsPlaying(true);
-        })
-        .catch((playError) => {
-          console.error('Erreur de lecture initiale:', playError);
-          
-          // Si l'erreur est liée aux restrictions autoplay, on ne considère pas ça comme une erreur fatale
-          if (playError.name === "NotAllowedError") {
-            console.log("Autoplay bloqué par le navigateur - en attente d'interaction utilisateur");
-            setError(null);
-          } else {
-            setError(`Erreur de lecture initiale: ${playError.message}`);
-          }
-          
-          setIsPlaying(false);
-        });
-      
-      // Mettre à jour l'état
-      setCurrentTrackId(track.track_id);
-      setCurrentTrack(track);
-      
     } catch (error: any) {
       console.error('Erreur lors du chargement de la piste:', error);
       setError(`Erreur lors du chargement de la piste: ${error.message}`);
       setIsPlaying(false);
       setIsLoading(false);
     }
-  }, []);
+  }, [setupNewTrack]);
   
   // Basculer lecture/pause
   const togglePlay = useCallback(() => {
@@ -287,7 +310,7 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
       } else {
         // Lancer la lecture
         // Vérifier si une source est définie
-        if (!audioRef.current.src || audioRef.current.src === '') {
+        if (!audioRef.current.src || audioRef.current.src === '' || audioRef.current.src === 'about:blank') {
           if (currentTrack?.presigned_url) {
             audioRef.current.src = currentTrack.presigned_url;
             audioRef.current.load();

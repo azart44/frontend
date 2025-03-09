@@ -12,7 +12,8 @@ import {
   FaStepForward, 
   FaStepBackward, 
   FaVolumeUp, 
-  FaVolumeMute 
+  FaVolumeMute,
+  FaRedo 
 } from 'react-icons/fa';
 import { useAudioContext } from '../../contexts/AudioContext';
 
@@ -23,13 +24,14 @@ const AudioPlayer: React.FC = () => {
     duration,
     currentTime,
     togglePlay,
-    seek
+    seek,
+    error,
+    isLoading,
+    changeVolume,
+    volume,
+    playTrack
   } = useAudioContext();
   
-  // Ajouter les états manquants localement puisqu'ils n'existent pas dans le contexte
-  const [volume, setVolume] = useState(0.8);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [showVolumeControl, setShowVolumeControl] = useState(false);
   const [seekValue, setSeekValue] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -44,6 +46,7 @@ const AudioPlayer: React.FC = () => {
   
   // Formater le temps (secondes -> MM:SS)
   const formatTime = (timeInSeconds: number): string => {
+    if (!timeInSeconds || isNaN(timeInSeconds)) return '0:00';
     const minutes = Math.floor(timeInSeconds / 60);
     const seconds = Math.floor(timeInSeconds % 60);
     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
@@ -61,26 +64,6 @@ const AudioPlayer: React.FC = () => {
     setIsDragging(false);
   };
   
-  // Implémentation simple des fonctions manquantes
-  const changeVolume = (newVolume: number) => {
-    setVolume(newVolume);
-    // Si vous avez un élément audio dans votre contexte, vous devriez aussi mettre à jour son volume
-    const audioElement = document.querySelector('audio');
-    if (audioElement) {
-      audioElement.volume = newVolume;
-    }
-  };
-  
-  const skipToNext = () => {
-    // Implémentation temporaire
-    console.log('Skip to next track');
-  };
-  
-  const skipToPrevious = () => {
-    // Implémentation temporaire
-    console.log('Skip to previous track');
-  };
-  
   // Gérer le clic direct sur la barre de progression
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!progressRef.current || !duration) return;
@@ -91,6 +74,13 @@ const AudioPlayer: React.FC = () => {
     
     setSeekValue(newTime);
     seek(newTime);
+  };
+  
+  // Handler pour réessayer en cas d'erreur
+  const handleRetry = () => {
+    if (currentTrack) {
+      playTrack(currentTrack);
+    }
   };
   
   // Si aucune piste n'est chargée, ne rien afficher
@@ -146,9 +136,20 @@ const AudioPlayer: React.FC = () => {
           
           {/* Afficher une erreur s'il y en a une */}
           {error && (
-            <Text color="red" fontSize="0.8rem">
-              {error}
-            </Text>
+            <Flex alignItems="center" gap="0.5rem">
+              <Text color="#ff6b6b" fontSize="0.8rem">
+                {error}
+              </Text>
+              <Button 
+                onClick={handleRetry}
+                variation="link"
+                padding="0.25rem"
+                size="small"
+                style={{ color: '#ff6b6b' }}
+              >
+                <FaRedo />
+              </Button>
+            </Flex>
           )}
         </Flex>
       </Flex>
@@ -157,7 +158,7 @@ const AudioPlayer: React.FC = () => {
       <Flex direction="column" flex="1" gap="0.5rem">
         <Flex alignItems="center" justifyContent="center" gap="1rem">
           <Button
-            onClick={skipToPrevious}
+            onClick={() => {}} // Placeholder pour skiToPrevious
             variation="link"
             padding="0.5rem"
             style={{ color: 'white' }}
@@ -185,7 +186,7 @@ const AudioPlayer: React.FC = () => {
           </Button>
           
           <Button
-            onClick={skipToNext}
+            onClick={() => {}} // Placeholder pour skipToNext
             variation="link"
             padding="0.5rem"
             style={{ color: 'white' }}
@@ -218,7 +219,7 @@ const AudioPlayer: React.FC = () => {
                 top: 0,
                 left: 0,
                 height: '100%',
-                width: `${(currentTime / duration) * 100}%`,
+                width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%`,
                 backgroundColor: 'var(--chordora-secondary, #3e1dfc)',
                 borderRadius: '2px',
                 transition: isDragging ? 'none' : 'width 0.1s linear'

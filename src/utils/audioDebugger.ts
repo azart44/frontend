@@ -156,6 +156,7 @@ export const validatePresignedUrl = (url: string | undefined): { isValid: boolea
       
       // Démarrer le chargement
       console.log("Test de chargement de l'URL:", url);
+      audio.crossOrigin = "anonymous";
       audio.src = url;
       audio.load();
     });
