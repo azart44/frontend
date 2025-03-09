@@ -1,6 +1,9 @@
+// src/hooks/useAudioPlayer.ts
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Track } from '../types/TrackTypes';
 import { incrementPlayCount } from '../api/track';
+import { validatePresignedUrl, testAudioUrl } from '../utils/audioDebugger';
 
 interface AudioPlayerOptions {
   onEnded?: () => void;
@@ -24,7 +27,8 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressIntervalRef = useRef<number | null>(null);
   const playPromiseRef = useRef<Promise<void> | null>(null);
-  const playCountedRef = useRef<boolean>(false); // Pour suivre si l'écoute a été comptée
+  const playCountedRef = useRef<boolean>(false);
+  const urlCacheRef = useRef<Map<string, string>>(new Map()); // Cache pour les URLs testées avec succès
 
   // Fonction utilitaire pour vérifier si une erreur est de type AbortError
   const isAbortError = (error: unknown): boolean => {
@@ -73,7 +77,6 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
         console.log('Audio prêt à être joué, autoplay:', options.autoplay);
         if (options.autoplay) {
           console.log('Tentative de lecture automatique...');
-          // Stocker la promesse de lecture
           try {
             playPromiseRef.current = audioElement.play();
             playPromiseRef.current
@@ -197,22 +200,64 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
     playCountedRef.current = false;
   }, [currentTrackId]);
   
-  // Charger et jouer une piste
+  // Validation et test de l'URL présignée
+  const validateAndTestUrl = async (url?: string): Promise<string | null> => {
+    // Si pas d'URL, on ne peut pas aller plus loin
+    if (!url) {
+      setError('URL présignée non fournie');
+      return null;
+    }
+    
+    // Si l'URL est déjà dans le cache, on l'utilise directement
+    if (urlCacheRef.current.has(url)) {
+      return urlCacheRef.current.get(url) || null;
+    }
+    
+    // Valider le format de l'URL
+    const validation = validatePresignedUrl(url);
+    if (!validation.isValid) {
+      console.error('URL présignée invalide:', validation.message);
+      setError(`URL présignée invalide: ${validation.message}`);
+      return null;
+    }
+    
+    try {
+      // Tester l'accessibilité de l'URL
+      const test = await testAudioUrl(url);
+      if (!test.success) {
+        console.error('Test d\'URL échoué:', test.message);
+        setError(`Impossible d'accéder à l'audio: ${test.message}`);
+        return null;
+      }
+      
+      // Si l'URL est valide et accessible, on la met en cache
+      urlCacheRef.current.set(url, url);
+      return url;
+    } catch (error) {
+      console.error('Erreur lors du test d\'URL:', error);
+      setError(`Erreur lors du test de l'URL: ${error instanceof Error ? error.message : String(error)}`);
+      return null;
+    }
+  };
+  
+  // Charger et jouer une piste avec une meilleure gestion des erreurs
   const loadTrack = useCallback(async (track: Track) => {
     try {
       console.log('Chargement de la piste:', track.title);
-      console.log('URL présignée reçue:', track.presigned_url);
       setIsLoading(true);
       setError(null);
       
-      // Vérifier que l'URL présignée existe
-      if (!track.presigned_url) {
-        console.error('Erreur: URL présignée manquante');
-        throw new Error('Aucune URL de lecture disponible');
+      // Vérifier et récupérer l'URL valide
+      const url = track.presigned_url;
+      console.log('URL présignée reçue:', url);
+      
+      // Valider et tester l'URL
+      const validatedUrl = await validateAndTestUrl(url);
+      if (!validatedUrl) {
+        throw new Error('URL invalide ou inaccessible');
       }
       
-      // Créer un nouvel élément audio à chaque fois
-      // Cette approche évite beaucoup de problèmes de réutilisation
+      // Créer un nouvel élément audio
       const newAudio = new Audio();
       
       // Configurer les événements sur le nouvel élément
@@ -281,9 +326,10 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
       // Affecter le nouvel élément audio
       audioRef.current = newAudio;
       
-      // Définir la source et lancer le chargement
-      console.log('Définition de la source sur le nouvel audio:', track.presigned_url);
-      newAudio.src = track.presigned_url;
+      // CORRECTION: S'assurer que l'URL est correctement définie et que crossOrigin est configuré
+      console.log('Définition de la source sur le nouvel audio:', validatedUrl);
+      newAudio.crossOrigin = "anonymous"; // Permet de lire depuis différentes origines
+      newAudio.src = validatedUrl;
       newAudio.load();
       
       // Mettre à jour l'état
@@ -300,7 +346,7 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
     }
   }, [volume, options]);
   
-  // Basculer lecture/pause
+  // Basculer lecture/pause avec gestion améliorée des erreurs
   const togglePlay = useCallback(() => {
     if (!audioRef.current) {
       console.error('Élément audio non initialisé (togglePlay)');
@@ -334,12 +380,23 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
         }
       } else {
         console.log('Tentative de lecture...');
-        if (!audioRef.current.src) {
+        
+        // Vérifier que l'élément audio est correctement initialisé
+        if (!audioRef.current.src || audioRef.current.src === '') {
           console.error('Pas de source définie pour la lecture');
+          
+          // Si un track est défini mais pas l'URL, tenter de recharger le track
+          if (currentTrack) {
+            console.log('Tentative de rechargement de la piste:', currentTrack.title);
+            loadTrack(currentTrack);
+            return;
+          }
+          
           setError('Pas de piste à lire');
           return;
         }
         
+        // Tentative de lecture
         playPromiseRef.current = audioRef.current.play();
         playPromiseRef.current
           .then(() => {
@@ -350,7 +407,14 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
             // Si ce n'est pas une erreur d'interruption, la traiter comme une vraie erreur
             if (!isAbortError(error)) {
               console.error('Erreur de lecture:', error);
-              setError(`Impossible de lire la piste: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+              
+              // Si c'est une erreur de type "user didn't interact", on informe l'utilisateur
+              if (error instanceof Error && error.name === 'NotAllowedError') {
+                setError('Interaction utilisateur requise pour lire l\'audio');
+              } else {
+                setError(`Impossible de lire la piste: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+              }
+              
               setIsPlaying(false);
             }
           });
@@ -359,7 +423,7 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
       console.error('Exception dans togglePlay:', e);
       setError(`Erreur de lecture/pause: ${e instanceof Error ? e.message : 'Erreur inconnue'}`);
     }
-  }, [isPlaying]);
+  }, [isPlaying, currentTrack, loadTrack]);
   
   // Changer le volume
   const changeVolume = useCallback((newVolume: number) => {
@@ -384,6 +448,16 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
     setCurrentTime(safeTime);
   }, [duration]);
   
+  // Ajouter une méthode pour vérifier/rafraîchir l'URL présignée
+  const refreshTrack = useCallback(async () => {
+    if (currentTrack) {
+      console.log('Rafraîchissement de la piste:', currentTrack.title);
+      await loadTrack(currentTrack);
+    } else {
+      setError('Aucune piste active à rafraîchir');
+    }
+  }, [currentTrack, loadTrack]);
+  
   return {
     // États
     isPlaying,
@@ -400,6 +474,7 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
     togglePlay,
     changeVolume,
     seek,
+    refreshTrack,
     
     // Référence audio (optionnelle pour debug)
     audioRef,
