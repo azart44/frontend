@@ -177,6 +177,7 @@ const TrackCard: React.FC<TrackCardProps> = ({
             </Flex>
           </Flex>
           
+          {/* Nom de l'artiste avec lien vers le profil */}
           <Text 
             onClick={(e) => {
               e.stopPropagation();
@@ -184,14 +185,14 @@ const TrackCard: React.FC<TrackCardProps> = ({
                 navigate(`/profile/${track.user_id}`);
               }
             }}
-            style={{ cursor: 'pointer' }}
+            style={{ cursor: 'pointer', width: '150px' }}
             color="var(--chordora-text-secondary)"
-            width="150px"
           >
             {track.artist || 'Artiste'}
           </Text>
           
-          <Text color="var(--chordora-text-secondary)" width="80px">
+          {/* Durée de la piste affichée explicitement */}
+          <Text color="var(--chordora-text-secondary)" style={{ width: '60px', textAlign: 'right' }}>
             {formatTime(track.duration || 0)}
           </Text>
           
@@ -494,9 +495,7 @@ const TrackCard: React.FC<TrackCardProps> = ({
           <Flex justifyContent="space-between" alignItems="center">
             <Text fontSize="0.8rem" color="var(--chordora-text-secondary)">
               {formatTime(track.duration || 0)}
-            </Text>
-            
-            <Flex gap="0.5rem">
+            </Text><Flex gap="0.5rem">
               {showLikeButton && (
                 <LikeButton
                   trackId={track.track_id}

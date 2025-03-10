@@ -63,7 +63,9 @@ const ProfileCollection: React.FC<ProfileCollectionProps> = ({ userId, isOwnProf
       
       {/* Onglets */}
       <Flex 
-        style={{ borderBottom: "1px solid var(--chordora-divider)" }} 
+        style={{ 
+          borderBottom: "1px solid var(--chordora-divider)"
+        }} 
         marginBottom="1.5rem"
       >
         <button
@@ -110,6 +112,27 @@ const ProfileCollection: React.FC<ProfileCollectionProps> = ({ userId, isOwnProf
           </Flex>
         </button>
       </Flex>
+      
+      {/* En-tête de la liste de pistes avec colonnes */}
+      {activeTab === 'tracks' && (
+        <Flex 
+          justifyContent="space-between" 
+          padding="0 1rem 0.5rem" 
+          style={{
+            borderBottom: "1px solid var(--chordora-divider)",
+            marginBottom: "1rem"
+          }}
+        >
+          <Flex gap="1rem" alignItems="center" flex="1">
+            <div style={{ width: '40px' }}></div>
+            <div style={{ width: '50px' }}></div>
+            <Text fontWeight="bold">Titre</Text>
+          </Flex>
+          <Text fontWeight="bold" style={{ width: '150px' }}>Artiste</Text>
+          <Text fontWeight="bold" style={{ width: '60px', textAlign: 'right' }}>Durée</Text>
+          <div style={{ width: '100px' }}></div>
+        </Flex>
+      )}
       
       {/* Bouton d'ajout (seulement pour le propriétaire du profil) */}
       {isOwnProfile && (

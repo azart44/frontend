@@ -192,6 +192,14 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {}, onRefresh }
     playTrack(track);
   };
   
+  // Formater le temps en minutes:secondes
+  const formatTime = (seconds?: number): string => {
+    if (!seconds) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+  
   // États de chargement et d'erreur
   if (isLoading) return (
     <Flex justifyContent="center" padding="2rem">
@@ -227,8 +235,25 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {}, onRefresh }
   
   return (
     <Flex direction="column" gap="1rem">
+      {/* En-tête des colonnes */}
+      <Flex 
+        alignItems="center" 
+        padding="0.5rem 1rem"
+        style={{
+          borderBottom: "1px solid var(--chordora-divider)",
+          fontWeight: 'bold'
+        }}
+      >
+        <Flex style={{ width: '40px' }}></Flex>
+        <Flex style={{ width: '50px' }}></Flex>
+        <Flex flex="1">Titre</Flex>
+        <Flex style={{ width: '150px' }}>Artiste</Flex>
+        <Flex style={{ width: '60px', textAlign: 'right' }}>Durée</Flex>
+        <Flex style={{ width: '120px' }}></Flex>
+      </Flex>
+      
       {tracks.map((track: Track) => (
-        <div key={track.track_id} style={{ marginBottom: '1.5rem' }}>
+        <div key={track.track_id} style={{ marginBottom: '1rem' }}>
           {editingTrackId === track.track_id ? (
             <Card padding="1.5rem" borderRadius="8px">
               <Flex direction="column" gap="1rem">
