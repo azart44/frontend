@@ -8,7 +8,8 @@ import {
   Text,
   Image,
   Flex,
-  PasswordField
+  PasswordField,
+  useTheme
 } from '@aws-amplify/ui-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchUserAttributes } from 'aws-amplify/auth';
@@ -34,86 +35,6 @@ const useProfileCompletion = (authStatus: string, navigate: (path: string) => vo
     };
     checkProfileCompletion();
   }, [authStatus, navigate]);
-};
-
-// Composant personnalisé pour le formulaire de connexion
-const SignInFormFields = () => {
-  const { validationErrors } = useAuthenticator();
-  
-  return (
-    <>
-      <TextField
-        label="Nom d'utilisateur"
-        name="username"
-        placeholder="Entrez votre nom d'utilisateur"
-        required
-        hasError={!!validationErrors.username}
-        errorMessage={validationErrors.username}
-      />
-      <PasswordField
-        label="Mot de passe"
-        name="password"
-        placeholder="Entrez votre mot de passe"
-        required
-        hasError={!!validationErrors.password}
-        errorMessage={validationErrors.password}
-      />
-    </>
-  );
-};
-
-// Composant personnalisé pour le formulaire d'inscription
-const SignUpFormFields = () => {
-  const { validationErrors } = useAuthenticator();
-  
-  return (
-    <>
-      <TextField
-        label="Nom d'utilisateur"
-        name="username"
-        placeholder="Entrez votre nom d'utilisateur"
-        required
-        hasError={!!validationErrors.username}
-        errorMessage={validationErrors.username}
-      />
-      <TextField
-        label="Email"
-        name="email"
-        placeholder="Entrez votre email"
-        type="email"
-        required
-        hasError={!!validationErrors.email}
-        errorMessage={validationErrors.email}
-      />
-      <PasswordField
-        label="Mot de passe"
-        name="password"
-        placeholder="Entrez votre mot de passe"
-        required
-        hasError={!!validationErrors.password}
-        errorMessage={validationErrors.password}
-      />
-      <PasswordField
-        label="Confirmer le mot de passe"
-        name="confirm_password"
-        placeholder="Confirmez votre mot de passe"
-        required
-        hasError={!!validationErrors.confirm_password}
-        errorMessage={validationErrors.confirm_password}
-      />
-    </>
-  );
-};
-
-// Composant de pied de page personnalisé
-const FooterComponent = () => {
-  return (
-    <View textAlign="center" padding="1rem 0">
-      <Text color="#a0a0a0" fontSize="0.8rem">
-        En vous inscrivant, vous acceptez nos conditions d'utilisation et notre politique de confidentialité.
-      </Text>
-    </View>
-  );
 };
 
 const AuthPage: React.FC = React.memo(() => {
@@ -145,12 +66,14 @@ const AuthPage: React.FC = React.memo(() => {
       <Authenticator
         loginMechanisms={['username']}
         signUpAttributes={['email']}
-        components={{
-          SignIn: { FormFields: SignInFormFields },
-          SignUp: { FormFields: SignUpFormFields },
-          Footer: FooterComponent
-        }}
-      />
+      >
+        {({ signOut, user }) => (
+          <View>
+            <Text>Vous êtes connecté!</Text>
+            <Button onClick={signOut}>Déconnexion</Button>
+          </View>
+        )}
+      </Authenticator>
     </View>
   );
 });
