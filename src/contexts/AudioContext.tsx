@@ -1,10 +1,9 @@
-// src/contexts/AudioContext.tsx
 import React, { createContext, useContext, ReactNode } from 'react';
 import { Track } from '../types/TrackTypes';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
 
-// Interface mise à jour pour inclure toutes les propriétés utilisées
-export interface AudioContextType {
+// Interface pour le contexte audio
+interface AudioContextType {
   // États
   isPlaying: boolean;
   currentTrackId: string | null;
@@ -23,6 +22,8 @@ export interface AudioContextType {
   changeVolume: (volume: number) => void;
   nextTrack: () => void;
   previousTrack: () => void;
+  addToQueue: (track: Track) => void;
+  clearQueue: () => void;
 }
 
 // Valeurs par défaut du contexte
@@ -43,6 +44,8 @@ const defaultContext: AudioContextType = {
   changeVolume: () => {},
   nextTrack: () => {},
   previousTrack: () => {},
+  addToQueue: () => {},
+  clearQueue: () => {}
 };
 
 // Création du contexte
@@ -69,7 +72,9 @@ export const AudioProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     seek,
     changeVolume,
     nextTrack,
-    previousTrack
+    previousTrack,
+    addToQueue,
+    clearQueue
   } = useAudioPlayer();
   
   // Valeur du contexte
@@ -88,7 +93,9 @@ export const AudioProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     seek,
     changeVolume,
     nextTrack,
-    previousTrack
+    previousTrack,
+    addToQueue,
+    clearQueue
   };
   
   return (

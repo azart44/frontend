@@ -15,19 +15,11 @@ import {
   FaSignOutAlt,
   FaSignInAlt,
   FaCog,
-  FaVolumeMute,
-  FaVolumeUp,
-  FaRandom,
-  FaStepBackward,
-  FaStepForward,
-  FaPlay,
-  FaPause,
-  FaRedo,
-  FaEllipsisH,
   FaBars
 } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAudioContext } from '../../contexts/AudioContext';
+import AudioPlayer from '../common/AudioPlayer';
 
 interface ChordoraLayoutProps {
   children: React.ReactNode;
@@ -42,8 +34,6 @@ const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
   const { isAuthenticated } = useAuth();
   const { signOut } = useAuthenticator(context => [context.signOut]);
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
-  const [volume, setVolume] = useState(0.8);
-  const [isMuted, setIsMuted] = useState(false);
   
   // Contexte audio pour le lecteur
   const { 
@@ -54,21 +44,11 @@ const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
     previousTrack,
     currentTime,
     duration,
-    seek
+    seek,
+    isLoading,
+    volume,
+    changeVolume
   } = useAudioContext();
-
-  // Gérer le déplacement dans la barre de progression
-  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!duration) return;
-    
-    const progressBar = e.currentTarget;
-    const rect = progressBar.getBoundingClientRect();
-    const clickPosition = e.clientX - rect.left;
-    const percentage = clickPosition / rect.width;
-    const newTime = percentage * duration;
-    
-    seek(newTime);
-  };
 
   // Déterminer si le menu est actif
   const isActive = (path: string) => {
@@ -93,16 +73,6 @@ const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
       console.error('Erreur lors de la déconnexion:', error);
     }
   };
-
-  // Formater le temps (secondes vers MM:SS)
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
-
-  // Calculer le pourcentage de progression
-  const progressPercentage = duration ? (currentTime / duration) * 100 : 0;
 
   return (
     <div className="chordora-layout">
@@ -161,6 +131,14 @@ const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
               </div>
               
               <div 
+                className={`sidebar-item ${isActive('/profile') ? 'active' : ''}`}
+                onClick={() => navigateTo('/profile')}
+              >
+                <FaUser className="sidebar-item-icon" />
+                {sidebarExpanded && <span className="sidebar-item-text">Profil</span>}
+              </div>
+              
+              <div 
                 className="sidebar-item"
                 onClick={handleLogout}
                 style={{ marginTop: 'auto' }}
@@ -190,7 +168,11 @@ const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
               {/* Search bar */}
               <div className="search-bar">
                 <FaSearch className="search-icon" />
-                <input type="text" placeholder="Rechercher des artistes, pistes..." />
+                <input 
+                  type="text" 
+                  placeholder="Rechercher des artistes, pistes..." 
+                  onClick={() => navigateTo('/tracks')}
+                />
               </div>
               
               {/* User profile */}
@@ -231,145 +213,22 @@ const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
 
       {/* Player */}
       {currentTrack && (
-        <div className="chordora-player">
-          {/* Track info */}
-          <div className="player-track-info">
-            <Image
-              src={currentTrack.cover_image || '/default-cover.jpg'}
-              alt={currentTrack.title}
-              width="60px"
-              height="60px"
-              style={{ 
-                objectFit: 'cover',
-                borderRadius: '4px',
-                marginRight: '1rem'
-              }}
-            />
-            <div>
-              <Text 
-                fontWeight="bold"
-                className="text-truncate"
-                style={{ maxWidth: '200px' }}
-              >
-                {currentTrack.title}
-              </Text>
-              <Text 
-                fontSize="0.8rem" 
-                color="var(--chordora-text-secondary)"
-                className="text-truncate"
-                style={{ maxWidth: '200px' }}
-              >
-                {currentTrack.artist}
-              </Text>
-            </div>
-            <Button 
-              variation="link"
-              size="small"
-              style={{ marginLeft: '1rem' }}
-            >
-              <FaHeart color="#A0A0A0" />
-            </Button>
-            <Button 
-              variation="link"
-              size="small"
-            >
-              <FaEllipsisH color="#A0A0A0" />
-            </Button>
-          </div>
-          
-          {/* Player controls */}
-          <div className="player-controls">
-            <div className="player-buttons">
-              <button className="player-control-button">
-                <FaRandom />
-              </button>
-              <button 
-                className="player-control-button"
-                onClick={previousTrack}
-              >
-                <FaStepBackward />
-              </button>
-              <button 
-                className="player-control-button play-pause"
-                onClick={togglePlay}
-              >
-                {isPlaying ? <FaPause /> : <FaPlay />}
-              </button>
-              <button 
-                className="player-control-button"
-                onClick={nextTrack}
-              >
-                <FaStepForward />
-              </button>
-              <button className="player-control-button">
-                <FaRedo />
-              </button>
-            </div>
-            
-            <div className="player-progress">
-              <Text fontSize="0.8rem" style={{ minWidth: '40px' }}>
-                {formatTime(currentTime)}
-              </Text>
-              
-              <div 
-                className="player-progress-bar"
-                onClick={handleProgressClick}
-              >
-                <div 
-                  className="player-progress-current"
-                  style={{ width: `${progressPercentage}%` }}
-                ></div>
-                <div
-                  className="player-progress-thumb"
-                  style={{ left: `${progressPercentage}%` }}
-                ></div>
-              </div>
-              
-              <Text fontSize="0.8rem" style={{ minWidth: '40px' }}>
-                {formatTime(duration)}
-              </Text>
-            </div>
-          </div>
-          
-          {/* Volume */}
-          <div className="player-volume">
-            <button 
-              className="player-control-button"
-              onClick={() => setIsMuted(!isMuted)}
-            >
-              {isMuted ? <FaVolumeMute /> : <FaVolumeUp />}
-            </button>
-            
-            <div 
-              style={{
-                width: '80px',
-                height: '4px',
-                backgroundColor: '#535353',
-                borderRadius: '2px',
-                position: 'relative',
-                cursor: 'pointer'
-              }}
-              onClick={(e) => {
-                const volumeBar = e.currentTarget;
-                const rect = volumeBar.getBoundingClientRect();
-                const clickPosition = e.clientX - rect.left;
-                const percentage = clickPosition / rect.width;
-                setVolume(percentage);
-                setIsMuted(false);
-              }}
-            >
-              <div
-                style={{
-                  position: 'absolute',
-                  height: '100%',
-                  width: `${isMuted ? 0 : volume * 100}%`,
-                  backgroundColor: 'white',
-                  borderRadius: '2px'
-                }}
-              ></div>
-            </div>
-          </div>
-        </div>
+        <AudioPlayer 
+          track={currentTrack} 
+          onClose={() => {
+            togglePlay();
+          }}
+          currentTime={currentTime}
+          duration={duration}
+          isPlaying={isPlaying}
+          isLoading={isLoading}
+          volume={volume}
+          onPlayPause={togglePlay}
+          onNext={nextTrack}
+          onPrevious={previousTrack}
+          onSeek={seek}
+          onVolumeChange={changeVolume}
+        />
       )}
     </div>
   );

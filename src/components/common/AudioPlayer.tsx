@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+// Modifications à apporter à src/components/common/AudioPlayer.tsx
+
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Card, 
   Flex, 
@@ -7,8 +9,19 @@ import {
   View,
   Image
 } from '@aws-amplify/ui-react';
-import { FaPlay, FaPause, FaVolumeUp, FaVolumeMute } from 'react-icons/fa';
+import { 
+  FaPlay, 
+  FaPause, 
+  FaVolumeUp, 
+  FaVolumeMute, 
+  FaStepForward, 
+  FaStepBackward, 
+  FaRandom, 
+  FaRedo 
+} from 'react-icons/fa';
 import { Track } from '../../types/TrackTypes';
+import { useAudioContext } from '../../contexts/AudioContext';
+import LikeButton from './LikeButton';
 
 interface AudioPlayerProps {
   track: Track | null;
@@ -27,10 +40,9 @@ interface AudioPlayerProps {
 
 /**
  * Formater le temps en minutes:secondes
- * @param seconds Temps en secondes
- * @returns Temps formaté (MM:SS)
  */
 const formatTime = (seconds: number): string => {
+  if (isNaN(seconds) || !isFinite(seconds)) return '0:00';
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
@@ -56,12 +68,49 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [progressHover, setProgressHover] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragPosition, setDragPosition] = useState(0);
+  
+  const progressRef = useRef<HTMLDivElement>(null);
+  
+  // Gérer le clic sur la barre de progression
+  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!progressRef.current) return;
+    
+    const rect = progressRef.current.getBoundingClientRect();
+    const clickPosition = (e.clientX - rect.left) / rect.width;
+    const newTime = clickPosition * duration;
+    
+    onSeek(newTime);
+  };
+  
+  // Gérer le glissement sur la barre de progression
+  const handleDrag = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIsDragging(true);
+    setDragPosition(parseFloat(e.target.value));
+  };
+  
+  // Finir le glissement
+  const handleDragEnd = () => {
+    onSeek(dragPosition);
+    setIsDragging(false);
+  };
+  
+  // Mise à jour de la position de glissement
+  useEffect(() => {
+    if (!isDragging) {
+      setDragPosition(currentTime);
+    }
+  }, [currentTime, isDragging]);
   
   // Ne rien afficher si aucune piste n'est sélectionnée
   if (!track) return null;
   
   // URL de l'image avec fallback
   const coverImageSrc = imageError || !track.cover_image ? "/default-cover.jpg" : track.cover_image;
+  
+  // Calcul du pourcentage de progression
+  const progressPercentage = duration ? (isDragging ? dragPosition / duration : currentTime / duration) * 100 : 0;
   
   return (
     <View 
@@ -96,6 +145,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
             <Text fontWeight="bold" isTruncated>{track.title}</Text>
             <Text fontSize="small" color="#87e54c">{track.genre}</Text>
           </Flex>
+          
+          {/* Bouton Like */}
+          <LikeButton
+            trackId={track.track_id}
+            size="small"
+            isCompact
+          />
         </Flex>
         
         {/* Contrôles de lecture */}
@@ -109,7 +165,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
                 ariaLabel="Précédent"
                 padding="0"
               >
-                <FaVolumeUp color="#808080" />
+                <FaStepBackward color="white" />
               </Button>
             )}
             
@@ -139,7 +195,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
                 ariaLabel="Suivant"
                 padding="0"
               >
-                <FaVolumeUp color="#808080" />
+                <FaStepForward color="white" />
               </Button>
             )}
           </Flex>
@@ -151,8 +207,10 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
             position="relative" 
             width="100%" 
             height="4px"
+            ref={progressRef}
             onMouseEnter={() => setProgressHover(true)}
             onMouseLeave={() => setProgressHover(false)}
+            onClick={handleProgressClick}
             style={{
               cursor: 'pointer',
               transition: 'height 0.3s ease',
@@ -170,25 +228,43 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
             {/* Progression actuelle */}
             <View 
               backgroundColor="#87e54c" 
-              width={`${(currentTime / (duration || 1)) * 100}%`} 
+              width={`${progressPercentage}%`} 
               height="100%" 
               style={{ 
                 borderRadius: "2px",
                 position: "absolute",
                 top: 0,
                 left: 0,
-                transition: "width 0.1s ease"
+                transition: isDragging ? "none" : "width 0.1s ease"
               }}
             />
+            
+            {/* Cercle de progression (visible au survol) */}
+            {(progressHover || isDragging) && (
+              <View
+                backgroundColor="#87e54c"
+                width="12px"
+                height="12px"
+                style={{
+                  borderRadius: "50%",
+                  position: "absolute",
+                  left: `${progressPercentage}%`,
+                  top: "50%",
+                  transform: "translate(-50%, -50%)"
+                }}
+              />
+            )}
             
             {/* Slider invisible pour l'interaction */}
             <input
               type="range"
-              value={currentTime}
+              value={isDragging ? dragPosition : currentTime}
               max={duration || 1}
               min={0}
-              onChange={(e) => onSeek(parseFloat(e.target.value))}
               step="0.1"
+              onChange={handleDrag}
+              onMouseUp={handleDragEnd}
+              onTouchEnd={handleDragEnd}
               style={{ 
                 position: "absolute",
                 top: 0,
