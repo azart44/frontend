@@ -7,7 +7,8 @@ import {
   Heading, 
   Text,
   Image,
-  Flex 
+  Flex,
+  useTheme
 } from '@aws-amplify/ui-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchUserAttributes } from 'aws-amplify/auth';
@@ -30,7 +31,6 @@ const useProfileCompletion = (authStatus: string, navigate: (path: string) => vo
         }
       }
     };
-
     checkProfileCompletion();
   }, [authStatus, navigate]);
 };
@@ -38,6 +38,7 @@ const useProfileCompletion = (authStatus: string, navigate: (path: string) => vo
 const AuthPage: React.FC = React.memo(() => {
   const navigate = useNavigate();
   const { authStatus } = useAuthenticator((context) => [context.authStatus]);
+  const { tokens } = useTheme();
   
   useProfileCompletion(authStatus, navigate);
 
@@ -62,27 +63,53 @@ const AuthPage: React.FC = React.memo(() => {
       </Text>
       
       <Authenticator
-        loginMechanisms={['email']}
+        loginMechanisms={['username']}
+        signUpAttributes={['email']}
         components={{
           SignUp: {
             FormFields() {
+              const { validationErrors } = useAuthenticator();
+              
               return (
                 <>
-                  <Authenticator.SignUp.FormFields />
+                  <TextField
+                    label="Nom d'utilisateur"
+                    name="username"
+                    placeholder="Entrez votre nom d'utilisateur"
+                    required
+                    hasError={!!validationErrors.username}
+                    errorMessage={validationErrors.username}
+                  />
                   <TextField
                     label="Email"
                     name="email"
                     placeholder="Entrez votre email"
                     type="email"
-                    isRequired
+                    required
+                    hasError={!!validationErrors.email}
+                    errorMessage={validationErrors.email}
                   />
+                  <Authenticator.SignUp.Password />
+                  <Authenticator.SignUp.ConfirmPassword />
+                </>, 
+              );
+            },
+          },
+          SignIn: {
+            FormFields() {
+              const { validationErrors } = useAuthenticator();
+              
+              return (
+                <>
                   <TextField
-                    label="Nom complet"
-                    name="name"
-                    placeholder="Entrez votre nom complet"
-                    type="text"
-                    isRequired
+                    label="Nom d'utilisateur"
+                    name="username"
+                    placeholder="Entrez votre nom d'utilisateur"
+                    required
+                    hasError={!!validationErrors.username}
+                    errorMessage={validationErrors.username}
                   />
+                  <Authenticator.SignIn.Password />
                 </>
               );
             },
