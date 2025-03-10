@@ -8,7 +8,9 @@ import {
   Text,
   Image,
   Flex,
-  useTheme
+  useTheme,
+  Fieldset,
+  PasswordField
 } from '@aws-amplify/ui-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchUserAttributes } from 'aws-amplify/auth';
@@ -88,8 +90,23 @@ const AuthPage: React.FC = React.memo(() => {
                     hasError={!!validationErrors.email}
                     errorMessage={validationErrors.email}
                   />
-                  <Authenticator.SignUp.Password />
-                  <Authenticator.SignUp.ConfirmPassword />
+                  {/* Remplacer les composants Password et ConfirmPassword */}
+                  <PasswordField
+                    label="Mot de passe"
+                    name="password"
+                    placeholder="Entrez votre mot de passe"
+                    required
+                    hasError={!!validationErrors.password}
+                    errorMessage={validationErrors.password}
+                  />
+                  <PasswordField
+                    label="Confirmer le mot de passe"
+                    name="confirm_password"
+                    placeholder="Confirmez votre mot de passe"
+                    required
+                    hasError={!!validationErrors.confirm_password}
+                    errorMessage={validationErrors.confirm_password}
+                  />
                 </>
               );
             }
@@ -108,7 +125,14 @@ const AuthPage: React.FC = React.memo(() => {
                     hasError={!!validationErrors.username}
                     errorMessage={validationErrors.username}
                   />
-                  <Authenticator.SignIn.Password />
+                  <PasswordField
+                    label="Mot de passe"
+                    name="password"
+                    placeholder="Entrez votre mot de passe"
+                    required
+                    hasError={!!validationErrors.password}
+                    errorMessage={validationErrors.password}
+                  />
                 </>
               );
             }
