@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { 
   Heading, 
   TextField, 
@@ -14,11 +14,12 @@ import {
   TextAreaField
 } from '@aws-amplify/ui-react';
 import { useNavigate } from 'react-router-dom';
-import { FaCloudUploadAlt, FaMusic, FaImage, FaPlus } from 'react-icons/fa';
+import { FaCloudUploadAlt, FaMusic, FaImage, FaPlus, FaSave } from 'react-icons/fa';
 import { useCreateTrack } from '../../hooks/useTracks';
 import { useForm } from '../../hooks/useForm';
 import { MUSIC_GENRES, MUSIC_MOODS } from '../../constants/profileData';
 import { Track } from '../../types/TrackTypes';
+import ChordoraButton from '../common/ChordoraButton';
 
 // Formats de fichiers audio acceptés
 const ACCEPTED_AUDIO_FORMATS = ['audio/mpeg', 'audio/mp3', 'audio/wav'];
@@ -40,6 +41,9 @@ const TrackUpload: React.FC = () => {
   // États pour la gestion des erreurs et du formulaire
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  
+  // État pour stocker la durée détectée de l'audio
+  const [audioDuration, setAudioDuration] = useState<number | null>(null);
   
   // Hook pour créer une piste
   const createTrackMutation = useCreateTrack();
@@ -114,6 +118,27 @@ const TrackUpload: React.FC = () => {
         return;
       }
       
+      // Créer un objet URL pour le fichier
+      const objectURL = URL.createObjectURL(file);
+      const audio = new Audio(objectURL);
+      
+      // Écouter l'événement loadedmetadata pour obtenir la durée
+      audio.addEventListener('loadedmetadata', () => {
+        // Arrondir à une décimale pour éviter les nombres trop précis
+        const duration = Math.round(audio.duration * 10) / 10;
+        setAudioDuration(duration);
+        console.log(`Durée détectée: ${duration} secondes`);
+        
+        // Libérer l'URL objet après utilisation
+        URL.revokeObjectURL(objectURL);
+      });
+      
+      // Gérer les erreurs potentielles
+      audio.addEventListener('error', () => {
+        setError('Impossible de lire le fichier audio pour en déterminer la durée');
+        URL.revokeObjectURL(objectURL);
+      });
+      
       setAudioFile(file);
       setError(null);
     }
@@ -178,6 +203,7 @@ const TrackUpload: React.FC = () => {
         isPrivate: values.isPrivate,
         fileName: audioFile.name,
         fileType: audioFile.type,
+        duration: audioDuration, // Ajouter la durée détectée
         coverImageBase64,
         coverImageType
       };
@@ -199,7 +225,7 @@ const TrackUpload: React.FC = () => {
       console.error('Erreur lors de l\'upload:', uploadError);
       setError('Une erreur est survenue lors de l\'upload. Veuillez réessayer.');
     }
-  }, [audioFile, coverImage, values, validate, navigate, createTrackMutation]);
+  }, [audioFile, coverImage, values, validate, createTrackMutation, navigate, audioDuration]);
   
   return (
     <Card padding="1.5rem">
@@ -356,6 +382,12 @@ const TrackUpload: React.FC = () => {
                 onChange={(e) => setValues(prev => ({ ...prev, isPrivate: e.target.checked }))}
                 labelPosition="end"
               />
+
+              {audioDuration && (
+                <Text color="var(--chordora-text-secondary)">
+                  Durée détectée: {Math.floor(audioDuration / 60)}:{String(Math.floor(audioDuration % 60)).padStart(2, '0')}
+                </Text>
+              )}
             </Flex>
           </Flex>
           
@@ -392,6 +424,11 @@ const TrackUpload: React.FC = () => {
                   <FaMusic size={48} color="#3e1dfc" />
                   <Text fontWeight="bold">{audioFile.name}</Text>
                   <Text>{(audioFile.size / (1024 * 1024)).toFixed(2)} Mo</Text>
+                  {audioDuration && (
+                    <Text>
+                      Durée: {Math.floor(audioDuration / 60)}:{String(Math.floor(audioDuration % 60)).padStart(2, '0')}
+                    </Text>
+                  )}
                 </Flex>
               ) : (
                 <Flex direction="column" alignItems="center" gap="1rem">
@@ -434,7 +471,7 @@ const TrackUpload: React.FC = () => {
           
           {/* Boutons de soumission */}
           <Flex gap="1rem">
-            <Button 
+            <ChordoraButton 
               type="submit" 
               variation="primary"
               isLoading={createTrackMutation.isPending}
@@ -446,9 +483,9 @@ const TrackUpload: React.FC = () => {
             >
               <FaPlus style={{ marginRight: '0.5rem' }} />
               {createTrackMutation.isPending ? 'Téléversement en cours...' : 'Téléverser la piste'}
-            </Button>
+            </ChordoraButton>
             
-            <Button 
+            <ChordoraButton 
               onClick={() => navigate('/profile')}
               variation="link"
               style={{ 
@@ -456,7 +493,7 @@ const TrackUpload: React.FC = () => {
               }}
             >
               Annuler
-            </Button>
+            </ChordoraButton>
           </Flex>
         </Flex>
       </form>
