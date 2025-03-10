@@ -11,15 +11,18 @@ export interface AudioContextType {
   currentTrack: Track | null;
   duration: number;
   currentTime: number;
-  volume: number;  // Ajouté
-  isLoading: boolean;  // Ajouté
-  error: string | null;  // Ajouté
+  volume: number;
+  isLoading: boolean;
+  error: string | null;
+  trackQueue: Track[];
   
   // Méthodes
-  playTrack: (track: Track) => void;
+  playTrack: (track: Track, queue?: Track[]) => void;
   togglePlay: () => void;
   seek: (time: number) => void;
-  changeVolume: (volume: number) => void;  // Ajouté
+  changeVolume: (volume: number) => void;
+  nextTrack: () => void;
+  previousTrack: () => void;
 }
 
 // Valeurs par défaut du contexte
@@ -32,11 +35,14 @@ const defaultContext: AudioContextType = {
   volume: 0.8,  // Valeur par défaut
   isLoading: false,
   error: null,
+  trackQueue: [],
   
   playTrack: () => {},
   togglePlay: () => {},
   seek: () => {},
   changeVolume: () => {},
+  nextTrack: () => {},
+  previousTrack: () => {},
 };
 
 // Création du contexte
@@ -57,10 +63,13 @@ export const AudioProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     volume,
     isLoading,
     error,
+    trackQueue,
     playTrack, 
     togglePlay, 
     seek,
-    changeVolume
+    changeVolume,
+    nextTrack,
+    previousTrack
   } = useAudioPlayer();
   
   // Valeur du contexte
@@ -73,10 +82,13 @@ export const AudioProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     volume,
     isLoading,
     error,
+    trackQueue,
     playTrack,
     togglePlay,
     seek,
-    changeVolume
+    changeVolume,
+    nextTrack,
+    previousTrack
   };
   
   return (
