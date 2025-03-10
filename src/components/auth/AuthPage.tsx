@@ -9,6 +9,7 @@ import {
   Image,
   Flex,
   PasswordField,
+  Button, // Add this import
   useTheme
 } from '@aws-amplify/ui-react';
 import { useNavigate } from 'react-router-dom';
