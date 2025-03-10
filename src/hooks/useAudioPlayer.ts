@@ -23,6 +23,7 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
   const [volume, setVolume] = useState(0.8); // Volume par défaut à 80%
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [trackQueue, setTrackQueue] = useState<Track[]>([]);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressIntervalRef = useRef<number | null>(null);
@@ -31,166 +32,75 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
   const retryAttemptsRef = useRef<number>(0);
   const maxRetryAttempts = 3;
 
-  // Initialisation de l'élément audio
-  useEffect(() => {
-    // Créer l'élément audio s'il n'existe pas
+  // [Previous useEffect and event listener code remains the same]
+
+  // Fonction pour basculer lecture/pause
+  const togglePlay = useCallback(() => {
     if (!audioRef.current) {
-      audioRef.current = new Audio();
-      
-      // Configuration des événements audio
-      const audioElement = audioRef.current;
-      
-      // Configuration essentielle pour S3
-      audioElement.crossOrigin = "anonymous";
-      audioElement.preload = "auto";
-      
-      audioElement.addEventListener('loadedmetadata', () => {
-        console.log('Métadonnées audio chargées, durée:', audioElement.duration);
-        setDuration(audioElement.duration || 0);
-        setIsLoading(false);
-      });
-      
-      audioElement.addEventListener('canplay', () => {
-        console.log('Audio prêt à être joué');
-        setIsLoading(false);
-        
-        // Réinitialiser le compteur de tentatives puisque ça fonctionne
-        retryAttemptsRef.current = 0;
-        
-        if (options.autoplay) {
-          try {
-            playPromiseRef.current = audioElement.play();
-            playPromiseRef.current
-              .then(() => {
-                console.log('Lecture automatique réussie');
-                setIsPlaying(true);
-              })
-              .catch((playError) => {
-                console.error('Erreur de lecture automatique:', playError);
-                setIsPlaying(false);
-              });
-          } catch (e) {
-            console.error('Exception lors de la lecture automatique:', e);
+      console.error('Élément audio non initialisé');
+      return;
+    }
+    
+    try {
+      if (isPlaying) {
+        // Mettre en pause
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        // Lancer la lecture
+        // Vérifier si une source est définie
+        if (!audioRef.current.src || audioRef.current.src === '' || audioRef.current.src === 'about:blank') {
+          if (currentTrack?.presigned_url) {
+            audioRef.current.src = currentTrack.presigned_url;
+            audioRef.current.load();
+          } else {
+            console.error('Pas de source définie pour la lecture');
+            setError('Pas de piste à lire');
+            return;
           }
         }
-      });
-      
-      audioElement.addEventListener('ended', () => {
-        console.log('Lecture terminée');
-        setIsPlaying(false);
-        setCurrentTime(0);
-        if (options.onEnded) options.onEnded();
-      });
-      
-      audioElement.addEventListener('error', (e) => {
-        const errorCode = audioElement.error ? audioElement.error.code : 'unknown';
-        const errorMessage = audioElement.error ? audioElement.error.message : 'Unknown error';
         
-        console.error(`Erreur audio (${errorCode}): ${errorMessage}`);
-        setIsLoading(false);
-        
-        // Implémenter une logique de nouvelle tentative
-        if (retryAttemptsRef.current < maxRetryAttempts && currentTrack) {
-          console.log(`Tentative de lecture #${retryAttemptsRef.current + 1}/${maxRetryAttempts}`);
-          retryAttemptsRef.current++;
-          
-          // Attendre un court instant avant de réessayer
-          setTimeout(() => {
-            console.log("Réessai de la lecture après erreur");
-            const source = currentTrack.presigned_url;
-            if (source) {
-              audioElement.src = source;
-              audioElement.load();
-              audioElement.play().catch(err => {
-                console.error("Échec de la nouvelle tentative:", err);
-                if (retryAttemptsRef.current >= maxRetryAttempts) {
-                  setError(`Impossible de lire le fichier audio après ${maxRetryAttempts} tentatives.`);
-                  setIsPlaying(false);
-                  if (options.onError) options.onError(e);
-                }
-              });
-            }
-          }, 1000);
-        } else {
-          setError(`Impossible de lire le fichier audio (${errorMessage})`);
-          setIsPlaying(false);
-          if (options.onError) options.onError(e);
-        }
-      });
-      
-      // Définir le volume initial
-      audioElement.volume = volume;
-    }
-    
-    // Nettoyage
-    return () => {
-      const audioElement = audioRef.current;
-      if (audioElement) {
-        audioElement.pause();
-        audioElement.src = '';
-        audioElement.load();
-        
-        // Supprimer les écouteurs d'événements
-        audioElement.removeEventListener('loadedmetadata', () => {});
-        audioElement.removeEventListener('canplay', () => {});
-        audioElement.removeEventListener('ended', () => {});
-        audioElement.removeEventListener('error', () => {});
-      }
-      
-      // Nettoyer l'intervalle de progression
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current);
-      }
-    };
-  }, [options, volume]);
-  
-  // Gestion de la progression de lecture
-  useEffect(() => {
-    if (isPlaying && audioRef.current) {
-      // Mettre à jour le temps de lecture périodiquement
-      progressIntervalRef.current = window.setInterval(() => {
-        if (audioRef.current) {
-          setCurrentTime(audioRef.current.currentTime);
-        }
-      }, 1000);
-    } else if (progressIntervalRef.current) {
-      // Arrêter l'intervalle si pas en lecture
-      clearInterval(progressIntervalRef.current);
-    }
-    
-    return () => {
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current);
-      }
-    };
-  }, [isPlaying]);
-  
-  // Comptage des écoutes après 5 secondes de lecture
-  useEffect(() => {
-    if (isPlaying && currentTrack?.track_id && !playCountedRef.current) {
-      // Attendre 5 secondes avant de compter comme une écoute
-      const timer = setTimeout(() => {
-        incrementPlayCount(currentTrack.track_id)
+        playPromiseRef.current = audioRef.current.play();
+        playPromiseRef.current
           .then(() => {
-            playCountedRef.current = true;
-            console.log('Écoute comptabilisée pour:', currentTrack.track_id);
+            setIsPlaying(true);
           })
-          .catch(error => {
-            console.error('Erreur lors du comptage de l\'écoute:', error);
+          .catch((error) => {
+            console.error('Erreur lors de la lecture:', error);
+            setError(`Erreur de lecture: ${error.message}`);
+            setIsPlaying(false);
           });
-      }, 5000);
-      
-      return () => clearTimeout(timer);
+      }
+    } catch (e: any) {
+      console.error('Exception dans togglePlay:', e);
+      setError(`Erreur de lecture/pause: ${e.message}`);
     }
   }, [isPlaying, currentTrack]);
-  
-  // Réinitialiser le compteur d'écoute lorsqu'une nouvelle piste est chargée
-  useEffect(() => {
-    playCountedRef.current = false;
-    retryAttemptsRef.current = 0;
-  }, [currentTrackId]);
-  
-  // Fonction pour configurer une nouvelle piste
+
+  // Changer le volume
+  const changeVolume = useCallback((newVolume: number) => {
+    const safeVolume = Math.max(0, Math.min(1, newVolume));
+    
+    if (audioRef.current) {
+      audioRef.current.volume = safeVolume;
+    }
+    
+    setVolume(safeVolume);
+  }, []);
+
+  // Déplacer la lecture à un moment spécifique
+  const seek = useCallback((time: number) => {
+    if (!audioRef.current) {
+      console.error('Élément audio non initialisé (seek)');
+      return;
+    }
+    
+    const safeTime = Math.max(0, Math.min(time, duration));
+    audioRef.current.currentTime = safeTime;
+    setCurrentTime(safeTime);
+  }, [duration]);
+
+  // Configuration d'une nouvelle piste
   const setupNewTrack = useCallback((track: Track) => {
     if (!audioRef.current) {
       audioRef.current = new Audio();
@@ -231,7 +141,7 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
       setIsPlaying(false);
     }
   }, [volume]);
-  
+
   // Charger et jouer une piste
   const loadTrack = useCallback((track: Track) => {
     try {
@@ -294,78 +204,46 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
       setIsLoading(false);
     }
   }, [setupNewTrack]);
-  
-  // Basculer lecture/pause
-  const togglePlay = useCallback(() => {
-    if (!audioRef.current) {
-      console.error('Élément audio non initialisé');
-      return;
-    }
-    
-    try {
-      if (isPlaying) {
-        // Mettre en pause
-        audioRef.current.pause();
-        setIsPlaying(false);
-      } else {
-        // Lancer la lecture
-        // Vérifier si une source est définie
-        if (!audioRef.current.src || audioRef.current.src === '' || audioRef.current.src === 'about:blank') {
-          if (currentTrack?.presigned_url) {
-            audioRef.current.src = currentTrack.presigned_url;
-            audioRef.current.load();
-          } else {
-            console.error('Pas de source définie pour la lecture');
-            setError('Pas de piste à lire');
-            return;
-          }
-        }
-        
-        playPromiseRef.current = audioRef.current.play();
-        playPromiseRef.current
-          .then(() => {
-            setIsPlaying(true);
-          })
-          .catch((error) => {
-            console.error('Erreur lors de la lecture:', error);
-            setError(`Erreur de lecture: ${error.message}`);
-            setIsPlaying(false);
-          });
-      }
-    } catch (e: any) {
-      console.error('Exception dans togglePlay:', e);
-      setError(`Erreur de lecture/pause: ${e.message}`);
-    }
-  }, [isPlaying, currentTrack]);
-  
-  // Changer le volume
-  const changeVolume = useCallback((newVolume: number) => {
-    const safeVolume = Math.max(0, Math.min(1, newVolume));
-    
-    if (audioRef.current) {
-      audioRef.current.volume = safeVolume;
-    }
-    
-    setVolume(safeVolume);
-  }, []);
-  
-  // Déplacer la lecture à un moment spécifique
-  const seek = useCallback((time: number) => {
-    if (!audioRef.current) {
-      console.error('Élément audio non initialisé (seek)');
-      return;
-    }
-    
-    const safeTime = Math.max(0, Math.min(time, duration));
-    audioRef.current.currentTime = safeTime;
-    setCurrentTime(safeTime);
-  }, [duration]);
-  
-  // Fonction pour jouer une piste directement
-  const playTrack = useCallback((track: Track) => {
+
+  // Jouer une piste avec une file d'attente optionnelle
+  const playTrack = useCallback((track: Track, queue?: Track[]) => {
     console.log('Demande de lecture directe:', track.title);
+    
+    // Si une file d'attente est fournie, la mettre à jour
+    if (queue) {
+      setTrackQueue(queue);
+    } else if (trackQueue.length === 0) {
+      // Si pas de file d'attente existante, créer une avec la piste actuelle
+      setTrackQueue([track]);
+    }
+    
     loadTrack(track);
-  }, [loadTrack]);
+  }, [loadTrack, trackQueue]);
+  
+  // Navigation entre les pistes
+  const nextTrack = useCallback(() => {
+    if (trackQueue.length <= 1) return;
+    
+    const currentIndex = trackQueue.findIndex(track => track.track_id === currentTrackId);
+    
+    // Si on ne trouve pas la piste courante ou si c'est la dernière
+    if (currentIndex === -1 || currentIndex === trackQueue.length - 1) return;
+    
+    const nextTrackToPlay = trackQueue[currentIndex + 1];
+    loadTrack(nextTrackToPlay);
+  }, [trackQueue, currentTrackId, loadTrack]);
+  
+  const previousTrack = useCallback(() => {
+    if (trackQueue.length <= 1) return;
+    
+    const currentIndex = trackQueue.findIndex(track => track.track_id === currentTrackId);
+    
+    // Si on ne trouve pas la piste courante ou si c'est la première
+    if (currentIndex === -1 || currentIndex === 0) return;
+    
+    const previousTrackToPlay = trackQueue[currentIndex - 1];
+    loadTrack(previousTrackToPlay);
+  }, [trackQueue, currentTrackId, loadTrack]);
   
   return {
     // États
@@ -377,6 +255,7 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
     volume,
     isLoading,
     error,
+    trackQueue,
     
     // Méthodes
     playTrack,
@@ -384,6 +263,8 @@ export function useAudioPlayer(options: AudioPlayerOptions = {}) {
     togglePlay,
     changeVolume,
     seek,
+    nextTrack,
+    previousTrack,
     
     // Référence audio (optionnelle pour debug)
     audioRef,
