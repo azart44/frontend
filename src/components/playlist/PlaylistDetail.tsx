@@ -21,14 +21,21 @@ import TrackCard from '../track/TrackCard';
 import ChordoraButton from '../common/ChordoraButton';
 
 /**
+ * Props pour le composant PlaylistDetail
+ */
+interface PlaylistDetailProps {
+  edit?: boolean;
+}
+
+/**
  * Composant pour afficher les détails d'une playlist avec drag-and-drop
  */
-const PlaylistDetail: React.FC = () => {
+const PlaylistDetail: React.FC<PlaylistDetailProps> = ({ edit = false }) => {
   const { playlistId } = useParams<{ playlistId: string }>();
   const navigate = useNavigate();
   const { userId } = useAuth();
   const { currentTrack, isPlaying, playTrack, togglePlay } = useAudioContext();
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(edit);
   
   // Récupération de la playlist
   const { 
