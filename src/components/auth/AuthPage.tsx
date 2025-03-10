@@ -38,7 +38,6 @@ const useProfileCompletion = (authStatus: string, navigate: (path: string) => vo
 const AuthPage: React.FC = React.memo(() => {
   const navigate = useNavigate();
   const { authStatus } = useAuthenticator((context) => [context.authStatus]);
-  const { tokens } = useTheme();
   
   useProfileCompletion(authStatus, navigate);
 
@@ -91,9 +90,9 @@ const AuthPage: React.FC = React.memo(() => {
                   />
                   <Authenticator.SignUp.Password />
                   <Authenticator.SignUp.ConfirmPassword />
-                </>, 
+                </>
               );
-            },
+            }
           },
           SignIn: {
             FormFields() {
@@ -112,7 +111,7 @@ const AuthPage: React.FC = React.memo(() => {
                   <Authenticator.SignIn.Password />
                 </>
               );
-            },
+            }
           },
           Footer() {
             return (
@@ -121,7 +120,7 @@ const AuthPage: React.FC = React.memo(() => {
                   En vous inscrivant, vous acceptez nos conditions d'utilisation et notre politique de confidentialité.
                 </Text>
               </View>
-            )
+            );
           }
         }}
       />
