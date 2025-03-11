@@ -11,15 +11,15 @@ import {
   Image,
   Text,
   View,
-  Loader
+  Loader,
+  SearchField
 } from '@aws-amplify/ui-react';
 import { useForm } from '../../hooks/useForm';
 import { PlaylistFormData, Playlist } from '../../types/PlaylistTypes';
 import { useCreatePlaylist, useUpdatePlaylist } from '../../hooks/usePlaylists';
 import { useSearchTracks } from '../../hooks/useTracks';
-import { FaImage, FaMusic, FaPlus } from 'react-icons/fa';
+import { FaImage, FaMusic, FaPlus, FaCheck } from 'react-icons/fa';
 import { Track } from '../../types/TrackTypes';
-import TrackCard from '../track/TrackCard';
 import { useAuth } from '../../contexts/AuthContext';
 import ChordoraButton from '../common/ChordoraButton';
 
@@ -75,6 +75,9 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
   } = useSearchTracks(
     searchTerm ? { query: searchTerm, userId: authUserId } : { userId: authUserId }
   );
+  
+  // Filtrer les résultats pour n'afficher que les pistes de l'utilisateur courant
+  const filteredResults = searchResults?.tracks?.filter(track => track.user_id === authUserId) || [];
   
   // Utilisation des hooks de mutation
   const createPlaylistMutation = useCreatePlaylist();
@@ -401,11 +404,9 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
                     <Flex justifyContent="center" padding="1rem">
                       <Loader size="small" />
                     </Flex>
-                  ) : searchResults?.tracks && searchResults.tracks.length > 0 ? (
+                  ) : filteredResults.length > 0 ? (
                     <Flex direction="column" gap="0.5rem">
-                      {searchResults.tracks
-                        .filter(track => track.user_id === authUserId) // Filtrer pour ne montrer que les pistes de l'utilisateur
-                        .map(track => (
+                      {filteredResults.map(track => (
                         <Flex 
                           key={track.track_id}
                           justifyContent="space-between"
@@ -434,8 +435,17 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
                             size="small"
                             isDisabled={selectedTracks.some(t => t.track_id === track.track_id)}
                           >
-                            {selectedTracks.some(t => t.track_id === track.track_id) ? 
-                              'Ajoutée' : 'Ajouter'}
+                            {selectedTracks.some(t => t.track_id === track.track_id) ? (
+                              <>
+                                <FaCheck style={{ marginRight: '0.5rem' }} />
+                                Ajoutée
+                              </>
+                            ) : (
+                              <>
+                                <FaPlus style={{ marginRight: '0.5rem' }} />
+                                Ajouter
+                              </>
+                            )}
                           </ChordoraButton>
                         </Flex>
                       ))}
