@@ -19,7 +19,9 @@ import { useSearchTracks } from '../../hooks/useTracks';
 import { FaImage, FaMusic, FaPlus } from 'react-icons/fa';
 import { Track } from '../../types/TrackTypes';
 import TrackCard from '../track/TrackCard';
+import { useAuth } from '../../contexts/AuthContext';
 
+// Props du composant
 interface PlaylistFormProps {
   initialData?: {
     playlist_id?: string;
@@ -42,6 +44,7 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
   onSuccess, 
   onCancel 
 }) => {
+  const { userId: authUserId } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const isEditing = !!initialData?.playlist_id;
@@ -62,12 +65,14 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
     } as Track)) || []) as Track[]
   );
   
-  // Recherche de pistes
+  // Recherche de pistes filtrée par utilisateur cou
+
+  // Recherche de pistes filtrée par utilisateur courant
   const { 
     data: searchResults, 
     isLoading: isSearching 
   } = useSearchTracks(
-    searchTerm ? { query: searchTerm } : {}
+    searchTerm ? { query: searchTerm, userId: authUserId } : { userId: authUserId }
   );
   
   // Utilisation des hooks de mutation
@@ -117,17 +122,22 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
   const handleAddTrack = (track: Track) => {
     // Vérifier si la piste n'est pas déjà dans la sélection
     if (!selectedTracks.some(t => t.track_id === track.track_id)) {
-      const newTracks = [...selectedTracks, track];
-      setSelectedTracks(newTracks);
-      
-      // Mettre à jour les valeurs du formulaire
-      setValues(prev => ({
-        ...prev,
-        tracks: newTracks.map((t, index) => ({
-          track_id: t.track_id,
-          position: index
-        }))
-      }));
+      // Vérifier si l'utilisateur est propriétaire de la piste
+      if (track.user_id === authUserId) {
+        const newTracks = [...selectedTracks, track];
+        setSelectedTracks(newTracks);
+        
+        // Mettre à jour les valeurs du formulaire
+        setValues(prev => ({
+          ...prev,
+          tracks: newTracks.map((t, index) => ({
+            track_id: t.track_id,
+            position: index
+          }))
+        }));
+      } else {
+        setError("Vous ne pouvez ajouter à vos playlists que les pistes dont vous êtes le propriétaire.");
+      }
     }
   };
   
@@ -240,6 +250,15 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
           {isEditing ? 'Playlist mise à jour avec succès' : 'Playlist créée avec succès'}
         </Alert>
       )}
+      
+      {/* Message d'information sur la restriction */}
+      <Alert 
+        variation="info" 
+        heading="Information" 
+        marginBottom="1.5rem"
+      >
+        Conformément aux règles de Chordora, vous ne pouvez ajouter à vos playlists que les pistes dont vous êtes le propriétaire.
+      </Alert>
       
       <form onSubmit={handleSubmit}>
         <Flex direction="column" gap="1.5rem">
@@ -356,7 +375,7 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
                 variation="primary"
               >
                 <FaPlus style={{ marginRight: '0.5rem' }} />
-                Ajouter des pistes
+                {showTrackSearch ? 'Masquer la recherche' : 'Ajouter des pistes'}
               </Button>
             </Flex>
             
@@ -364,10 +383,10 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
             {showTrackSearch && (
               <Flex direction="column" gap="1rem" marginBottom="1.5rem">
                 <TextField
-                  label="Rechercher des pistes"
+                  label="Rechercher parmi vos pistes"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Titre, artiste, genre..."
+                  placeholder="Titre, genre..."
                 />
                 
                 <View 
@@ -417,7 +436,7 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
                     </Flex>
                   ) : (
                     <Text textAlign="center">
-                      {searchTerm ? 'Aucun résultat trouvé' : 'Recherchez des pistes à ajouter'}
+                      {searchTerm ? 'Aucune de vos pistes ne correspond à cette recherche' : 'Recherchez parmi vos pistes à ajouter'}
                     </Text>
                   )}
                 </View>
