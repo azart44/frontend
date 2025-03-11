@@ -23,6 +23,7 @@ import { FaImage, FaMusic, FaPlus, FaTimes, FaSort, FaCheck, FaSave } from 'reac
 import { Track } from '../../types/TrackTypes';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import ChordoraButton from '../common/ChordoraButton';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface PlaylistEditFormProps {
   playlist: Playlist;
@@ -38,6 +39,7 @@ const PlaylistEditForm: React.FC<PlaylistEditFormProps> = ({
   onCancel, 
   onSuccess 
 }) => {
+  const { userId: authUserId } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   
@@ -58,13 +60,16 @@ const PlaylistEditForm: React.FC<PlaylistEditFormProps> = ({
     })
   );
   
-  // Recherche de pistes
+  // Recherche de pistes filtrée par utilisateur courant uniquement
   const { 
     data: searchResults, 
     isLoading: isSearching 
   } = useSearchTracks(
-    searchTerm ? { query: searchTerm } : {}
+    searchTerm ? { query: searchTerm, userId: authUserId } : { userId: authUserId }
   );
+  
+  // Filtrer les résultats pour n'afficher que les pistes de l'utilisateur courant
+  const filteredResults = searchResults?.tracks?.filter(track => track.user_id === authUserId) || [];
   
   // Utilisation des hooks de mutation
   const updatePlaylistMutation = useUpdatePlaylist();
@@ -123,7 +128,12 @@ const PlaylistEditForm: React.FC<PlaylistEditFormProps> = ({
   const handleAddTrack = (track: Track) => {
     // Vérifier si la piste n'est pas déjà dans la sélection
     if (!selectedTracks.some(t => t.track_id === track.track_id)) {
-      setSelectedTracks(prev => [...prev, track]);
+      // Vérifier si l'utilisateur est propriétaire de la piste
+      if (track.user_id === authUserId) {
+        setSelectedTracks(prev => [...prev, track]);
+      } else {
+        setError("Vous ne pouvez ajouter à vos playlists que les pistes dont vous êtes le propriétaire.");
+      }
     }
   };
   
@@ -212,6 +222,15 @@ const PlaylistEditForm: React.FC<PlaylistEditFormProps> = ({
           Playlist mise à jour avec succès
         </Alert>
       )}
+      
+      {/* Message d'information sur la restriction */}
+      <Alert 
+        variation="info" 
+        heading="Information" 
+        marginBottom="1.5rem"
+      >
+        Conformément aux règles de Chordora, vous ne pouvez ajouter à vos playlists que les pistes dont vous êtes le propriétaire.
+      </Alert>
       
       <form onSubmit={handleSubmit}>
         <Flex direction="column" gap="1.5rem">
@@ -336,7 +355,7 @@ const PlaylistEditForm: React.FC<PlaylistEditFormProps> = ({
             {showTrackSearch && (
               <Flex direction="column" gap="1rem" marginBottom="1.5rem">
                 <SearchField
-                  label="Rechercher des pistes"
+                  label="Rechercher parmi vos pistes"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Titre, artiste, genre..."
@@ -353,9 +372,9 @@ const PlaylistEditForm: React.FC<PlaylistEditFormProps> = ({
                     <Flex justifyContent="center" padding="1rem">
                       <Loader size="small" />
                     </Flex>
-                  ) : searchResults?.tracks && searchResults.tracks.length > 0 ? (
+                  ) : filteredResults.length > 0 ? (
                     <Flex direction="column" gap="0.5rem">
-                      {searchResults.tracks.map(track => (
+                      {filteredResults.map(track => (
                         <Flex 
                           key={track.track_id}
                           justifyContent="space-between"
@@ -401,7 +420,7 @@ const PlaylistEditForm: React.FC<PlaylistEditFormProps> = ({
                     </Flex>
                   ) : (
                     <Text textAlign="center">
-                      {searchTerm ? 'Aucun résultat trouvé' : 'Recherchez des pistes à ajouter'}
+                      {searchTerm ? 'Aucune de vos pistes ne correspond à cette recherche' : 'Recherchez parmi vos pistes à ajouter'}
                     </Text>
                   )}
                 </View>
