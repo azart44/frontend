@@ -10,7 +10,8 @@ import {
   Card,
   Image,
   Text,
-  View
+  View,
+  Loader
 } from '@aws-amplify/ui-react';
 import { useForm } from '../../hooks/useForm';
 import { PlaylistFormData, Playlist } from '../../types/PlaylistTypes';
@@ -20,6 +21,7 @@ import { FaImage, FaMusic, FaPlus } from 'react-icons/fa';
 import { Track } from '../../types/TrackTypes';
 import TrackCard from '../track/TrackCard';
 import { useAuth } from '../../contexts/AuthContext';
+import ChordoraButton from '../common/ChordoraButton';
 
 // Props du composant
 interface PlaylistFormProps {
@@ -38,6 +40,7 @@ interface PlaylistFormProps {
 /**
  * Formulaire pour créer ou éditer une playlist
  * Amélioré avec upload d'image et ajout de pistes
+ * Modifié pour limiter les pistes aux pistes de l'utilisateur courant
  */
 const PlaylistForm: React.FC<PlaylistFormProps> = ({ 
   initialData, 
@@ -65,9 +68,7 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
     } as Track)) || []) as Track[]
   );
   
-  // Recherche de pistes filtrée par utilisateur cou
-
-  // Recherche de pistes filtrée par utilisateur courant
+  // Recherche de pistes filtrée par utilisateur courant uniquement
   const { 
     data: searchResults, 
     isLoading: isSearching 
@@ -370,13 +371,13 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
               marginBottom="1rem"
             >
               <Heading level={4}>Pistes ({selectedTracks.length})</Heading>
-              <Button 
+              <ChordoraButton 
                 onClick={() => setShowTrackSearch(!showTrackSearch)}
                 variation="primary"
               >
                 <FaPlus style={{ marginRight: '0.5rem' }} />
                 {showTrackSearch ? 'Masquer la recherche' : 'Ajouter des pistes'}
-              </Button>
+              </ChordoraButton>
             </Flex>
             
             {/* Recherche de pistes */}
@@ -397,10 +398,14 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
                   overflow="auto"
                 >
                   {isSearching ? (
-                    <Text textAlign="center">Recherche en cours...</Text>
+                    <Flex justifyContent="center" padding="1rem">
+                      <Loader size="small" />
+                    </Flex>
                   ) : searchResults?.tracks && searchResults.tracks.length > 0 ? (
                     <Flex direction="column" gap="0.5rem">
-                      {searchResults.tracks.map(track => (
+                      {searchResults.tracks
+                        .filter(track => track.user_id === authUserId) // Filtrer pour ne montrer que les pistes de l'utilisateur
+                        .map(track => (
                         <Flex 
                           key={track.track_id}
                           justifyContent="space-between"
@@ -423,14 +428,15 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
                             </Flex>
                           </Flex>
                           
-                          <Button 
+                          <ChordoraButton 
                             onClick={() => handleAddTrack(track)}
                             variation="primary"
                             size="small"
                             isDisabled={selectedTracks.some(t => t.track_id === track.track_id)}
                           >
-                            {selectedTracks.some(t => t.track_id === track.track_id) ? 'Ajoutée' : 'Ajouter'}
-                          </Button>
+                            {selectedTracks.some(t => t.track_id === track.track_id) ? 
+                              'Ajoutée' : 'Ajouter'}
+                          </ChordoraButton>
                         </Flex>
                       ))}
                     </Flex>
@@ -474,14 +480,13 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
                       </Flex>
                     </Flex>
                     
-                    <Button 
+                    <ChordoraButton 
                       onClick={() => handleRemoveTrack(track.track_id)}
-                      variation="link"
+                      variation="danger"
                       size="small"
-                      style={{ color: 'red' }}
                     >
                       Retirer
-                    </Button>
+                    </ChordoraButton>
                   </Flex>
                 ))}
               </Flex>
@@ -498,33 +503,33 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({
                 <Text marginTop="1rem">
                   Aucune piste dans cette playlist
                 </Text>
-                <Button 
+                <ChordoraButton 
                   onClick={() => setShowTrackSearch(true)}
                   variation="link"
                   marginTop="0.5rem"
                 >
-                  Ajouter des pistes
-                </Button>
+                  Ajouter vos pistes
+                </ChordoraButton>
               </Flex>
             )}
           </Card>
           
           <Flex gap="1rem">
-            <Button 
+            <ChordoraButton 
               type="submit" 
               variation="primary"
               isLoading={createPlaylistMutation.isPending || updatePlaylistMutation.isPending}
             >
               {isEditing ? 'Mettre à jour' : 'Créer la playlist'}
-            </Button>
+            </ChordoraButton>
             
             {onCancel && (
-              <Button 
+              <ChordoraButton 
                 onClick={onCancel} 
                 variation="link"
               >
                 Annuler
-              </Button>
+              </ChordoraButton>
             )}
           </Flex>
         </Flex>
