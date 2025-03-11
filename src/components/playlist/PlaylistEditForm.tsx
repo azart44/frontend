@@ -12,8 +12,7 @@ import {
   Text,
   View,
   Divider,
-  Loader,
-  SearchField
+  Loader
 } from '@aws-amplify/ui-react';
 import { useForm } from '../../hooks/useForm';
 import { Playlist, PlaylistFormData } from '../../types/PlaylistTypes';
@@ -354,7 +353,8 @@ const PlaylistEditForm: React.FC<PlaylistEditFormProps> = ({
             {/* Recherche de pistes */}
             {showTrackSearch && (
               <Flex direction="column" gap="1rem" marginBottom="1.5rem">
-                <SearchField
+                {/* Remplace SearchField par TextField qui est sûrement disponible */}
+                <TextField
                   label="Rechercher parmi vos pistes"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
