@@ -75,12 +75,17 @@ const TrackCard: React.FC<TrackCardProps> = ({
     navigate(`/tracks/${track.track_id}`);
   };
   
-  // Gérer l'ajout à une playlist
+  // Gérer l'ajout à une playlist - modifié pour vérifier si l'utilisateur est propriétaire
   const handleAddToPlaylist = (e: React.MouseEvent) => {
     e.stopPropagation();
     
     if (!isAuthenticated) {
       navigate('/auth');
+      return;
+    }
+    
+    if (!isOwner) {
+      alert("Vous ne pouvez ajouter à vos playlists que vos propres pistes.");
       return;
     }
     
@@ -205,14 +210,19 @@ const TrackCard: React.FC<TrackCardProps> = ({
                 isCompact
               />
             )}
-            <Button
-              variation="link"
-              size="small"
-              style={{ padding: 0 }}
-              onClick={handleAddToPlaylist}
-            >
-              <FaPlus color="#a0a0a0" />
-            </Button>
+            
+            {/* Bouton "Ajouter à une playlist" - visible uniquement pour les pistes du propriétaire */}
+            {isAuthenticated && (
+              <Button
+                variation="link"
+                size="small"
+                style={{ padding: 0 }}
+                onClick={handleAddToPlaylist}
+                title={!isOwner ? "Vous ne pouvez ajouter à vos playlists que vos propres pistes" : "Ajouter à une playlist"}
+              >
+                <FaPlus color={isOwner ? "#a0a0a0" : "#555555"} />
+              </Button>
+            )}
             
             {/* Menu d'options avec bouton à trois points (uniquement pour le propriétaire) */}
             {isOwner && (
@@ -340,14 +350,18 @@ const TrackCard: React.FC<TrackCardProps> = ({
           </Flex>
           
           <Flex gap="0.5rem">
-            <Button
-              variation="link"
-              size="small"
-              style={{ padding: 0 }}
-              onClick={handleAddToPlaylist}
-            >
-              <FaPlus color="#a0a0a0" />
-            </Button>
+            {/* Bouton "Ajouter à une playlist" - visible uniquement pour les pistes du propriétaire */}
+            {isAuthenticated && (
+              <Button
+                variation="link"
+                size="small"
+                style={{ padding: 0 }}
+                onClick={handleAddToPlaylist}
+                title={!isOwner ? "Vous ne pouvez ajouter à vos playlists que vos propres pistes" : "Ajouter à une playlist"}
+              >
+                <FaPlus color={isOwner ? "#a0a0a0" : "#555555"} />
+              </Button>
+            )}
             
             {/* Menu d'options avec bouton à trois points (uniquement pour le propriétaire) */}
             {isOwner && (
@@ -495,7 +509,9 @@ const TrackCard: React.FC<TrackCardProps> = ({
           <Flex justifyContent="space-between" alignItems="center">
             <Text fontSize="0.8rem" color="var(--chordora-text-secondary)">
               {formatTime(track.duration || 0)}
-            </Text><Flex gap="0.5rem">
+            </Text>
+            
+            <Flex gap="0.5rem">
               {showLikeButton && (
                 <LikeButton
                   trackId={track.track_id}
@@ -504,14 +520,19 @@ const TrackCard: React.FC<TrackCardProps> = ({
                   isCompact
                 />
               )}
-              <Button
-                variation="link"
-                size="small"
-                style={{ padding: 0, zIndex: 5 }}
-                onClick={handleAddToPlaylist}
-              >
-                <FaPlus color="#a0a0a0" />
-              </Button>
+              
+              {/* Bouton "Ajouter à une playlist" - visible uniquement pour les pistes du propriétaire */}
+              {isAuthenticated && (
+                <Button
+                  variation="link"
+                  size="small"
+                  style={{ padding: 0, zIndex: 5 }}
+                  onClick={handleAddToPlaylist}
+                  title={!isOwner ? "Vous ne pouvez ajouter à vos playlists que vos propres pistes" : "Ajouter à une playlist"}
+                >
+                  <FaPlus color={isOwner ? "#a0a0a0" : "#555555"} />
+                </Button>
+              )}
               
               {/* Menu d'options avec bouton à trois points (uniquement pour le propriétaire) */}
               {isOwner && (
