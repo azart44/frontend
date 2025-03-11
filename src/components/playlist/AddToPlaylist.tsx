@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Text, 
   Flex, 
@@ -35,7 +35,7 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
   onClose 
 }) => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, userId } = useAuth();
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string>('');
   const [showNewPlaylistForm, setShowNewPlaylistForm] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -50,6 +50,15 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
   
   // Mutation pour mettre à jour une playlist
   const updatePlaylistMutation = useUpdatePlaylist();
+  
+  // Vérifier que l'utilisateur est bien le propriétaire de la piste
+  useEffect(() => {
+    if (track && userId && track.user_id !== userId) {
+      setErrorMessage("Vous ne pouvez ajouter à vos playlists que vos propres pistes.");
+    } else {
+      setErrorMessage(null);
+    }
+  }, [track, userId]);
   
   // Gérer le succès de la création d'une nouvelle playlist
   const handleNewPlaylistSuccess = (playlist: Playlist) => {
@@ -74,6 +83,12 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
 
     if (!selectedPlaylistId) {
       setErrorMessage('Veuillez sélectionner une playlist');
+      return;
+    }
+    
+    // Vérification supplémentaire de propriété
+    if (track.user_id !== userId) {
+      setErrorMessage("Vous ne pouvez ajouter à vos playlists que vos propres pistes.");
       return;
     }
     
@@ -164,7 +179,7 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
             <ChordoraButton 
               onClick={handleAddToExistingPlaylist} 
               variation="primary"
-              isDisabled={!selectedPlaylistId || updatePlaylistMutation.isPending}
+              isDisabled={!selectedPlaylistId || updatePlaylistMutation.isPending || track.user_id !== userId}
               isLoading={updatePlaylistMutation.isPending}
             >
               Ajouter
@@ -198,7 +213,21 @@ const AddToPlaylist: React.FC<AddToPlaylistProps> = ({
           </Alert>
         )}
         
-        {showNewPlaylistForm ? (
+        {/* Message d'information sur la restriction des playlists */}
+        <Alert 
+          variation="info" 
+          heading="Information" 
+          marginBottom="1.5rem"
+        >
+          Conformément aux règles de Chordora, vous ne pouvez ajouter à vos playlists que les pistes dont vous êtes le propriétaire.
+        </Alert>
+        
+        {/* Si erreur de propriété, empêcher la suite */}
+        {track.user_id !== userId ? (
+          <Text textAlign="center" marginBottom="1rem">
+            Vous ne pouvez pas ajouter cette piste car vous n'en êtes pas le propriétaire.
+          </Text>
+        ) : showNewPlaylistForm ? (
           <PlaylistForm 
             initialData={{
               title: '',
