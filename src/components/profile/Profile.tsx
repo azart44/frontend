@@ -14,8 +14,9 @@ import {
 } from '@aws-amplify/ui-react';
 import { useUserProfile } from '../../hooks/useProfile';
 import EditProfileForm from './EditProfileForm';
-import ProfileCollection from './ProfileCollection'; // Importation du nouveau composant
+import ProfileCollection from './ProfileCollection'; 
 import { useAuth } from '../../contexts/AuthContext';
+import { AVAILABILITY_STATUS } from '../../constants/profileData';
 import { 
   FaEdit, 
   FaMapMarkerAlt, 
@@ -29,7 +30,8 @@ import {
   FaYoutube,
   FaSoundcloud,
   FaTwitter,
-  FaEllipsisH
+  FaEllipsisH,
+  FaCircle
 } from 'react-icons/fa';
 import { 
   useFollowStatus, 
@@ -40,7 +42,7 @@ import {
 import FollowModal from '../follow/FollowModal';
 
 /**
- * Composant d'affichage d'un profil utilisateur (thème sombre)
+ * Composant d'affichage d'un profil utilisateur
  */
 const Profile: React.FC = () => {
   const navigate = useNavigate();
@@ -48,7 +50,7 @@ const Profile: React.FC = () => {
   const { isAuthenticated, userId: authUserId } = useAuth();
   
   const [isEditing, setIsEditing] = useState(false);
-  const [activeTab, setActiveTab] = useState('collection'); // Changement de l'onglet par défaut à 'collection'
+  const [activeTab, setActiveTab] = useState('collection');
   const [imageError, setImageError] = useState(false);
   const [showFollowModal, setShowFollowModal] = useState(false);
   const [modalTab, setModalTab] = useState<'followers' | 'following'>('followers');
@@ -73,7 +75,7 @@ const Profile: React.FC = () => {
   const { 
     data: followCounts, 
     isLoading: isFollowCountsLoading,
-    refetch: refetchFollowCounts // Ajouter cette référence
+    refetch: refetchFollowCounts
   } = useFollowCounts(targetUserId);
   
   const followMutation = useFollowUser();
@@ -107,6 +109,17 @@ const Profile: React.FC = () => {
     } else {
       followMutation.mutate(targetUserId);
     }
+  };
+
+  // Récupérer le statut de disponibilité adapté au type d'utilisateur
+  const getAvailabilityStatusInfo = (userType: string, status: string) => {
+    const userTypeKey = userType === 'rappeur' ? 'rappeur' : 
+                       userType === 'beatmaker' ? 'beatmaker' : 
+                       userType === 'loopmaker' ? 'loopmaker' : 'rappeur';
+    
+    const statusOptions = AVAILABILITY_STATUS[userTypeKey];
+    return statusOptions.find(option => option.value === status) || 
+           { value: status, label: 'Statut inconnu', color: 'gray' };
   };
 
   // Affichage du loader pendant le chargement
@@ -172,6 +185,10 @@ const Profile: React.FC = () => {
   const profileImageSrc = imageError || !profile.profileImageUrl 
     ? '/default-profile.jpg' 
     : profile.profileImageUrl;
+
+  // Obtenir les informations sur le statut de disponibilité
+  const availabilityStatus = profile.availabilityStatus ? 
+    getAvailabilityStatusInfo(profile.userType || 'rappeur', profile.availabilityStatus) : null;
 
   // Couleur d'arrière-plan générée en fonction du nom d'utilisateur
   const generateBgColor = (username: string) => {
@@ -315,12 +332,33 @@ const Profile: React.FC = () => {
               </Flex>
             </Flex>
             
-            <Flex gap="0.5rem" wrap="wrap">
+            <Flex gap="0.5rem" wrap="wrap" alignItems="center">
               {profile.userType && (
                 <Badge variation="info">{profile.userType}</Badge>
               )}
-              {profile.experienceLevel && (
-                <Badge variation="success">{profile.experienceLevel}</Badge>
+              
+              {/* Indicateur de disponibilité */}
+              {availabilityStatus && (
+                <Badge 
+                  variation="info" 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.3rem',
+                    backgroundColor: 'transparent',
+                    border: `1px solid var(--chordora-divider)`
+                  }}
+                >
+                  <FaCircle 
+                    size={8} 
+                    style={{ 
+                      color: availabilityStatus.color === 'red' ? '#ff4d4f' : 
+                            availabilityStatus.color === 'green' ? '#52c41a' : 
+                            availabilityStatus.color === 'yellow' ? '#faad14' : '#d9d9d9'
+                    }} 
+                  />
+                  {availabilityStatus.label}
+                </Badge>
               )}
             </Flex>
             
@@ -553,15 +591,15 @@ const Profile: React.FC = () => {
       
       {/* Modal pour afficher les followers/following */}
       {showFollowModal && targetUserId && (
-  <FollowModal
-    userId={targetUserId}
-    isOpen={showFollowModal}
-    onClose={() => setShowFollowModal(false)}
-    initialTab={modalTab}
-    username={profile?.username || 'Utilisateur'}
-    onFollowStateChange={() => refetchFollowCounts()} // Ajouter cette prop
-  />
-)}
+        <FollowModal
+          userId={targetUserId}
+          isOpen={showFollowModal}
+          onClose={() => setShowFollowModal(false)}
+          initialTab={modalTab}
+          username={profile?.username || 'Utilisateur'}
+          onFollowStateChange={() => refetchFollowCounts()}
+        />
+      )}
     </View>
   );
 };

@@ -18,7 +18,14 @@ import { fetchUserAttributes, updateUserAttributes } from 'aws-amplify/auth';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUpdateProfile } from '../../hooks/useProfile';
-import { MUSIC_GENRES, EXPERIENCE_LEVELS, USER_ROLES, MUSIC_MOODS, SOFTWARE_OPTIONS, EQUIPMENT_OPTIONS } from '../../constants/profileData';
+import { 
+  MUSIC_GENRES, 
+  USER_ROLES, 
+  MUSIC_MOODS, 
+  SOFTWARE_OPTIONS, 
+  EQUIPMENT_OPTIONS,
+  AVAILABILITY_STATUS 
+} from '../../constants/profileData';
 
 // Configuration des étapes
 const PROFILE_STEPS = [
@@ -33,9 +40,9 @@ const PROFILE_STEPS = [
     description: 'Indiquez votre rôle principal dans la création musicale'
   },
   {
-    id: 'experienceLevel',
-    title: 'Votre niveau d\'expérience',
-    description: 'Cela aidera à vous connecter avec les bons partenaires'
+    id: 'availability',
+    title: 'Votre statut',
+    description: 'Indiquez aux autres votre disponibilité actuelle'
   },
   {
     id: 'software',
@@ -92,6 +99,8 @@ const ProgressBar: React.FC<{ value: number; max: number }> = ({ value, max }) =
   );
 };
 
+export default CompleteProfile;
+
 const CompleteProfile: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated, isProfileComplete, userId, refreshAuth } = useAuth();
@@ -109,7 +118,7 @@ const CompleteProfile: React.FC = () => {
     email: '',
     username: '',
     userType: '',
-    experienceLevel: '',
+    availabilityStatus: '',
     software: '',
     equipment: [] as string[],
     musicGenres: [] as string[],
@@ -253,6 +262,15 @@ const CompleteProfile: React.FC = () => {
     });
   };
 
+  // Récupérer les options de statut de disponibilité basées sur le type d'utilisateur
+  const getAvailabilityOptions = () => {
+    const userType = profileData.userType?.toLowerCase() || 'rappeur';
+    if (userType === 'beatmaker' || userType === 'loopmaker') {
+      return AVAILABILITY_STATUS.beatmaker; // Beatmaker et Loopmaker ont les mêmes options
+    }
+    return AVAILABILITY_STATUS.rappeur;
+  };
+
   const handleNext = async () => {
     // Validation avant de passer à l'étape suivante
     switch (PROFILE_STEPS[step].id) {
@@ -268,9 +286,9 @@ const CompleteProfile: React.FC = () => {
           return;
         }
         break;
-      case 'experienceLevel':
-        if (!profileData.experienceLevel) {
-          alert('Veuillez sélectionner un niveau d\'expérience');
+      case 'availability':
+        if (!profileData.availabilityStatus) {
+          alert('Veuillez sélectionner un statut de disponibilité');
           return;
         }
         break;
@@ -409,23 +427,26 @@ const CompleteProfile: React.FC = () => {
             </SelectField>
           </Flex>
         );
-      
-      case 'experienceLevel':
+
+      case 'availability':
         return (
           <Flex direction="column" gap="1rem">
             <SelectField
-              label="Niveau d'expérience"
-              name="experienceLevel"
-              value={profileData.experienceLevel}
+              label="Votre statut de disponibilité"
+              name="availabilityStatus"
+              value={profileData.availabilityStatus}
               onChange={handleInputChange}
               isRequired
               size="large"
             >
-              <option value="">Sélectionnez votre niveau</option>
-              {EXPERIENCE_LEVELS.map((level) => (
-                <option key={level} value={level}>{level}</option>
+              <option value="">Sélectionnez votre statut</option>
+              {getAvailabilityOptions().map((status) => (
+                <option key={status.value} value={status.value}>{status.label}</option>
               ))}
             </SelectField>
+            <Text fontSize="small" color="gray">
+              Ce statut indique aux autres utilisateurs votre disponibilité actuelle pour des collaborations
+            </Text>
           </Flex>
         );
       
@@ -561,7 +582,7 @@ const CompleteProfile: React.FC = () => {
               />
               <Flex direction="column">
                 <Text fontWeight="bold">{profileData.username}</Text>
-                <Text>{profileData.userType} • {profileData.experienceLevel}</Text>
+                <Text>{profileData.userType}</Text>
                 {profileData.location && <Text>{profileData.location}</Text>}
               </Flex>
             </Flex>
@@ -571,6 +592,13 @@ const CompleteProfile: React.FC = () => {
               gap="1rem"
               marginBottom="1rem"
             >
+              <View>
+                <Text fontWeight="bold">Statut de disponibilité</Text>
+                <Text>
+                  {getAvailabilityOptions().find(option => option.value === profileData.availabilityStatus)?.label || 'Non spécifié'}
+                </Text>
+              </View>
+
               <View>
                 <Text fontWeight="bold">Logiciel principal</Text>
                 <Text>{profileData.software || 'Non spécifié'}</Text>
@@ -666,5 +694,3 @@ const CompleteProfile: React.FC = () => {
     </View>
   );
 };
-
-export default CompleteProfile;

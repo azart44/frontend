@@ -12,13 +12,20 @@ import {
   TextAreaField,
   Badge
 } from '@aws-amplify/ui-react';
-import { MUSIC_GENRES, EXPERIENCE_LEVELS, USER_ROLES, MUSIC_MOODS, SOFTWARE_OPTIONS, EQUIPMENT_OPTIONS } from '../../constants/profileData';
+import { 
+  MUSIC_GENRES, 
+  USER_ROLES, 
+  MUSIC_MOODS, 
+  SOFTWARE_OPTIONS, 
+  EQUIPMENT_OPTIONS,
+  AVAILABILITY_STATUS
+} from '../../constants/profileData';
 import { UserProfile } from '../../types/ProfileTypes';
 import { useForm } from '../../hooks/useForm';
 import { useUpdateProfile } from '../../hooks/useProfile';
 import { useAuth } from '../../contexts/AuthContext';
 
-// Composant d'onglets simple personnalisé (puisque celui d'Amplify pose des problèmes)
+// Composant d'onglets simple personnalisé
 interface TabProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
@@ -73,7 +80,6 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
     userId: userProfile.userId,
     username: userProfile.username || '',
     userType: userProfile.userType,
-    experienceLevel: userProfile.experienceLevel,
     bio: userProfile.bio || '',
     location: userProfile.location || '',
     tags: userProfile.tags || [],
@@ -82,6 +88,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
     software: userProfile.software || '',
     equipment: userProfile.equipment || [],
     favoriteArtists: userProfile.favoriteArtists || ['', '', ''],
+    availabilityStatus: userProfile.availabilityStatus || '',
     socialLinks: userProfile.socialLinks || { 
       instagram: '', 
       soundcloud: '', 
@@ -206,6 +213,15 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
     newArtists[index] = value;
     setValues(prev => ({ ...prev, favoriteArtists: newArtists }));
   };
+
+  // Récupérer les options de statut de disponibilité basées sur le type d'utilisateur
+  const getAvailabilityOptions = () => {
+    const userType = values.userType?.toLowerCase() || 'rappeur';
+    if (userType === 'beatmaker' || userType === 'loopmaker') {
+      return AVAILABILITY_STATUS.beatmaker; // Beatmaker et Loopmaker ont les mêmes options
+    }
+    return AVAILABILITY_STATUS.rappeur;
+  };
   
   // Gérer la soumission du formulaire
   const handleSubmit = async (e: React.FormEvent) => {
@@ -305,15 +321,16 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
               ))}
             </SelectField>
             
+            {/* Ajout du sélecteur de statut de disponibilité */}
             <SelectField
-              label="Niveau d'expérience"
-              name="experienceLevel"
-              value={values.experienceLevel}
+              label="Statut de disponibilité"
+              name="availabilityStatus"
+              value={values.availabilityStatus}
               onChange={handleChange}
             >
-              <option value="">Sélectionnez un niveau</option>
-              {EXPERIENCE_LEVELS.map((level) => (
-                <option key={level} value={level}>{level}</option>
+              <option value="">Sélectionnez votre statut</option>
+              {getAvailabilityOptions().map((status) => (
+                <option key={status.value} value={status.value}>{status.label}</option>
               ))}
             </SelectField>
             
