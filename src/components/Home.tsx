@@ -255,6 +255,7 @@ const HomePage: React.FC = () => {
                 track={{...track, position: index + 1}}
                 onPlay={() => handlePlayTrack(track)}
                 showLikeButton={true}
+                showFavoriteButton={true}
                 displayStyle="row"
               />
               {/* Ajouter un séparateur entre les pistes sauf pour la dernière */}

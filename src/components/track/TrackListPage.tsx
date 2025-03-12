@@ -192,6 +192,7 @@ const TrackListPage: React.FC = () => {
               track={track}
               onPlay={() => handlePlayTrack(track)}
               showLikeButton={true}
+              showFavoriteButton={true}
             />
           ))}
         </Flex>

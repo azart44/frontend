@@ -341,6 +341,7 @@ const TrackList: React.FC<TrackListProps> = ({ userId, filters = {}, onRefresh }
               track={track}
               onPlay={() => handlePlayTrack(track)}
               showLikeButton={true}
+              showFavoriteButton={true}
               displayStyle="row"
               onEdit={canEdit ? startEditing : undefined}
               onDelete={canEdit ? handleDeleteTrack : undefined}
