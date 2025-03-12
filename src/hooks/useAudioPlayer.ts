@@ -25,6 +25,11 @@ export function useAudioPlayer() {
   
   // Référence pour contrôler si le compteur d'écoute a été incrémenté
   const playCountedRef = useRef<boolean>(false);
+  const playStartTimeRef = useRef<number | null>(null);
+  
+  // Constants pour le comptage des écoutes
+  const MIN_PLAY_DURATION = 20; // 20 secondes minimum pour compter une écoute
+  const PLAY_COUNT_COOLDOWN = 3600; // 1 heure (en secondes) avant de pouvoir compter une nouvelle écoute pour la même piste
   
   // Initialiser l'élément audio si nécessaire
   useEffect(() => {
@@ -118,10 +123,23 @@ export function useAudioPlayer() {
       const time = audioRef.current.currentTime;
       setCurrentTime(time);
       
-      // Incrémenter le compteur d'écoute une fois que l'utilisateur a écouté au moins 10 secondes
-      if (time > 10 && !playCountedRef.current && currentTrackId) {
+      // Incrémenter le compteur d'écoute uniquement si :
+      // 1. L'utilisateur a écouté au moins MIN_PLAY_DURATION secondes
+      // 2. L'écoute n'a pas encore été comptée pour cette session
+      if (time > MIN_PLAY_DURATION && !playCountedRef.current && currentTrackId) {
         playCountedRef.current = true;
-        incrementPlayCount(currentTrackId).catch(console.error);
+        
+        // Stocker l'horodatage en localStorage pour éviter les comptages multiples
+        const lastPlayed = localStorage.getItem(`lastPlayed_${currentTrackId}`);
+        const now = Math.floor(Date.now() / 1000); // Timestamp actuel en secondes
+        
+        if (!lastPlayed || (now - parseInt(lastPlayed)) > PLAY_COUNT_COOLDOWN) {
+          // Enregistrer le nouvel horodatage
+          localStorage.setItem(`lastPlayed_${currentTrackId}`, now.toString());
+          
+          // Appeler l'API pour incrémenter le compteur d'écoute
+          incrementPlayCount(currentTrackId).catch(console.error);
+        }
       }
     }
   };
@@ -153,6 +171,7 @@ export function useAudioPlayer() {
     try {
       // Réinitialiser le statut de comptage
       playCountedRef.current = false;
+      playStartTimeRef.current = Date.now();
       
       // Mettre à jour les états
       setCurrentTrackId(track.track_id);
