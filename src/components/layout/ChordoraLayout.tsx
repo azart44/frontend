@@ -12,6 +12,7 @@ import {
   FaMusic, 
   FaUser, 
   FaHeart,
+  FaStar,
   FaSignOutAlt,
   FaSignInAlt,
   FaCog,
@@ -126,8 +127,16 @@ const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
                 className={`sidebar-item ${isActive('/favorites') ? 'active' : ''}`}
                 onClick={() => navigateTo('/favorites')}
               >
-                <FaHeart className="sidebar-item-icon" />
+                <FaStar className="sidebar-item-icon" />
                 {sidebarExpanded && <span className="sidebar-item-text">Favoris</span>}
+              </div>
+              
+              <div 
+                className={`sidebar-item ${isActive('/likes') ? 'active' : ''}`}
+                onClick={() => navigateTo('/likes')}
+              >
+                <FaHeart className="sidebar-item-icon" />
+                {sidebarExpanded && <span className="sidebar-item-text">Likes</span>}
               </div>
               
               <div 
