@@ -99,7 +99,6 @@ const ProgressBar: React.FC<{ value: number; max: number }> = ({ value, max }) =
   );
 };
 
-export default CompleteProfile;
 
 const CompleteProfile: React.FC = () => {
   const navigate = useNavigate();
@@ -694,3 +693,5 @@ const CompleteProfile: React.FC = () => {
     </View>
   );
 };
+
+export default CompleteProfile;
