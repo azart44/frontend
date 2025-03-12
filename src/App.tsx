@@ -18,8 +18,9 @@ const CompleteProfile = lazy(() => import('./components/profile/CompleteProfile'
 const UserList = lazy(() => import('./components/user/UserList'));
 const TrackUpload = lazy(() => import('./components/track/TrackUpload'));
 const AccountSettings = lazy(() => import('./components/account/AccountSettings'));
-// Ajouter le composant Favorites
-const Favorites = lazy(() => import('./components/favorites/Favorites'));
+// Importer les composants Likes et Favoris
+const Favorites = lazy(() => import('./components/favorites/FavoritesPage'));
+const Likes = lazy(() => import('./components/favorites/Favorites'));
 // Ajouter les composants pour les playlists
 const PlaylistList = lazy(() => import('./components/playlist/PlaylistList'));
 const PlaylistDetail = lazy(() => import('./components/playlist/PlaylistDetail'));
@@ -126,7 +127,15 @@ function App() {
                       } 
                     />
                     
-                    {/* Ajout de la route pour les favoris */}
+                    {/* Ajout des routes pour les likes et favoris */}
+                    <Route 
+                      path="/likes" 
+                      element={
+                        <ProfileCompletionRoute>
+                          <Likes />
+                        </ProfileCompletionRoute>
+                      } 
+                    />
                     <Route 
                       path="/favorites" 
                       element={

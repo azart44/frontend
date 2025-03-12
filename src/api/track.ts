@@ -35,6 +35,16 @@ export const getLikedTracks = () => {
 };
 
 /**
+ * Récupère les pistes favorites de l'utilisateur courant
+ * @returns Promise avec la liste des pistes favorites
+ */
+export const getFavoriteTracks = () => {
+  return apiClient.get<TracksResponse>('/tracks', { 
+    params: { favoritedBy: 'current' }
+  });
+};
+
+/**
  * Récupère les pistes likées par un utilisateur spécifique
  * @param userId ID de l'utilisateur
  * @returns Promise avec la liste des pistes likées

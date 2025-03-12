@@ -22,12 +22,14 @@ import { Track } from '../../types/TrackTypes';
 import { useAudioContext } from '../../contexts/AudioContext';
 import { useAuth } from '../../contexts/AuthContext';
 import LikeButton from '../common/LikeButton';
+import FavoriteButton from '../common/FavoriteButton';
 import AddToPlaylist from '../playlist/AddToPlaylist';
 
 interface TrackCardProps {
   track: Track;
   onPlay?: () => void;
   showLikeButton?: boolean;
+  showFavoriteButton?: boolean;
   isInFavorites?: boolean;
   displayStyle?: 'compact' | 'full' | 'row';
   onEdit?: (track: Track) => void;
@@ -42,6 +44,7 @@ const TrackCard: React.FC<TrackCardProps> = ({
   track,
   onPlay,
   showLikeButton = false,
+  showFavoriteButton = false,
   isInFavorites = false,
   displayStyle = 'full',
   onEdit,
@@ -211,6 +214,15 @@ const TrackCard: React.FC<TrackCardProps> = ({
               />
             )}
             
+            {/* Bouton de favoris */}
+            {showFavoriteButton && (
+              <FavoriteButton
+                trackId={track.track_id}
+                size="small"
+                isCompact
+              />
+            )}
+            
             {/* Bouton "Ajouter à une playlist" - visible uniquement pour les pistes du propriétaire */}
             {isAuthenticated && (
               <Button
@@ -350,6 +362,15 @@ const TrackCard: React.FC<TrackCardProps> = ({
           </Flex>
           
           <Flex gap="0.5rem">
+            {/* Bouton de favoris */}
+            {showFavoriteButton && (
+              <FavoriteButton
+                trackId={track.track_id}
+                size="small"
+                isCompact
+              />
+            )}
+            
             {/* Bouton "Ajouter à une playlist" - visible uniquement pour les pistes du propriétaire */}
             {isAuthenticated && (
               <Button
@@ -516,6 +537,15 @@ const TrackCard: React.FC<TrackCardProps> = ({
                 <LikeButton
                   trackId={track.track_id}
                   likesCount={track.likes || 0}
+                  size="small"
+                  isCompact
+                />
+              )}
+              
+              {/* Bouton de favoris */}
+              {showFavoriteButton && (
+                <FavoriteButton
+                  trackId={track.track_id}
                   size="small"
                   isCompact
                 />
