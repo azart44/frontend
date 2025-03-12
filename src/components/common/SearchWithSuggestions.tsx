@@ -186,7 +186,7 @@ const SearchWithSuggestions: React.FC = () => {
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               >
                 <Image
-                  src={suggestion.profileImage || 'https://via.placeholder.com/40'}
+                  src={suggestion.profileImageUrl || 'https://via.placeholder.com/40'}
                   alt={suggestion.name}
                   width="40px"
                   height="40px"
