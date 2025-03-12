@@ -40,6 +40,7 @@ export interface UserProfile {
   // Indicateurs d'état
   profileCompleted?: boolean;
   statusIndicator?: 'available' | 'busy' | 'lookingForProject' | 'offline';
+  availabilityStatus?: string;
 
   // Métadonnées
   createdAt?: number;
