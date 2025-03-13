@@ -108,6 +108,35 @@ const BeatSwipeMatches: React.FC = () => {
   // Récupérer les matches
   const matches = matchesData?.matches || [];
   
+  // Fonction pour gérer la navigation vers le profil d'un utilisateur
+  const handleProfileClick = (userId: string) => {
+    navigate(`/profile/${userId}`);
+  };
+  
+  // Fonction pour jouer une piste
+  const handlePlayTrack = (match: any) => {
+    if (!match.track || !match.track.presigned_url) {
+      console.error("URL audio manquante pour la piste", match.track);
+      return;
+    }
+    
+    const trackToPlay = {
+      track_id: match.track.track_id,
+      title: match.track.title,
+      artist: match.track.artist || (userRole === 'artist' ? match.beatmaker.username : match.artist.username),
+      genre: match.track.genre,
+      bpm: match.track.bpm,
+      cover_image: match.track.cover_image,
+      presigned_url: match.track.presigned_url
+    };
+    
+    if (currentTrack?.track_id === match.track.track_id) {
+      togglePlay();
+    } else {
+      playTrack(trackToPlay as any);
+    }
+  };
+  
   return (
     <View padding="2rem" className="beat-swipe-matches-page">
       <Button 
@@ -156,22 +185,7 @@ const BeatSwipeMatches: React.FC = () => {
                   {/* Bouton play */}
                   <Button
                     className="beat-swipe-match-play"
-                    onClick={() => {
-                      const trackToPlay = {
-                        track_id: match.track.track_id,
-                        title: match.track.title,
-                        genre: match.track.genre,
-                        bpm: match.track.bpm,
-                        cover_image: match.track.cover_image,
-                        presigned_url: match.track.presigned_url
-                      };
-                      
-                      if (currentTrack?.track_id === match.track.track_id) {
-                        togglePlay();
-                      } else {
-                        playTrack(trackToPlay as any);
-                      }
-                    }}
+                    onClick={() => handlePlayTrack(match)}
                     variation="primary"
                   >
                     {currentTrack?.track_id === match.track.track_id && isPlaying 
@@ -201,12 +215,18 @@ const BeatSwipeMatches: React.FC = () => {
                   <Flex gap="1rem" alignItems="center">
                     <FaUser />
                     {userRole === 'artist' ? (
-                      <div>
+                      <div 
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => handleProfileClick(match.beatmaker.user_id)}
+                      >
                         <Text fontWeight="bold">Beatmaker:</Text>
                         <Text>{match.beatmaker.username}</Text>
                       </div>
                     ) : (
-                      <div>
+                      <div 
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => handleProfileClick(match.artist.user_id)}
+                      >
                         <Text fontWeight="bold">Artiste:</Text>
                         <Text>{match.artist.username}</Text>
                       </div>
