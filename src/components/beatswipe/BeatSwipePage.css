@@ -1,58 +1,84 @@
 .beat-swipe-page {
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-height: 100vh;
-  position: relative;
-  isolation: isolate; /* Crée un nouveau contexte d'empilement */
-}
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+  }
+  
+  .beat-swipe-instruction {
+    max-width: 600px;
+    margin: 0 auto;
+    color: var(--chordora-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+  }
+  
+  .beat-swipe-deck-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    position: relative;
+    margin-bottom: 2rem;
+    min-height: 600px;
+  }
+  
+  .beat-swipe-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 400px;
+    height: 600px;
+    background-color: var(--chordora-card-bg);
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+  }
+  
+  .beat-swipe-matches-link {
+    margin-top: 2rem;
+    text-align: center;
+  }
+  
+  /* Animation d'apparition */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .beat-swipe-page {
+    animation: fadeIn 0.5s ease-out;
+  }
+  
+  /* Responsive */
+  @media (max-width: 768px) {
+    .beat-swipe-page {
+      padding: 1rem;
+    }
+    
+    .beat-swipe-deck-container {
+      min-height: 500px;
+    }
+    
+    .beat-swipe-empty {
+      height: 500px;
+    }
+  }
 
-.beat-swipe-instruction {
-  max-width: 600px;
-  margin: 0 auto;
-  color: var(--chordora-text-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  background-color: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  position: relative;
-  z-index: 15;
-}
-
-.beat-swipe-deck-container {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  position: relative;
-  margin-bottom: 2rem;
-  min-height: 600px;
-  z-index: 10;
-}
-
-.beat-swipe-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  max-width: 400px;
-  height: 600px;
-  background-color: var(--chordora-card-bg);
-  border-radius: 12px;
-  padding: 2rem;
-  text-align: center;
-}
-
-.beat-swipe-matches-link {
-  margin-top: 2rem;
-  text-align: center;
-  position: relative;
-  z-index: 20;
-}
+  /* Ajouter ces styles à src/components/beatswipe/BeatSwipePage.css */
 
 .beat-swipe-back-button {
   position: relative;
@@ -73,68 +99,43 @@
   transform: translateY(0);
 }
 
-/* Styles pour l'indicateur de chargement */
-.beat-swipe-loading-indicator {
-  position: absolute;
-  bottom: -40px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/* Styles pour les statistiques */
-.beat-swipe-stats {
-  width: 100%;
-  max-width: 400px;
-  text-align: center;
-  margin-top: 1rem;
-}
-
-/* Badge pour le nombre de matches */
-.match-count-badge {
-  background-color: var(--chordora-primary);
-  color: white;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.8rem;
-  font-weight: bold;
-}
-
-/* Animation d'apparition */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 .beat-swipe-page {
-  animation: fadeIn 0.5s ease-out;
+  position: relative;
+  isolation: isolate; /* Crée un nouveau contexte d'empilement pour éviter les problèmes de z-index */
 }
 
-/* Responsive */
+.beat-swipe-page .beat-swipe-deck-container {
+  position: relative;
+  z-index: 10; /* Inférieur au z-index du bouton de retour */
+}
+
+.beat-swipe-instruction {
+  position: relative;
+  z-index: 15;
+  background-color: rgba(0, 0, 0, 0.1);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  max-width: 500px;
+  margin: 0 auto 2rem auto;
+  text-align: center;
+}
+
+.beat-swipe-matches-link {
+  position: relative;
+  z-index: 20;
+  margin-top: 2rem;
+}
+
+/* Assurer que les boutons du lecteur audio restent au-dessus */
+.beat-swipe-page .beat-swipe-button {
+  position: relative;
+  z-index: 25;
+}
+
+/* Adaptation pour les appareils mobiles */
 @media (max-width: 768px) {
-  .beat-swipe-page {
-    padding: 1rem;
-  }
-  
-  .beat-swipe-deck-container {
-    min-height: 500px;
-  }
-  
-  .beat-swipe-empty {
-    height: 500px;
+  .beat-swipe-back-button {
+    margin-bottom: 0.5rem;
   }
   
   .beat-swipe-instruction {
