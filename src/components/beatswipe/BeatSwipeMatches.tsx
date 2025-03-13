@@ -27,6 +27,8 @@ import {
   FaBug
 } from 'react-icons/fa';
 import './BeatSwipeMatches.css';
+import { Track } from '../../types/TrackTypes';
+import { getTrackById } from '../../api/track';
 
 const BeatSwipeMatches: React.FC = () => {
   const navigate = useNavigate();
@@ -39,6 +41,10 @@ const BeatSwipeMatches: React.FC = () => {
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   // État pour afficher/cacher les logs de débogage
   const [showDebug, setShowDebug] = useState(false);
+  // État pour les tracks chargées
+  const [loadedTracks, setLoadedTracks] = useState<Record<string, Track>>({});
+  // État pour indiquer le chargement d'une track spécifique
+  const [loadingTrackId, setLoadingTrackId] = useState<string | null>(null);
   
   // Récupérer les matches
   const { 
@@ -154,65 +160,82 @@ const BeatSwipeMatches: React.FC = () => {
     navigate(`/profile/${userId}`);
   };
   
-  // Fonction pour jouer une piste avec gestion robuste des données
-  const handlePlayTrack = (match: any) => {
+  // Fonction pour charger une track complète à partir de l'API
+  const loadFullTrack = async (trackId: string): Promise<Track | null> => {
     try {
-      // Vérification et logging des données de la piste
+      setLoadingTrackId(trackId);
+      setDebugLogs(prev => [...prev, `Chargement de la track complète ${trackId}...`]);
+      
+      const response = await getTrackById(trackId);
+      
+      // Vérifier que la réponse contient bien les informations attendues
+      if (response && response.data) {
+        const track = response.data;
+        setDebugLogs(prev => [...prev, `Track chargée avec succès: ${track.title}`]);
+        
+        // Stocker la track complète dans le state
+        setLoadedTracks(prev => ({
+          ...prev,
+          [trackId]: track
+        }));
+        
+        return track;
+      }
+      return null;
+    } catch (error) {
+      console.error("Erreur lors du chargement de la track:", error);
+      setDebugLogs(prev => [...prev, `Erreur de chargement de la track ${trackId}: ${String(error)}`]);
+      return null;
+    } finally {
+      setLoadingTrackId(null);
+    }
+  };
+  
+  // Fonction pour jouer une piste avec gestion robuste des données
+  const handlePlayTrack = async (match: any) => {
+    try {
       if (!match.track) {
         console.error("Objet track manquant dans le match", match);
         setDebugLogs(prev => [...prev, `Erreur: Objet track manquant dans le match ${match.match_id || 'inconnu'}`]);
         return;
       }
       
-      if (!match.track.presigned_url) {
-        console.error("URL audio manquante pour la piste", match.track);
-        setDebugLogs(prev => [...prev, `Erreur: URL audio manquante pour la piste ${match.track.track_id || 'inconnue'}`]);
-        
-        // Utiliser une URL de secours pour les tests (à supprimer en production)
-        if (process.env.NODE_ENV === 'development') {
-          match.track.presigned_url = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
-          console.log("Utilisation d'une URL de secours pour le développement");
-        } else {
-          alert("Impossible de lire cette piste: URL audio manquante");
+      const trackId = match.track.track_id;
+      
+      // Si la track est déjà chargée et en cours de lecture, basculer entre lecture et pause
+      if (currentTrack?.track_id === trackId) {
+        togglePlay();
+        return;
+      }
+      
+      // Vérifier si nous avons déjà chargé cette track complète
+      let trackToPlay: Track;
+      if (loadedTracks[trackId]) {
+        trackToPlay = loadedTracks[trackId];
+        setDebugLogs(prev => [...prev, `Utilisation de la track en cache: ${trackToPlay.title}`]);
+      } else {
+        // Charger la track complète depuis l'API pour obtenir l'URL présignée
+        const fullTrack = await loadFullTrack(trackId);
+        if (!fullTrack) {
+          alert("Impossible de charger les informations de cette piste.");
           return;
         }
+        trackToPlay = fullTrack;
+      }
+      
+      // Vérifier que la track a bien une URL présignée
+      if (!trackToPlay.presigned_url) {
+        setDebugLogs(prev => [...prev, `URL présignée manquante pour la track ${trackId}`]);
+        alert("Cette piste ne peut pas être lue actuellement.");
+        return;
       }
       
       // Log de débogage
-      console.log("Données de la piste à jouer:", {
-        track_id: match.track.track_id,
-        title: match.track.title,
-        presigned_url: match.track.presigned_url?.substring(0, 50) + "..."
-      });
+      setDebugLogs(prev => [...prev, `Lecture: ${trackToPlay.title} (URL: ${trackToPlay.presigned_url?.substring(0, 30)}...)`]);
       
-      // Construction de l'objet track pour le lecteur audio
-      const trackToPlay = {
-        track_id: match.track.track_id,
-        title: match.track.title || "Titre inconnu",
-        // Choisir le bon nom d'artiste en fonction du rôle
-        artist: userRole === 'artist' 
-          ? (match.beatmaker?.username || "Beatmaker") 
-          : (match.artist?.username || "Artiste"),
-        genre: match.track.genre || "Genre inconnu",
-        bpm: match.track.bpm,
-        // Utiliser l'URL présignée pour l'audio
-        presigned_url: match.track.presigned_url,
-        // Utiliser l'URL de l'image de couverture ou une image par défaut
-        cover_image: match.track.cover_image || '/default-cover.jpg',
-        // Ajouter d'autres champs utiles s'ils sont présents
-        duration: match.track.duration || 0
-      };
+      // Jouer la piste
+      playTrack(trackToPlay);
       
-      // Log pour le débogage
-      setDebugLogs(prev => [...prev, `Lecture: ${trackToPlay.title} (${trackToPlay.track_id})`]);
-      
-      // Si c'est la même piste, basculer entre lecture et pause
-      if (currentTrack?.track_id === match.track.track_id) {
-        togglePlay();
-      } else {
-        // Sinon jouer la nouvelle piste
-        playTrack(trackToPlay as any);
-      }
     } catch (error) {
       console.error("Erreur lors de la lecture de la piste:", error);
       setDebugLogs(prev => [...prev, `Exception: ${String(error)}`]);
@@ -231,8 +254,14 @@ const BeatSwipeMatches: React.FC = () => {
   
   // Obtenir l'URL de l'image avec gestion des erreurs
   const getCoverImageUrl = (match: any) => {
+    // Si on a déjà chargé la track complète, utiliser son image
+    const trackId = match.track.track_id;
+    if (loadedTracks[trackId] && loadedTracks[trackId].cover_image) {
+      return loadedTracks[trackId].cover_image;
+    }
+    
     // Si on a déjà eu une erreur pour cette image, utiliser l'image par défaut
-    if (imageErrors[match.track.track_id]) {
+    if (imageErrors[trackId]) {
       return '/default-cover.jpg';
     }
     
@@ -311,11 +340,12 @@ const BeatSwipeMatches: React.FC = () => {
                     onError={() => handleImageError(match.track.track_id)}
                   />
                   
-                  {/* Bouton play */}
+                  {/* Bouton play avec indicateur de chargement */}
                   <Button
                     className="beat-swipe-match-play"
                     onClick={() => handlePlayTrack(match)}
                     variation="primary"
+                    isLoading={loadingTrackId === match.track.track_id}
                   >
                     {currentTrack?.track_id === match.track.track_id && isPlaying 
                       ? <FaPause /> 
