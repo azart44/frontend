@@ -17,13 +17,34 @@ export const useUserFavorites = () => {
   return useQuery({
     queryKey: favoriteKeys.userFavorites(),
     queryFn: async () => {
-      const response = await TrackAPI.getFavoriteTracks();
-      return {
-        favoriteTracks: response.data.tracks || [],
-        totalFavorites: response.data.count || 0
-      };
+      try {
+        // Étape 1: Récupérer les IDs des pistes favorites
+        const idsResponse = await TrackFavoritesAPI.getUserFavoriteIds();
+        console.log('IDs des favoris récupérés:', idsResponse.data);
+        
+        const trackIds = idsResponse.data.trackIds || [];
+        
+        if (trackIds.length === 0) {
+          return {
+            favoriteTracks: [],
+            totalFavorites: 0
+          };
+        }
+        
+        // Étape 2: Récupérer les détails des pistes à partir des IDs
+        const tracksResponse = await TrackAPI.getTracksByIds(trackIds);
+        console.log('Détails des pistes favoris récupérés:', tracksResponse.data);
+        
+        return {
+          favoriteTracks: tracksResponse.data.tracks || [],
+          totalFavorites: trackIds.length
+        };
+      } catch (error) {
+        console.error('Erreur lors de la récupération des favoris:', error);
+        throw error;
+      }
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 1 * 60 * 1000, // 1 minute (réduit pour des tests plus faciles)
   });
 };
 
@@ -37,7 +58,7 @@ export const useFavoriteStatus = (trackId: string) => {
       const response = await TrackFavoritesAPI.checkFavoriteStatus(trackId);
       return response.data;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 1 * 60 * 1000, // 1 minute
     enabled: !!trackId,
   });
 };
@@ -57,9 +78,13 @@ export const useToggleFavorite = () => {
       isFavorite: boolean;
     }) => {
       if (isFavorite) {
-        return TrackFavoritesAPI.removeFavorite(trackId);
+        const response = await TrackFavoritesAPI.removeFavorite(trackId);
+        console.log('Piste retirée des favoris:', response.data);
+        return response;
       } else {
-        return TrackFavoritesAPI.addFavorite(trackId);
+        const response = await TrackFavoritesAPI.addFavorite(trackId);
+        console.log('Piste ajoutée aux favoris:', response.data);
+        return response;
       }
     },
     onSuccess: (_, variables) => {

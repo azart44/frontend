@@ -69,6 +69,10 @@ export const getTrackById = (trackId: string) =>
  * @returns Promise avec la liste des pistes
  */
 export const getTracksByIds = (trackIds: string[]) => {
+  if (!trackIds.length) {
+    return Promise.resolve({ data: { tracks: [], count: 0 } });
+  }
+  
   const idsString = trackIds.join(',');
   return apiClient.get<TracksResponse>('/tracks', { 
     params: { ids: idsString }

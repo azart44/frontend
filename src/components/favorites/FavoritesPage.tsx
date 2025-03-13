@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { 
   View, 
   Heading, 
@@ -15,12 +15,12 @@ import { useUserFavorites } from '../../hooks/useTrackFavorites';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAudioContext } from '../../contexts/AudioContext';
 import TrackCard from '../track/TrackCard';
-import { FaStar } from 'react-icons/fa';
+import { FaStar, FaBug, FaSync } from 'react-icons/fa';
 import { Track } from '../../types/TrackTypes';
 
 const FavoritesPage: React.FC = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, userId } = useAuth();
   const { playTrack } = useAudioContext();
   
   const { 
@@ -29,6 +29,25 @@ const FavoritesPage: React.FC = () => {
     error, 
     refetch 
   } = useUserFavorites();
+  
+  // Débogage: Afficher des informations utiles dans la console
+  useEffect(() => {
+    console.log('Rendu FavoritesPage avec état:', {
+      isAuthenticated,
+      userId,
+      isLoading,
+      error,
+      favoritesData
+    });
+    
+    if (error) {
+      console.error('Erreur détaillée:', error);
+    }
+    
+    if (favoritesData) {
+      console.log('Données des favoris:', favoritesData);
+    }
+  }, [isAuthenticated, userId, isLoading, error, favoritesData]);
   
   if (!isAuthenticated) {
     return (
@@ -60,13 +79,26 @@ const FavoritesPage: React.FC = () => {
       <View padding="2rem">
         <Alert variation="error" heading="Erreur">
           Une erreur est survenue lors du chargement de vos favoris.
+          <Text>{String(error)}</Text>
         </Alert>
         <Button 
           onClick={() => refetch()} 
           variation="primary"
           marginTop="1rem"
         >
+          <FaSync style={{ marginRight: '0.5rem' }} />
           Réessayer
+        </Button>
+        
+        {/* Bouton pour voir les requêtes réseau */}
+        <Button 
+          onClick={() => console.log('Inspectez le Network dans les DevTools')} 
+          variation="menu"
+          marginTop="1rem"
+          marginLeft="1rem"
+        >
+          <FaBug style={{ marginRight: '0.5rem' }} />
+          Débogage
         </Button>
       </View>
     );
@@ -97,12 +129,22 @@ const FavoritesPage: React.FC = () => {
           <Text marginBottom="1.5rem">
             Explorez nos pistes et ajoutez celles que vous aimez à vos favoris.
           </Text>
-          <Button 
-            onClick={() => navigate('/tracks')} 
-            variation="primary"
-          >
-            Explorer les pistes
-          </Button>
+          <Flex gap="1rem" justifyContent="center">
+            <Button 
+              onClick={() => navigate('/tracks')} 
+              variation="primary"
+            >
+              Explorer les pistes
+            </Button>
+            
+            <Button 
+              onClick={() => refetch()} 
+              variation="menu"
+            >
+              <FaSync style={{ marginRight: '0.5rem' }} />
+              Actualiser
+            </Button>
+          </Flex>
         </View>
       </View>
     );
@@ -110,15 +152,25 @@ const FavoritesPage: React.FC = () => {
   
   return (
     <View padding="2rem">
-      <Heading level={2} marginBottom="1rem">
-        <Flex alignItems="center" gap="0.5rem">
-          <FaStar color="#FFD700" />
-          <Text>Mes Favoris</Text>
-          <Badge backgroundColor="#FFD700" color="white" borderRadius="10px">
-            {totalFavorites}
-          </Badge>
-        </Flex>
-      </Heading>
+      <Flex justifyContent="space-between" alignItems="center" marginBottom="1rem">
+        <Heading level={2}>
+          <Flex alignItems="center" gap="0.5rem">
+            <FaStar color="#FFD700" />
+            <Text>Mes Favoris</Text>
+            <Badge backgroundColor="#FFD700" color="white" borderRadius="10px">
+              {totalFavorites}
+            </Badge>
+          </Flex>
+        </Heading>
+        
+        <Button
+          onClick={() => refetch()}
+          variation="menu"
+        >
+          <FaSync style={{ marginRight: '0.5rem' }} />
+          Actualiser
+        </Button>
+      </Flex>
       
       <Card padding="0" backgroundColor="var(--chordora-card-bg)" borderRadius="8px">
         {favoriteTracks.map((track: Track, index: number) => (
