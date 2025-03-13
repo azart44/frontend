@@ -16,7 +16,8 @@ import {
   FaSignOutAlt,
   FaSignInAlt,
   FaCog,
-  FaBars
+  FaBars,
+  FaExchangeAlt
 } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAudioContext } from '../../contexts/AudioContext';
@@ -137,6 +138,13 @@ const ChordoraLayout: React.FC<ChordoraLayoutProps> = ({ children }) => {
               >
                 <FaHeart className="sidebar-item-icon" />
                 {sidebarExpanded && <span className="sidebar-item-text">Likes</span>}
+              </div>
+              <div 
+                className={`sidebar-item ${isActive('/beatswipe') ? 'active' : ''}`}
+                onClick={() => navigateTo('/beatswipe')}
+              >
+                <FaExchangeAlt className="sidebar-item-icon" />
+                {sidebarExpanded && <span className="sidebar-item-text">BeatSwipe</span>}
               </div>
               
               <div 

@@ -29,6 +29,9 @@ const PlaylistForm = lazy(() => import('./components/playlist/PlaylistForm'));
 const TrackListPage = lazy(() => import('./components/track/TrackListPage'));
 // Détail de piste
 const TrackDetail = lazy(() => import('./components/track/TrackDetail'));
+// Ajouter les composants pour BeatSwipe
+const BeatSwipePage = lazy(() => import('./components/beatswipe/BeatSwipePage'));
+const BeatSwipeMatches = lazy(() => import('./components/beatswipe/BeatSwipeMatches'));
 
 // Composant de chargement réutilisable avec spinner
 const Loading = () => (
@@ -206,6 +209,26 @@ function App() {
                             <PlaylistDetail edit={true} />
                           </ProfileCompletionRoute>
                         }
+                      />
+                    </Route>
+                    
+                    {/* Routes pour BeatSwipe */}
+                    <Route path="/beatswipe">
+                      <Route 
+                        index
+                        element={
+                          <ProfileCompletionRoute>
+                            <BeatSwipePage />
+                          </ProfileCompletionRoute>
+                        } 
+                      />
+                      <Route 
+                        path="matches" 
+                        element={
+                          <ProfileCompletionRoute>
+                            <BeatSwipeMatches />
+                          </ProfileCompletionRoute>
+                        } 
                       />
                     </Route>
                     
