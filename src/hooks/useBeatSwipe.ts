@@ -1,7 +1,10 @@
+import React from 'react';
+// Modification à apporter au fichier src/hooks/useBeatSwipe.ts pour corriger useLocalSwipeQueue
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as BeatSwipeAPI from '../api/beatSwipe';
 import { Track } from '../types/TrackTypes';
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
 
 // Clés de cache pour React Query
 export const beatSwipeKeys = {
@@ -63,7 +66,6 @@ export const useSwipeMatches = () => {
 export const useLocalSwipeQueue = (initialTracks: Track[] = []) => {
   const [trackQueue, setTrackQueue] = useState<Track[]>(initialTracks);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [processedTrackIds, setProcessedTrackIds] = useState<Set<string>>(new Set());
   const recordAction = useRecordSwipeAction();
   const processingSwipe = useRef(false); // Référence pour éviter les swipes multiples
   
@@ -72,24 +74,13 @@ export const useLocalSwipeQueue = (initialTracks: Track[] = []) => {
     setTrackQueue(prev => {
       // Filtrer les pistes déjà présentes dans la queue pour éviter les doublons
       const existingIds = new Set(prev.map(track => track.track_id));
-      const newTracks = tracks.filter(track => 
-        !existingIds.has(track.track_id) && !processedTrackIds.has(track.track_id)
-      );
+      const newTracks = tracks.filter(track => !existingIds.has(track.track_id));
       return [...prev, ...newTracks];
     });
-  }, [processedTrackIds]);
+  }, []);
   
   // Récupérer la piste courante
   const currentTrack = trackQueue[currentIndex] || null;
-  
-  // Effet pour surveiller quand la file d'attente se vide
-  useEffect(() => {
-    if (trackQueue.length > 0 && currentIndex >= trackQueue.length - 3) {
-      // Si on approche de la fin de la file, on pourrait demander plus de recommandations
-      console.log("Presque à court de pistes, charger plus de recommandations...");
-      // logique pour charger plus de pistes à implémenter
-    }
-  }, [currentIndex, trackQueue.length]);
   
   // Fonction pour gérer les actions de swipe avec protection contre les actions multiples
   const handleSwipeAction = useCallback((action: 'right' | 'left' | 'down') => {
@@ -97,13 +88,6 @@ export const useLocalSwipeQueue = (initialTracks: Track[] = []) => {
     
     // Marquer comme en cours de traitement
     processingSwipe.current = true;
-    
-    // Ajouter l'ID de la piste traitée à notre ensemble
-    setProcessedTrackIds(prev => {
-      const newSet = new Set(prev);
-      newSet.add(currentTrack.track_id);
-      return newSet;
-    });
     
     // Enregistrer l'action
     recordAction.mutate(
@@ -143,7 +127,6 @@ export const useLocalSwipeQueue = (initialTracks: Track[] = []) => {
   const resetQueue = useCallback(() => {
     setTrackQueue([]);
     setCurrentIndex(0);
-    setProcessedTrackIds(new Set());
     processingSwipe.current = false;
   }, []);
   
