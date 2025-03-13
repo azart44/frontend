@@ -1,4 +1,6 @@
-import React, { useState, useRef } from 'react';
+// Modification à apporter au fichier src/components/beatswipe/BeatSwipeCard.tsx
+
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Card, 
   Image, 
@@ -38,6 +40,7 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
   const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
   const [exitDirection, setExitDirection] = useState<'left' | 'right' | 'down' | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const dragStartRef = useRef<{ x: number, y: number } | null>(null);
   
   // Gestion du lecteur audio
   const isCurrentlyPlaying = currentTrack?.track_id === track.track_id && isPlaying;
@@ -64,28 +67,41 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
   const handleMouseDown = (e: React.MouseEvent) => {
     if (isActionLoading) return;
     
-    setIsDragging(true);
-    setDragPosition({ x: 0, y: 0 });
-    setExitDirection(null);
+    // Mémoriser le point de départ du drag
+    if (cardRef.current) {
+      const rect = cardRef.current.getBoundingClientRect();
+      dragStartRef.current = { 
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      };
+      
+      setIsDragging(true);
+      setDragPosition({ x: 0, y: 0 });
+      setExitDirection(null);
+      
+      // Empêcher la propagation de l'événement mousedown
+      e.stopPropagation();
+    }
   };
   
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || isActionLoading) return;
+    if (!isDragging || isActionLoading || !dragStartRef.current) return;
     
     // Calculer le mouvement depuis le début du drag
     if (cardRef.current) {
       const rect = cardRef.current.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-      
-      const moveX = e.clientX - centerX;
-      const moveY = e.clientY - centerY;
+      const moveX = e.clientX - rect.left - dragStartRef.current.x;
+      const moveY = e.clientY - rect.top - dragStartRef.current.y;
       
       setDragPosition({ x: moveX, y: moveY });
+      
+      // Empêcher la propagation de l'événement mousemove
+      e.stopPropagation();
+      e.preventDefault();
     }
   };
   
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: React.MouseEvent) => {
     if (!isDragging || isActionLoading) return;
     
     // Déterminer l'action en fonction de la direction du swipe
@@ -109,7 +125,37 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
     }
     
     setIsDragging(false);
+    dragStartRef.current = null;
+    
+    // Empêcher la propagation de l'événement mouseup
+    e.stopPropagation();
   };
+  
+  // Nettoyer les états si la souris quitte la carte pendant le drag
+  const handleMouseLeave = (e: React.MouseEvent) => {
+    if (isDragging) {
+      setIsDragging(false);
+      setDragPosition({ x: 0, y: 0 });
+      dragStartRef.current = null;
+      
+      // Empêcher la propagation de l'événement mouseleave
+      e.stopPropagation();
+    }
+  };
+  
+  // Gérer le clic sur les boutons d'action
+  const handleActionButtonClick = (action: () => void, e: React.MouseEvent) => {
+    e.stopPropagation();
+    action();
+  };
+  
+  // Clean up event listeners on unmount
+  useEffect(() => {
+    return () => {
+      setIsDragging(false);
+      dragStartRef.current = null;
+    };
+  }, []);
   
   // Style de la carte en fonction du drag
   const getCardStyle = () => {
@@ -153,7 +199,7 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
       ref={cardRef}
       style={getCardStyle()}
     >
@@ -222,10 +268,7 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
         {/* Boutons d'action alternatifs (pour utilisateurs qui préfèrent les boutons au swipe) */}
         <div className="beat-swipe-buttons">
           <Button
-            onClick={(e) => {
-              e.stopPropagation();
-              onSwipeLeft();
-            }}
+            onClick={(e) => handleActionButtonClick(onSwipeLeft, e)}
             variation="primary"
             isDisabled={isActionLoading}
             className="beat-swipe-button skip-button"
@@ -234,10 +277,7 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
           </Button>
           
           <Button
-            onClick={(e) => {
-              e.stopPropagation();
-              onSwipeDown();
-            }}
+            onClick={(e) => handleActionButtonClick(onSwipeDown, e)}
             variation="primary"
             isDisabled={isActionLoading}
             className="beat-swipe-button favorite-button"
@@ -246,10 +286,7 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
           </Button>
           
           <Button
-            onClick={(e) => {
-              e.stopPropagation();
-              onSwipeRight();
-            }}
+            onClick={(e) => handleActionButtonClick(onSwipeRight, e)}
             variation="primary"
             isDisabled={isActionLoading}
             className="beat-swipe-button like-button"

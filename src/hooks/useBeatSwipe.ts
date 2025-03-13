@@ -1,7 +1,10 @@
 import React from 'react';
+// Modification à apporter au fichier src/hooks/useBeatSwipe.ts pour corriger useLocalSwipeQueue
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as BeatSwipeAPI from '../api/beatSwipe';
 import { Track } from '../types/TrackTypes';
+import { useState, useRef, useCallback } from 'react';
 
 // Clés de cache pour React Query
 export const beatSwipeKeys = {
@@ -61,68 +64,71 @@ export const useSwipeMatches = () => {
  * avec gestion d'état optimisée pour l'UX de swipe
  */
 export const useLocalSwipeQueue = (initialTracks: Track[] = []) => {
-  const [trackQueue, setTrackQueue] = React.useState<Track[]>(initialTracks);
-  const [currentIndex, setCurrentIndex] = React.useState(0);
+  const [trackQueue, setTrackQueue] = useState<Track[]>(initialTracks);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const recordAction = useRecordSwipeAction();
+  const processingSwipe = useRef(false); // Référence pour éviter les swipes multiples
   
   // Fonction pour ajouter des pistes à la queue
-  const addTracksToQueue = (tracks: Track[]) => {
-    setTrackQueue(prev => [...prev, ...tracks]);
-  };
+  const addTracksToQueue = useCallback((tracks: Track[]) => {
+    setTrackQueue(prev => {
+      // Filtrer les pistes déjà présentes dans la queue pour éviter les doublons
+      const existingIds = new Set(prev.map(track => track.track_id));
+      const newTracks = tracks.filter(track => !existingIds.has(track.track_id));
+      return [...prev, ...newTracks];
+    });
+  }, []);
   
   // Récupérer la piste courante
   const currentTrack = trackQueue[currentIndex] || null;
   
-  // Fonction pour traiter le swipe à droite (like)
-  const handleSwipeRight = () => {
-    if (!currentTrack) return;
+  // Fonction pour gérer les actions de swipe avec protection contre les actions multiples
+  const handleSwipeAction = useCallback((action: 'right' | 'left' | 'down') => {
+    if (!currentTrack || processingSwipe.current) return;
+    
+    // Marquer comme en cours de traitement
+    processingSwipe.current = true;
     
     // Enregistrer l'action
-    recordAction.mutate({
-      trackId: currentTrack.track_id,
-      action: 'right'
-    });
-    
-    // Passer à la piste suivante
-    setCurrentIndex(prev => prev + 1);
-  };
+    recordAction.mutate(
+      {
+        trackId: currentTrack.track_id,
+        action
+      },
+      {
+        onSettled: () => {
+          // Passer à la piste suivante et réinitialiser le verrou
+          setCurrentIndex(prev => prev + 1);
+          processingSwipe.current = false;
+        }
+      }
+    );
+  }, [currentTrack, recordAction]);
+  
+  // Fonction pour traiter le swipe à droite (like)
+  const handleSwipeRight = useCallback(() => {
+    handleSwipeAction('right');
+  }, [handleSwipeAction]);
   
   // Fonction pour traiter le swipe à gauche (skip)
-  const handleSwipeLeft = () => {
-    if (!currentTrack) return;
-    
-    // Enregistrer l'action
-    recordAction.mutate({
-      trackId: currentTrack.track_id,
-      action: 'left'
-    });
-    
-    // Passer à la piste suivante
-    setCurrentIndex(prev => prev + 1);
-  };
+  const handleSwipeLeft = useCallback(() => {
+    handleSwipeAction('left');
+  }, [handleSwipeAction]);
   
   // Fonction pour traiter le swipe vers le bas (ajouter aux favoris)
-  const handleSwipeDown = () => {
-    if (!currentTrack) return;
-    
-    // Enregistrer l'action
-    recordAction.mutate({
-      trackId: currentTrack.track_id,
-      action: 'down'
-    });
-    
-    // Passer à la piste suivante
-    setCurrentIndex(prev => prev + 1);
-  };
+  const handleSwipeDown = useCallback(() => {
+    handleSwipeAction('down');
+  }, [handleSwipeAction]);
   
   // État de chargement des actions de swipe
   const isActionLoading = recordAction.isPending;
   
   // Réinitialiser la queue
-  const resetQueue = () => {
+  const resetQueue = useCallback(() => {
     setTrackQueue([]);
     setCurrentIndex(0);
-  };
+    processingSwipe.current = false;
+  }, []);
   
   return {
     trackQueue,

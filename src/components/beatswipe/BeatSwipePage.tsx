@@ -1,4 +1,6 @@
-import React, { useEffect } from 'react';
+// Modification à apporter au fichier src/components/beatswipe/BeatSwipePage.tsx
+
+import React, { useEffect, useRef } from 'react';
 import { 
   View, 
   Heading, 
@@ -10,7 +12,7 @@ import {
 } from '@aws-amplify/ui-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { FaSyncAlt, FaInfoCircle } from 'react-icons/fa';
+import { FaSyncAlt, FaInfoCircle, FaArrowLeft } from 'react-icons/fa';
 import BeatSwipeCard from './BeatSwipeCard';
 import { useSwipeRecommendations, useLocalSwipeQueue } from '../../hooks/useBeatSwipe';
 import './BeatSwipePage.css';
@@ -18,6 +20,8 @@ import './BeatSwipePage.css';
 const BeatSwipePage: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated, userId, userProfile } = useAuth();
+  // Ref pour éviter que les handlers de navigation soient affectés par les swipes
+  const navigationHandlersRef = useRef<boolean>(false);
   
   // Récupérer les recommandations
   const { 
@@ -40,6 +44,12 @@ const BeatSwipePage: React.FC = () => {
     hasMoreTracks
   } = useLocalSwipeQueue();
   
+  // Naviguer de façon sécurisée
+  const safeNavigate = (path: string) => {
+    // Utiliser un setTimeout pour s'assurer que cela s'exécute après tous les événements de souris
+    setTimeout(() => navigate(path), 10);
+  };
+  
   // Charger les recommandations initiales dans la queue
   useEffect(() => {
     if (recommendationsData?.tracks && recommendationsData.tracks.length > 0) {
@@ -57,7 +67,7 @@ const BeatSwipePage: React.FC = () => {
             Vous devez être connecté pour accéder à BeatSwipe.
           </Text>
           <Button 
-            onClick={() => navigate('/auth')}
+            onClick={() => safeNavigate('/auth')}
             variation="primary"
           >
             Se connecter
@@ -81,7 +91,7 @@ const BeatSwipePage: React.FC = () => {
             Votre profil est configuré en tant que {userProfile?.userType || 'utilisateur'}.
           </Text>
           <Button 
-            onClick={() => navigate('/profile')}
+            onClick={() => safeNavigate('/profile')}
             variation="primary"
           >
             Retour au profil
@@ -146,8 +156,27 @@ const BeatSwipePage: React.FC = () => {
     );
   }
   
+  // Handler pour la navigation
+  const handleNavigation = (path: string) => (e: React.MouseEvent) => {
+    // Empêcher la propagation
+    e.stopPropagation();
+    // Utiliser le navigateur de façon sécurisée
+    safeNavigate(path);
+  };
+  
   return (
     <View className="beat-swipe-page">
+      {/* Bouton de retour en haut de page */}
+      <Button 
+        onClick={handleNavigation('/')}
+        variation="link"
+        marginBottom="1rem"
+        className="beat-swipe-back-button"
+      >
+        <FaArrowLeft style={{ marginRight: '0.5rem' }} />
+        Retour à l'accueil
+      </Button>
+      
       <Heading level={2} textAlign="center" marginBottom="1rem">
         BeatSwipe
       </Heading>
@@ -190,7 +219,7 @@ const BeatSwipePage: React.FC = () => {
       {/* Bouton pour voir les matches */}
       <div className="beat-swipe-matches-link">
         <Button
-          onClick={() => navigate('/beatswipe/matches')}
+          onClick={handleNavigation('/beatswipe/matches')}
           variation="link"
         >
           Voir mes matches

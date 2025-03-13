@@ -77,3 +77,69 @@
       height: 500px;
     }
   }
+
+  /* Ajouter ces styles à src/components/beatswipe/BeatSwipePage.css */
+
+.beat-swipe-back-button {
+  position: relative;
+  z-index: 20; /* Assure que le bouton est toujours au-dessus des cartes */
+  margin-bottom: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  color: var(--chordora-text-primary);
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.beat-swipe-back-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.beat-swipe-back-button:active {
+  transform: translateY(0);
+}
+
+.beat-swipe-page {
+  position: relative;
+  isolation: isolate; /* Crée un nouveau contexte d'empilement pour éviter les problèmes de z-index */
+}
+
+.beat-swipe-page .beat-swipe-deck-container {
+  position: relative;
+  z-index: 10; /* Inférieur au z-index du bouton de retour */
+}
+
+.beat-swipe-instruction {
+  position: relative;
+  z-index: 15;
+  background-color: rgba(0, 0, 0, 0.1);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  max-width: 500px;
+  margin: 0 auto 2rem auto;
+  text-align: center;
+}
+
+.beat-swipe-matches-link {
+  position: relative;
+  z-index: 20;
+  margin-top: 2rem;
+}
+
+/* Assurer que les boutons du lecteur audio restent au-dessus */
+.beat-swipe-page .beat-swipe-button {
+  position: relative;
+  z-index: 25;
+}
+
+/* Adaptation pour les appareils mobiles */
+@media (max-width: 768px) {
+  .beat-swipe-back-button {
+    margin-bottom: 0.5rem;
+  }
+  
+  .beat-swipe-instruction {
+    font-size: 0.9rem;
+    padding: 0.5rem;
+  }
+}
