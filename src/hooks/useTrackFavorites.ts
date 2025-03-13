@@ -17,14 +17,13 @@ export const useUserFavorites = () => {
   return useQuery({
     queryKey: favoriteKeys.userFavorites(),
     queryFn: async () => {
-      // Récupérer les pistes favorites directement via l'API tracks avec le paramètre favoritedBy
       const response = await TrackAPI.getFavoriteTracks();
       return {
         favoriteTracks: response.data.tracks || [],
         totalFavorites: response.data.count || 0
       };
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 };
 

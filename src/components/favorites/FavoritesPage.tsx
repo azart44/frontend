@@ -18,15 +18,11 @@ import TrackCard from '../track/TrackCard';
 import { FaStar } from 'react-icons/fa';
 import { Track } from '../../types/TrackTypes';
 
-/**
- * Page des favoris - Affiche toutes les pistes marquées comme favorites par l'utilisateur
- */
 const FavoritesPage: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { playTrack } = useAudioContext();
   
-  // Récupérer les pistes favorites de l'utilisateur
   const { 
     data: favoritesData, 
     isLoading, 
@@ -34,7 +30,6 @@ const FavoritesPage: React.FC = () => {
     refetch 
   } = useUserFavorites();
   
-  // Rediriger vers la page de connexion si l'utilisateur n'est pas connecté
   if (!isAuthenticated) {
     return (
       <View padding="2rem">
@@ -52,7 +47,6 @@ const FavoritesPage: React.FC = () => {
     );
   }
   
-  // Afficher un loader pendant le chargement
   if (isLoading) {
     return (
       <Flex justifyContent="center" padding="2rem">
@@ -61,7 +55,6 @@ const FavoritesPage: React.FC = () => {
     );
   }
   
-  // Gérer les erreurs
   if (error) {
     return (
       <View padding="2rem">
@@ -82,7 +75,6 @@ const FavoritesPage: React.FC = () => {
   const favoriteTracks = favoritesData?.favoriteTracks || [];
   const totalFavorites = favoritesData?.totalFavorites || 0;
   
-  // Si aucune piste n'est dans les favoris
   if (favoriteTracks.length === 0) {
     return (
       <View padding="2rem">
@@ -116,14 +108,13 @@ const FavoritesPage: React.FC = () => {
     );
   }
   
-  // Afficher les pistes favorites
   return (
     <View padding="2rem">
       <Heading level={2} marginBottom="1rem">
         <Flex alignItems="center" gap="0.5rem">
           <FaStar color="#FFD700" />
           <Text>Mes Favoris</Text>
-          <Badge backgroundColor="#FFD700" color="black" borderRadius="10px">
+          <Badge backgroundColor="#FFD700" color="white" borderRadius="10px">
             {totalFavorites}
           </Badge>
         </Flex>
@@ -132,14 +123,13 @@ const FavoritesPage: React.FC = () => {
       <Card padding="0" backgroundColor="var(--chordora-card-bg)" borderRadius="8px">
         {favoriteTracks.map((track: Track, index: number) => (
           <React.Fragment key={track.track_id}>
-            {/* Utiliser le style "row" pour cohérence avec les autres vues */}
             <TrackCard 
               track={{...track, position: index + 1}}
               onPlay={() => playTrack(track)}
               showFavoriteButton
+              isInFavorites
               displayStyle="row"
             />
-            {/* Ajouter un séparateur entre les pistes sauf pour la dernière */}
             {index < favoriteTracks.length - 1 && (
               <div style={{ 
                 height: '1px', 
