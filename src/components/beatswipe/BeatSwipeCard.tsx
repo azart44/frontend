@@ -1,4 +1,4 @@
-// Modification à apporter au fichier src/components/beatswipe/BeatSwipeCard.tsx
+// src/components/beatswipe/BeatSwipeCard.tsx - Mise à jour
 
 import React, { useState, useRef, useEffect } from 'react';
 import { 
@@ -39,6 +39,7 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
   const [exitDirection, setExitDirection] = useState<'left' | 'right' | 'down' | null>(null);
+  const [imageError, setImageError] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef<{ x: number, y: number } | null>(null);
   
@@ -61,6 +62,24 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+  
+  // Détermine l'URL de l'image de couverture à utiliser
+  const getCoverImageUrl = (): string => {
+    // Si une erreur s'est produite lors du chargement de l'image, utiliser l'image par défaut
+    if (imageError) {
+      return '/default-cover.jpg';
+    }
+    
+    // Vérifier les différentes possibilités d'URL d'image
+    if (track.cover_image) {
+      return track.cover_image;
+    } else if (track.coverImageUrl) {
+      return track.coverImageUrl;
+    } else {
+      // Image par défaut si aucune URL n'est disponible
+      return '/default-cover.jpg';
+    }
   };
   
   // Gestion du swipe (drag & drop)
@@ -131,7 +150,6 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
     e.stopPropagation();
   };
   
-  // Nettoyer les états si la souris quitte la carte pendant le drag
   const handleMouseLeave = (e: React.MouseEvent) => {
     if (isDragging) {
       setIsDragging(false);
@@ -147,6 +165,12 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
   const handleActionButtonClick = (action: () => void, e: React.MouseEvent) => {
     e.stopPropagation();
     action();
+  };
+  
+  // Gérer les erreurs de chargement d'image
+  const handleImageError = () => {
+    console.error(`Erreur de chargement de l'image pour la piste ${track.track_id}`);
+    setImageError(true);
   };
   
   // Clean up event listeners on unmount
@@ -193,6 +217,15 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
     return { opacity: 0 };
   };
   
+  // Pour le débogage de l'image
+  useEffect(() => {
+    console.log(`BeatSwipeCard - URLs d'image disponibles pour ${track.track_id}:`, {
+      cover_image: track.cover_image,
+      coverImageUrl: track.coverImageUrl,
+      cover_image_path: track.cover_image_path
+    });
+  }, [track]);
+  
   return (
     <div 
       className={`beat-swipe-card-container ${exitDirection ? `exit-${exitDirection}` : ''}`}
@@ -207,9 +240,10 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
         {/* Image de couverture avec overlay semi-transparent */}
         <div className="beat-swipe-card-image-container">
           <Image
-            src={track.cover_image || '/default-cover.jpg'}
+            src={getCoverImageUrl()}
             alt={track.title}
             className="beat-swipe-card-image"
+            onError={handleImageError}
           />
           <div className="beat-swipe-card-image-overlay"></div>
           
@@ -226,7 +260,7 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
         {/* Informations sur la piste */}
         <div className="beat-swipe-card-content">
           <Text className="beat-swipe-card-title">{track.title}</Text>
-          <Text className="beat-swipe-card-artist">{track.artist}</Text>
+          <Text className="beat-swipe-card-artist">{track.artist || "Artiste"}</Text>
           
           <Flex gap="0.5rem" wrap="wrap" marginTop="0.5rem">
             <Badge variation="info">{track.genre}</Badge>
