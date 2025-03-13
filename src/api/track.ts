@@ -39,8 +39,8 @@ export const getLikedTracks = () => {
  * @returns Promise avec la liste des pistes favorites
  */
 export const getFavoriteTracks = () => {
-  return apiClient.get<TracksResponse>('/tracks', { 
-    params: { favoritedBy: 'current' }
+  return apiClient.get<TracksResponse>('/track-favorites', { 
+    params: { tracks: 'current' }  // ou ajuster selon le besoin
   });
 };
 
