@@ -1,5 +1,3 @@
-// src/components/beatswipe/BeatSwipeCard.tsx - Mise à jour
-
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Card, 
@@ -40,8 +38,17 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
   const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
   const [exitDirection, setExitDirection] = useState<'left' | 'right' | 'down' | null>(null);
   const [imageError, setImageError] = useState(false);
+  const [actionTaken, setActionTaken] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef<{ x: number, y: number } | null>(null);
+
+  // Reset card state when track changes
+  useEffect(() => {
+    setIsDragging(false);
+    setDragPosition({ x: 0, y: 0 });
+    setExitDirection(null);
+    setActionTaken(false);
+  }, [track]);
   
   // Gestion du lecteur audio
   const isCurrentlyPlaying = currentTrack?.track_id === track.track_id && isPlaying;
@@ -66,25 +73,22 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
   
   // Détermine l'URL de l'image de couverture à utiliser
   const getCoverImageUrl = (): string => {
-    // Si une erreur s'est produite lors du chargement de l'image, utiliser l'image par défaut
     if (imageError) {
       return '/default-cover.jpg';
     }
     
-    // Vérifier les différentes possibilités d'URL d'image
     if (track.cover_image) {
       return track.cover_image;
     } else if (track.coverImageUrl) {
       return track.coverImageUrl;
     } else {
-      // Image par défaut si aucune URL n'est disponible
       return '/default-cover.jpg';
     }
   };
   
   // Gestion du swipe (drag & drop)
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (isActionLoading) return;
+    if (isActionLoading || actionTaken) return;
     
     // Mémoriser le point de départ du drag
     if (cardRef.current) {
@@ -96,7 +100,6 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
       
       setIsDragging(true);
       setDragPosition({ x: 0, y: 0 });
-      setExitDirection(null);
       
       // Empêcher la propagation de l'événement mousedown
       e.stopPropagation();
@@ -104,7 +107,7 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
   };
   
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || isActionLoading || !dragStartRef.current) return;
+    if (!isDragging || isActionLoading || !dragStartRef.current || actionTaken) return;
     
     // Calculer le mouvement depuis le début du drag
     if (cardRef.current) {
@@ -121,7 +124,7 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
   };
   
   const handleMouseUp = (e: React.MouseEvent) => {
-    if (!isDragging || isActionLoading) return;
+    if (!isDragging || isActionLoading || actionTaken) return;
     
     // Déterminer l'action en fonction de la direction du swipe
     const threshold = 100; // Seuil de déplacement pour déclencher une action
@@ -129,14 +132,17 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
     if (dragPosition.x > threshold) {
       // Swipe vers la droite (like)
       setExitDirection('right');
+      setActionTaken(true);
       onSwipeRight();
     } else if (dragPosition.x < -threshold) {
       // Swipe vers la gauche (skip)
       setExitDirection('left');
+      setActionTaken(true);
       onSwipeLeft();
     } else if (dragPosition.y > threshold) {
       // Swipe vers le bas (ajouter aux favoris)
       setExitDirection('down');
+      setActionTaken(true);
       onSwipeDown();
     } else {
       // Retour à la position initiale si pas de swipe significatif
@@ -150,36 +156,97 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
     e.stopPropagation();
   };
   
-  const handleMouseLeave = (e: React.MouseEvent) => {
-    if (isDragging) {
-      setIsDragging(false);
-      setDragPosition({ x: 0, y: 0 });
-      dragStartRef.current = null;
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (isActionLoading || actionTaken) return;
+    
+    // Mémoriser le point de départ du drag
+    if (cardRef.current && e.touches.length === 1) {
+      const touch = e.touches[0];
+      const rect = cardRef.current.getBoundingClientRect();
+      dragStartRef.current = { 
+        x: touch.clientX - rect.left,
+        y: touch.clientY - rect.top
+      };
       
-      // Empêcher la propagation de l'événement mouseleave
-      e.stopPropagation();
+      setIsDragging(true);
+      setDragPosition({ x: 0, y: 0 });
+      
+      // Empêcher les comportements par défaut du navigateur
+      e.preventDefault();
+    }
+  };
+  
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || isActionLoading || !dragStartRef.current || actionTaken) return;
+    
+    // Calculer le mouvement depuis le début du drag
+    if (cardRef.current && e.touches.length === 1) {
+      const touch = e.touches[0];
+      const rect = cardRef.current.getBoundingClientRect();
+      const moveX = touch.clientX - rect.left - dragStartRef.current.x;
+      const moveY = touch.clientY - rect.top - dragStartRef.current.y;
+      
+      setDragPosition({ x: moveX, y: moveY });
+      
+      // Empêcher les comportements par défaut du navigateur
+      e.preventDefault();
+    }
+  };
+  
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!isDragging || isActionLoading || actionTaken) return;
+    
+    // Déterminer l'action en fonction de la direction du swipe
+    const threshold = 80; // Seuil légèrement plus bas pour les appareils tactiles
+    
+    if (dragPosition.x > threshold) {
+      // Swipe vers la droite (like)
+      setExitDirection('right');
+      setActionTaken(true);
+      onSwipeRight();
+    } else if (dragPosition.x < -threshold) {
+      // Swipe vers la gauche (skip)
+      setExitDirection('left');
+      setActionTaken(true);
+      onSwipeLeft();
+    } else if (dragPosition.y > threshold) {
+      // Swipe vers le bas (ajouter aux favoris)
+      setExitDirection('down');
+      setActionTaken(true);
+      onSwipeDown();
+    } else {
+      // Retour à la position initiale si pas de swipe significatif
+      setDragPosition({ x: 0, y: 0 });
+    }
+    
+    setIsDragging(false);
+    dragStartRef.current = null;
+    
+    // Empêcher les comportements par défaut du navigateur
+    e.preventDefault();
+  };
+  
+  const handleMouseLeave = (e: React.MouseEvent) => {
+    if (isDragging && !actionTaken) {
+      setDragPosition({ x: 0, y: 0 });
+      setIsDragging(false);
+      dragStartRef.current = null;
     }
   };
   
   // Gérer le clic sur les boutons d'action
   const handleActionButtonClick = (action: () => void, e: React.MouseEvent) => {
+    if (actionTaken) return;
+    
     e.stopPropagation();
+    setActionTaken(true);
     action();
   };
   
   // Gérer les erreurs de chargement d'image
   const handleImageError = () => {
-    console.error(`Erreur de chargement de l'image pour la piste ${track.track_id}`);
     setImageError(true);
   };
-  
-  // Clean up event listeners on unmount
-  useEffect(() => {
-    return () => {
-      setIsDragging(false);
-      dragStartRef.current = null;
-    };
-  }, []);
   
   // Style de la carte en fonction du drag
   const getCardStyle = () => {
@@ -191,13 +258,20 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
     const maxDistance = 200;
     const opacity = 1 - Math.min(distance / maxDistance, 0.6); // Max 60% de transparence
     
+    // Ajouter une animation pour les cartes qui sortent
+    let animation = '';
+    if (exitDirection) {
+      animation = `exit-${exitDirection} 0.5s forwards`;
+    }
+    
     // Calculer la transformation CSS
     return {
       transform: `translate(${dragPosition.x}px, ${dragPosition.y}px) rotate(${rotation}deg)`,
       opacity: opacity,
       cursor: isDragging ? 'grabbing' : 'grab',
       boxShadow: `0 ${5 + Math.abs(dragPosition.y / 10)}px ${10 + Math.abs(dragPosition.x / 5)}px rgba(0,0,0,0.2)`,
-      transition: isDragging ? 'none' : 'transform 0.5s ease, opacity 0.5s ease'
+      transition: isDragging ? 'none' : 'transform 0.5s ease, opacity 0.5s ease',
+      animation: animation
     };
   };
   
@@ -217,15 +291,6 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
     return { opacity: 0 };
   };
   
-  // Pour le débogage de l'image
-  useEffect(() => {
-    console.log(`BeatSwipeCard - URLs d'image disponibles pour ${track.track_id}:`, {
-      cover_image: track.cover_image,
-      coverImageUrl: track.coverImageUrl,
-      cover_image_path: track.cover_image_path
-    });
-  }, [track]);
-  
   return (
     <div 
       className={`beat-swipe-card-container ${exitDirection ? `exit-${exitDirection}` : ''}`}
@@ -233,6 +298,9 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       ref={cardRef}
       style={getCardStyle()}
     >
@@ -304,7 +372,7 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
           <Button
             onClick={(e) => handleActionButtonClick(onSwipeLeft, e)}
             variation="primary"
-            isDisabled={isActionLoading}
+            isDisabled={isActionLoading || actionTaken}
             className="beat-swipe-button skip-button"
           >
             <FaTimes />
@@ -313,7 +381,7 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
           <Button
             onClick={(e) => handleActionButtonClick(onSwipeDown, e)}
             variation="primary"
-            isDisabled={isActionLoading}
+            isDisabled={isActionLoading || actionTaken}
             className="beat-swipe-button favorite-button"
           >
             <FaStar />
@@ -322,7 +390,7 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
           <Button
             onClick={(e) => handleActionButtonClick(onSwipeRight, e)}
             variation="primary"
-            isDisabled={isActionLoading}
+            isDisabled={isActionLoading || actionTaken}
             className="beat-swipe-button like-button"
           >
             <FaHeart />

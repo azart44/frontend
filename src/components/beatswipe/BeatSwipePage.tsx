@@ -1,6 +1,4 @@
-// Modification à apporter au fichier src/components/beatswipe/BeatSwipePage.tsx
-
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   View, 
   Heading, 
@@ -12,16 +10,15 @@ import {
 } from '@aws-amplify/ui-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { FaSyncAlt, FaInfoCircle, FaArrowLeft } from 'react-icons/fa';
+import { FaSyncAlt, FaInfoCircle, FaArrowLeft, FaBell } from 'react-icons/fa';
 import BeatSwipeCard from './BeatSwipeCard';
-import { useSwipeRecommendations, useLocalSwipeQueue } from '../../hooks/useBeatSwipe';
+import { useSwipeRecommendations, useLocalSwipeQueue, useSwipeMatches } from '../../hooks/useBeatSwipe';
 import './BeatSwipePage.css';
 
 const BeatSwipePage: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated, userId, userProfile } = useAuth();
-  // Ref pour éviter que les handlers de navigation soient affectés par les swipes
-  const navigationHandlersRef = useRef<boolean>(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   
   // Récupérer les recommandations
   const { 
@@ -30,6 +27,11 @@ const BeatSwipePage: React.FC = () => {
     error: recommendationsError,
     refetch: refetchRecommendations
   } = useSwipeRecommendations();
+  
+  // Récupérer les matches pour l'indicateur
+  const { 
+    data: matchesData
+  } = useSwipeMatches();
   
   // Utiliser le hook de gestion locale de la queue
   const {
@@ -41,21 +43,33 @@ const BeatSwipePage: React.FC = () => {
     handleSwipeDown,
     isActionLoading,
     resetQueue,
-    hasMoreTracks
+    hasMoreTracks,
+    currentIndex
   } = useLocalSwipeQueue();
   
   // Naviguer de façon sécurisée
   const safeNavigate = (path: string) => {
-    // Utiliser un setTimeout pour s'assurer que cela s'exécute après tous les événements de souris
     setTimeout(() => navigate(path), 10);
   };
   
   // Charger les recommandations initiales dans la queue
   useEffect(() => {
     if (recommendationsData?.tracks && recommendationsData.tracks.length > 0) {
+      console.log("Ajout de nouvelles pistes à la queue:", recommendationsData.tracks.length);
       addTracksToQueue(recommendationsData.tracks);
+      setLoadingMore(false);
     }
   }, [recommendationsData, addTracksToQueue]);
+  
+  // Effet pour charger automatiquement plus de pistes quand on approche de la fin
+  useEffect(() => {
+    // Si nous avons moins de 5 pistes restantes, charger plus de recommandations
+    if (trackQueue.length > 0 && currentIndex >= trackQueue.length - 5 && !loadingMore) {
+      console.log("Approche de la fin de la queue (position", currentIndex, "sur", trackQueue.length, ")");
+      setLoadingMore(true);
+      refetchRecommendations();
+    }
+  }, [currentIndex, trackQueue.length, refetchRecommendations, loadingMore]);
   
   // Vérifier si l'utilisateur est authentifié et est un artiste
   if (!isAuthenticated) {
@@ -102,7 +116,7 @@ const BeatSwipePage: React.FC = () => {
   }
   
   // Afficher un chargement pendant le chargement initial
-  if (isLoadingRecommendations && !hasMoreTracks) {
+  if (isLoadingRecommendations && trackQueue.length === 0) {
     return (
       <View padding="2rem">
         <Flex direction="column" alignItems="center" gap="1rem">
@@ -114,7 +128,7 @@ const BeatSwipePage: React.FC = () => {
   }
   
   // Gérer l'erreur de chargement
-  if (recommendationsError && !hasMoreTracks) {
+  if (recommendationsError && trackQueue.length === 0) {
     return (
       <View padding="2rem">
         <Card padding="2rem" textAlign="center">
@@ -135,7 +149,7 @@ const BeatSwipePage: React.FC = () => {
   }
   
   // Afficher un message s'il n'y a pas de recommandations
-  if (!hasMoreTracks && (!recommendationsData?.tracks || recommendationsData.tracks.length === 0)) {
+  if (!hasMoreTracks && trackQueue.length === 0) {
     return (
       <View padding="2rem">
         <Card padding="2rem" textAlign="center">
@@ -156,11 +170,12 @@ const BeatSwipePage: React.FC = () => {
     );
   }
   
+  // Nombre de matches disponibles
+  const matchesCount = matchesData?.matches?.length || 0;
+  
   // Handler pour la navigation
   const handleNavigation = (path: string) => (e: React.MouseEvent) => {
-    // Empêcher la propagation
     e.stopPropagation();
-    // Utiliser le navigateur de façon sécurisée
     safeNavigate(path);
   };
   
@@ -187,7 +202,7 @@ const BeatSwipePage: React.FC = () => {
       </Text>
       
       <div className="beat-swipe-deck-container">
-        {/* Afficher la carte courante */}
+        {/* Carte courante */}
         {currentTrack && (
           <BeatSwipeCard
             track={currentTrack}
@@ -198,8 +213,16 @@ const BeatSwipePage: React.FC = () => {
           />
         )}
         
+        {/* Indicateur de chargement de pistes supplémentaires */}
+        {loadingMore && hasMoreTracks && (
+          <div className="beat-swipe-loading-indicator">
+            <Loader size="small" />
+            <Text fontSize="small">Chargement de nouvelles pistes...</Text>
+          </div>
+        )}
+        
         {/* Message pour rafraîchir si plus de pistes */}
-        {!hasMoreTracks && (
+        {!hasMoreTracks && trackQueue.length > 0 && (
           <div className="beat-swipe-empty">
             <Text marginBottom="1rem">Vous avez parcouru toutes les recommandations!</Text>
             <Button 
@@ -216,12 +239,28 @@ const BeatSwipePage: React.FC = () => {
         )}
       </div>
       
+      {/* Statistiques et compteurs */}
+      <div className="beat-swipe-stats">
+        <Text fontSize="small" color="var(--chordora-text-secondary)">
+          Pistes découvertes: {currentIndex} | Pistes restantes: {trackQueue.length - currentIndex}
+        </Text>
+      </div>
+      
       {/* Bouton pour voir les matches */}
       <div className="beat-swipe-matches-link">
         <Button
           onClick={handleNavigation('/beatswipe/matches')}
           variation="link"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}
         >
+          {matchesCount > 0 && (
+            <span className="match-count-badge">{matchesCount}</span>
+          )}
+          <FaBell style={{ marginRight: '0.5rem' }} />
           Voir mes matches
         </Button>
       </div>
