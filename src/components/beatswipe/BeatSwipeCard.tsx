@@ -226,7 +226,7 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
               e.stopPropagation();
               onSwipeLeft();
             }}
-            variation="destructive"
+            variation="primary"
             isDisabled={isActionLoading}
             className="beat-swipe-button skip-button"
           >
@@ -238,7 +238,7 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
               e.stopPropagation();
               onSwipeDown();
             }}
-            variation="warning"
+            variation="primary"
             isDisabled={isActionLoading}
             className="beat-swipe-button favorite-button"
           >
@@ -250,7 +250,7 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
               e.stopPropagation();
               onSwipeRight();
             }}
-            variation="success"
+            variation="primary"
             isDisabled={isActionLoading}
             className="beat-swipe-button like-button"
           >
