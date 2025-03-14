@@ -9,7 +9,7 @@ import {
   Image,
   Flex,
   PasswordField,
-  Button, // Add this import
+  Button,
   useTheme
 } from '@aws-amplify/ui-react';
 import { useNavigate } from 'react-router-dom';
@@ -36,6 +36,72 @@ const useProfileCompletion = (authStatus: string, navigate: (path: string) => vo
     };
     checkProfileCompletion();
   }, [authStatus, navigate]);
+};
+
+// Composants de formulaire personnalisés
+const formFields = {
+  signUp: {
+    email: {
+      label: 'Email',
+      placeholder: 'Entrez votre adresse e-mail',
+      isRequired: true,
+      order: 1
+    },
+    password: {
+      label: 'Mot de passe',
+      placeholder: 'Créez un mot de passe sécurisé',
+      isRequired: true,
+      order: 2
+    },
+    confirm_password: {
+      label: 'Confirmer le mot de passe',
+      placeholder: 'Confirmez votre mot de passe',
+      isRequired: true,
+      order: 3
+    },
+    username: {
+      label: 'Nom d\'utilisateur',
+      placeholder: 'Choisissez un nom d\'utilisateur unique',
+      isRequired: true,
+      order: 4
+    }
+  },
+  signIn: {
+    username: {
+      label: 'Email ou nom d\'utilisateur',
+      placeholder: 'Entrez votre email ou nom d\'utilisateur',
+      isRequired: true
+    },
+    password: {
+      label: 'Mot de passe',
+      placeholder: 'Entrez votre mot de passe',
+      isRequired: true
+    },
+  }
+};
+
+// Composant de thème personnalisé
+const components = {
+  Header() {
+    return (
+      <Flex justifyContent="center" marginBottom="1rem">
+        <Image
+          src="/logo.svg"
+          alt="Chordora Logo"
+          height="60px"
+        />
+      </Flex>
+    );
+  },
+  Footer() {
+    return (
+      <Flex justifyContent="center" marginTop="1.5rem">
+        <Text fontSize="0.8rem" color="gray.400">
+          © {new Date().getFullYear()} Chordora - Tous droits réservés
+        </Text>
+      </Flex>
+    );
+  }
 };
 
 const AuthPage: React.FC = React.memo(() => {
@@ -65,8 +131,12 @@ const AuthPage: React.FC = React.memo(() => {
       </Text>
       
       <Authenticator
-        loginMechanisms={['username']}
-        signUpAttributes={['email']}
+        formFields={formFields}
+        components={components}
+        signUpAttributes={[
+          'email',
+          'name'
+        ]}
       >
         {({ signOut, user }) => (
           <View>
