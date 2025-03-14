@@ -76,7 +76,8 @@ const BeatSwipeMatches: React.FC = () => {
                   if (fullTrack && fullTrack.cover_image && match.track) {
                     // Mettre à jour l'URL de l'image dans l'objet match pour qu'elle s'affiche immédiatement
                     match.track.cover_image = fullTrack.cover_image;
-                    match.track.coverImageUrl = fullTrack.coverImageUrl || fullTrack.cover_image;
+                    // Ligne 79, avec une assertion de type
+                    (match.track as any).coverImageUrl = fullTrack.coverImageUrl || fullTrack.cover_image;
                     
                     // Forcer un re-render pour afficher les nouvelles images
                     setLoadedTracks(prev => ({...prev}));
