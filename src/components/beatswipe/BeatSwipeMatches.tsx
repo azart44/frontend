@@ -62,7 +62,37 @@ const BeatSwipeMatches: React.FC = () => {
         `Matches reçus: ${matchesData.count}`,
         `Premier match sample: ${JSON.stringify(matchesData.matches[0] || {}, null, 2).substring(0, 300)}...`
       ]);
+      
+      // Précharger les informations complètes des premières pistes pour un meilleur affichage
+      const preloadTracks = async () => {
+        if (matchesData.matches.length > 0) {
+          const matchesToPreload = matchesData.matches.slice(0, 3); // Précharge les 3 premiers matches
+          
+          for (const match of matchesToPreload) {
+            if (match.track && match.track.track_id) {
+              try {
+                // Ne pas attendre la fin du chargement pour ne pas bloquer l'UI
+                loadFullTrack(match.track.track_id).then(fullTrack => {
+                  if (fullTrack && fullTrack.cover_image && match.track) {
+                    // Mettre à jour l'URL de l'image dans l'objet match pour qu'elle s'affiche immédiatement
+                    match.track.cover_image = fullTrack.cover_image;
+                    match.track.coverImageUrl = fullTrack.coverImageUrl || fullTrack.cover_image;
+                    
+                    // Forcer un re-render pour afficher les nouvelles images
+                    setLoadedTracks(prev => ({...prev}));
+                  }
+                });
+              } catch (err) {
+                console.error(`Erreur lors du préchargement de la piste ${match.track.track_id}:`, err);
+              }
+            }
+          }
+        }
+      };
+      
+      preloadTracks();
     }
+    
     if (error) {
       setDebugLogs(prev => [...prev, `Erreur: ${String(error)}`]);
     }
@@ -233,6 +263,13 @@ const BeatSwipeMatches: React.FC = () => {
       // Log de débogage
       setDebugLogs(prev => [...prev, `Lecture: ${trackToPlay.title} (URL: ${trackToPlay.presigned_url?.substring(0, 30)}...)`]);
       
+      // Mettre à jour les données d'image dans l'objet match original pour améliorer l'affichage
+      if (trackToPlay.cover_image && match.track) {
+        match.track.cover_image = trackToPlay.cover_image;
+        match.track.coverImageUrl = trackToPlay.coverImageUrl || trackToPlay.cover_image;
+        setDebugLogs(prev => [...prev, `Image mise à jour: ${match.track.cover_image?.substring(0, 30)}...`]);
+      }
+      
       // Jouer la piste
       playTrack(trackToPlay);
       
@@ -252,21 +289,43 @@ const BeatSwipeMatches: React.FC = () => {
     setDebugLogs(prev => [...prev, `Erreur d'image pour la piste ${trackId}`]);
   };
   
-  // Obtenir l'URL de l'image avec gestion des erreurs
+  // Obtenir l'URL de l'image avec gestion des erreurs et priorité améliorée
   const getCoverImageUrl = (match: any) => {
-    // Si on a déjà chargé la track complète, utiliser son image
-    const trackId = match.track.track_id;
-    if (loadedTracks[trackId] && loadedTracks[trackId].cover_image) {
-      return loadedTracks[trackId].cover_image;
-    }
-    
     // Si on a déjà eu une erreur pour cette image, utiliser l'image par défaut
+    const trackId = match.track.track_id;
     if (imageErrors[trackId]) {
       return '/default-cover.jpg';
     }
     
-    // Utiliser l'URL de couverture ou une image par défaut
-    return match.track.cover_image || '/default-cover.jpg';
+    // Si on a déjà chargé la track complète, utiliser son image
+    if (loadedTracks[trackId] && loadedTracks[trackId].cover_image) {
+      return loadedTracks[trackId].cover_image;
+    }
+    
+    // Vérification plus robuste pour les URLs d'image
+    if (match.track.cover_image && (
+        match.track.cover_image.startsWith('http://') || 
+        match.track.cover_image.startsWith('https://')
+    )) {
+      return match.track.cover_image;
+    }
+    
+    if (match.track.coverImageUrl && (
+        match.track.coverImageUrl.startsWith('http://') || 
+        match.track.coverImageUrl.startsWith('https://')
+    )) {
+      return match.track.coverImageUrl;
+    }
+    
+    // Si un chemin S3 est disponible, construire une URL absolue
+    if (match.track.cover_image_path) {
+      const bucket = 'chordora-users'; // À remplacer par votre bucket réel
+      const region = 'us-east-1'; // À remplacer par votre région réelle
+      return `https://${bucket}.s3.${region}.amazonaws.com/${match.track.cover_image_path}`;
+    }
+    
+    // Image par défaut si aucune URL n'est disponible
+    return '/default-cover.jpg';
   };
   
   return (

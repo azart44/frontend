@@ -1,4 +1,4 @@
-// src/components/beatswipe/BeatSwipeCard.tsx - Mise à jour
+// src/components/beatswipe/BeatSwipeCard.tsx
 
 import React, { useState, useRef, useEffect } from 'react';
 import { 
@@ -71,13 +71,15 @@ const BeatSwipeCard: React.FC<BeatSwipeCardProps> = ({
       return '/default-cover.jpg';
     }
     
-    // Vérifier les différentes possibilités d'URL d'image
-    if (track.cover_image) {
+    // Vérifier les différentes possibilités d'URL d'image dans un ordre de priorité clair
+    if (track.cover_image && 
+       (track.cover_image.startsWith('http://') || track.cover_image.startsWith('https://'))) {
       return track.cover_image;
-    } else if (track.coverImageUrl) {
+    } else if (track.coverImageUrl && 
+              (track.coverImageUrl.startsWith('http://') || track.coverImageUrl.startsWith('https://'))) {
       return track.coverImageUrl;
     } else {
-      // Image par défaut si aucune URL n'est disponible
+      // Image par défaut si aucune URL n'est disponible ou si les URL ne sont pas absolues
       return '/default-cover.jpg';
     }
   };
