@@ -1,20 +1,24 @@
 import { Amplify } from 'aws-amplify';
+import { envConfig, environment } from './environment';
 
+// Configuration d'Amplify avec les valeurs de l'environnement actuel
 Amplify.configure({
   Auth: {
     Cognito: {
-      userPoolId: process.env.REACT_APP_USER_POOL_ID!,
-      userPoolClientId: process.env.REACT_APP_USER_POOL_CLIENT_ID!,
+      userPoolId: envConfig.userPoolId,
+      userPoolClientId: envConfig.userPoolClientId,
       signUpVerificationMethod: 'code',
-      identityPoolId: process.env.REACT_APP_IDENTITY_POOL_ID!, // Utilisez l'assertion non-null
+      identityPoolId: envConfig.identityPoolId,
     }
   },
   Storage: {
     S3: {
-      bucket: process.env.REACT_APP_S3_BUCKET!,
-      region: process.env.REACT_APP_REGION!,
+      bucket: envConfig.s3Bucket,
+      region: envConfig.region,
     }
   }
 });
+
+console.log(`Amplify configuré pour l'environnement: ${environment.toUpperCase()}`);
 
 export default Amplify;

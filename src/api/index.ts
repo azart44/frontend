@@ -1,11 +1,12 @@
 import axios from 'axios';
 import { fetchAuthSession } from 'aws-amplify/auth';
+import { envConfig } from '../config/environment';
 
 /**
  * Client API centralisé avec gestion du token d'authentification
  * et des logs de performance
  */
-const API_BASE_URL = 'https://z8qzoeztpc.execute-api.us-east-1.amazonaws.com/prod';
+const API_BASE_URL = envConfig.apiUrl;
 const API_TIMEOUT = 15000; // 15 secondes pour les requêtes impliquant des images
 
 // Instance axios avec configuration optimisée
